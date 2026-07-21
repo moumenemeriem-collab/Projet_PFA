@@ -16,6 +16,13 @@ const navItems: { id: AdminPage; label: string; icon: keyof typeof icons; href: 
   { id: 'profile', label: 'Profil Admin', icon: 'profile', href: '/admin/profil' },
 ]
 
+const pageTitles: Record<AdminPage, string> = {
+  dashboard: 'Tableau de bord',
+  users: 'Gestion des Utilisateurs',
+  data: 'Gestion de données',
+  profile: 'Profil Admin',
+}
+
 export function renderAdminLayout(options: AdminLayoutOptions): string {
   const { user, activePage, content } = options
 
@@ -46,7 +53,7 @@ export function renderAdminLayout(options: AdminLayoutOptions): string {
       </aside>
       <div class="admin-main">
         <header class="admin-topbar">
-          <h1 class="admin-topbar-title">Gestion des Utilisateurs</h1>
+          <h1 class="admin-topbar-title">${pageTitles[activePage]}</h1>
           <div class="admin-topbar-user">
             <div class="admin-topbar-user-info" style="margin-left: 140px;">
               <span class="admin-topbar-user-name">${user.prenom} ${user.nom}</span>

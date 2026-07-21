@@ -8,7 +8,6 @@ import {
   getInitials,
   getRoleLabel,
   updateProfile,
-  type ProfileUpdatePayload,
 } from '../../api/profile.ts'
 
 interface ProfileFormState {
@@ -18,35 +17,35 @@ interface ProfileFormState {
   telephone: string
 }
 
-function renderProfileContent(user: Utilisateur): string {
+function renderAdminProfileContent(user: Utilisateur): string {
   const telephone = user.telephone ?? ''
 
   return `
     <div class="admin-profile-page">
-      <div class="admin-profile-header">
+      <header class="admin-profile-header">
         <div>
-          <h2 class="admin-profile-title">Mon Profil Administrateur</h2>
+          <h2 class="admin-profile-title">Mon Profil</h2>
           <p class="admin-profile-desc">Gérez vos informations personnelles et vos paramètres de sécurité.</p>
         </div>
-      </div>
+      </header>
 
       <div id="profile-success" class="form-alert form-alert--success" hidden></div>
       <div id="profile-error" class="form-alert form-alert--error" hidden></div>
 
-      <form id="profile-form" class="profile-card" novalidate>
-        <div class="profile-card-header">
-          <span class="profile-card-icon profile-card-icon--blue">${icons.user}</span>
+      <form id="profile-form" class="admin-profile-card" novalidate>
+        <div class="admin-profile-card-header">
+          <span class="admin-profile-card-icon admin-profile-card-icon--blue">${icons.user}</span>
           <div>
-            <h2 class="profile-card-title">Informations générales</h2>
-            <p class="profile-card-desc">Ces détails sont utilisés pour l'administration de la plateforme.</p>
+            <h3 class="admin-profile-card-title">Informations générales</h3>
+            <p class="admin-profile-card-desc">Ces détails sont utilisés pour l'administration de la plateforme.</p>
           </div>
         </div>
 
-        <div class="profile-avatar-row">
-          <div class="profile-avatar" id="profile-avatar">${getInitials(user)}</div>
-          <div class="profile-avatar-info">
-            <p class="profile-avatar-name" id="profile-display-name">${user.prenom} ${user.nom}</p>
-            <p class="profile-avatar-role">${getRoleLabel(user.role)}</p>
+        <div class="admin-profile-avatar-row">
+          <div class="admin-profile-avatar" id="admin-profile-avatar">${getInitials(user)}</div>
+          <div class="admin-profile-avatar-info">
+            <p class="admin-profile-avatar-name" id="admin-profile-display-name">${user.prenom} ${user.nom}</p>
+            <p class="admin-profile-avatar-role">${getRoleLabel(user.role)}</p>
           </div>
         </div>
 
@@ -91,22 +90,22 @@ function renderProfileContent(user: Utilisateur): string {
           value: telephone,
         })}
 
-        <div class="profile-save-bar" id="profile-save-bar" hidden>
-          <div class="profile-save-actions">
-            <button type="button" class="btn btn-text" id="profile-cancel-btn">Annuler les changements</button>
-            <button type="submit" class="btn btn-primary btn-sm" id="profile-save-btn">
+        <div class="admin-profile-save-bar" id="admin-profile-save-bar" hidden>
+          <div class="admin-profile-save-actions">
+            <button type="button" class="btn btn-text" id="admin-profile-cancel-btn">Annuler les changements</button>
+            <button type="submit" class="btn btn-primary btn-sm" id="admin-profile-save-btn">
               ${icons.save} Sauvegarder
             </button>
           </div>
         </div>
       </form>
 
-      <form id="password-form" class="profile-card profile-card--password" novalidate>
-        <div class="profile-card-header">
-          <span class="profile-card-icon profile-card-icon--red">${icons.lock}</span>
+      <form id="password-form" class="admin-profile-card admin-profile-card--password" novalidate>
+        <div class="admin-profile-card-header">
+          <span class="admin-profile-card-icon admin-profile-card-icon--red">${icons.lock}</span>
           <div>
-            <h2 class="profile-card-title">Changer le mot de passe</h2>
-            <p class="profile-card-desc">Mettez à jour votre mot de passe pour sécuriser votre compte administrateur.</p>
+            <h3 class="admin-profile-card-title">Changer le mot de passe</h3>
+            <p class="admin-profile-card-desc">Mettez à jour votre mot de passe pour sécuriser votre compte.</p>
           </div>
         </div>
 
@@ -149,7 +148,7 @@ function renderProfileContent(user: Utilisateur): string {
           </ul>
         </div>
 
-        <div class="profile-form-actions">
+        <div class="admin-profile-form-actions">
           <button type="submit" class="btn btn-primary btn-action btn-action--password" id="password-submit-btn">
             ${icons.save} Mettre à jour le mot de passe
           </button>
@@ -194,9 +193,9 @@ function hideAlerts(root: HTMLElement): void {
 
 function setupProfileForm(root: HTMLElement, initial: ProfileFormState): void {
   const form = root.querySelector<HTMLFormElement>('#profile-form')
-  const saveBar = root.querySelector<HTMLElement>('#profile-save-bar')
-  const cancelBtn = root.querySelector<HTMLButtonElement>('#profile-cancel-btn')
-  const saveBtn = root.querySelector<HTMLButtonElement>('#profile-save-btn')
+  const saveBar = root.querySelector<HTMLElement>('#admin-profile-save-bar')
+  const cancelBtn = root.querySelector<HTMLButtonElement>('#admin-profile-cancel-btn')
+  const saveBtn = root.querySelector<HTMLButtonElement>('#admin-profile-save-btn')
   const successEl = root.querySelector<HTMLElement>('#profile-success')
   const errorEl = root.querySelector<HTMLElement>('#profile-error')
 
@@ -247,10 +246,14 @@ function setupProfileForm(root: HTMLElement, initial: ProfileFormState): void {
         telephone: updated.telephone ?? '',
       }
 
-      root.querySelector('#profile-display-name')!.textContent = `${updated.prenom} ${updated.nom}`
-      root.querySelector('#profile-avatar')!.textContent = getInitials(updated)
-      root.querySelector('.admin-topbar-user-name')!.textContent = `${updated.prenom} ${updated.nom}`
-      root.querySelector('.admin-topbar-avatar')!.textContent = `${updated.prenom.charAt(0)}${updated.nom.charAt(0)}`
+      root.querySelector('#admin-profile-display-name')!.textContent = `${updated.prenom} ${updated.nom}`
+      root.querySelector('#admin-profile-avatar')!.textContent = getInitials(updated)
+
+      const topbarName = root.querySelector('.admin-topbar-user-name')
+      if (topbarName) topbarName.textContent = `${updated.prenom} ${updated.nom}`
+
+      const topbarAvatar = root.querySelector('.admin-topbar-avatar')
+      if (topbarAvatar) topbarAvatar.textContent = `${updated.prenom.charAt(0)}${updated.nom.charAt(0)}`
 
       saveBar.hidden = true
       showAlert(successEl, 'Profil mis à jour avec succès.')
@@ -316,7 +319,7 @@ export async function mountAdminProfilePage(root: HTMLElement): Promise<void> {
 
   try {
     const user = await fetchProfile()
-    root.querySelector('.admin-content')!.innerHTML = renderProfileContent(user)
+    root.querySelector('.admin-content')!.innerHTML = renderAdminProfileContent(user)
     setupPasswordToggles(root)
 
     const initial: ProfileFormState = {
@@ -332,7 +335,7 @@ export async function mountAdminProfilePage(root: HTMLElement): Promise<void> {
     root.querySelector('.admin-content')!.innerHTML = `
       <div class="admin-error-state">
         <p>Impossible de charger votre profil.</p>
-        <button type="button" class="btn btn-primary" onclick="location.reload()">Réessayer</button>
+        <a href="/login" class="btn btn-primary">Se reconnecter</a>
       </div>
     `
   }
