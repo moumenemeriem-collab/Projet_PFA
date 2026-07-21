@@ -11,7 +11,7 @@ export function Header(): string {
       <div class="container header-inner">
         <a href="#accueil" class="logo">
           ${logoIcon()}
-          <span class="logo-text">WebSIG</span>
+          <span class="logo-text">GEO INVEST</span>
         </a>
         <nav class="nav" aria-label="Navigation principale">
           ${links}

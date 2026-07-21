@@ -36,7 +36,7 @@ export const features: Feature[] = [
   {
     title: 'Analyse multicritères',
     description:
-      'Croisez accessibilité, équipements, zonage et risques pour évaluer objectivement le potentiel de chaque terrain.',
+      'Croisez accessibilité, équipements  et zonage pour évaluer objectivement le potentiel de chaque terrain.',
     icon: 'filter',
     imageGradient: 'linear-gradient(135deg, #0c4a6e 0%, #0369a1 50%, #0ea5e9 100%)',
     image: analyseMulticriteresImg,
@@ -63,7 +63,7 @@ export const benefits: Benefit[] = [
   {
     title: 'Sécurité Juridique',
     description:
-      'Appuyez vos décisions sur des données cadastrales et réglementaires fiables, actualisées pour la région de Khémisset.',
+      'Appuyez vos décisions sur des données cadastrales et réglementaires fiables, actualisées pour la région de .',
     icon: 'shield',
   },
   {
