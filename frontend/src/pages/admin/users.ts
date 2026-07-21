@@ -21,7 +21,6 @@ interface UsersPageState {
   search: string
   roleFilter: '' | 'admin' | 'investisseur'
   page: number
-  showPasswordColumn: boolean
   openMenuId: number | null
   modalMode: 'create' | 'edit' | null
   editingUser: AdminUtilisateur | null
@@ -93,6 +92,11 @@ function renderUserModal(mode: 'create' | 'edit', user: AdminUtilisateur | null)
   `
 }
 
+function formatDate(iso: string): string {
+  const d = new Date(iso)
+  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
 function renderUserRow(user: AdminUtilisateur, state: UsersPageState): string {
   const menuOpen = state.openMenuId === user.id
   return `
@@ -100,9 +104,8 @@ function renderUserRow(user: AdminUtilisateur, state: UsersPageState): string {
       <td><div class="users-table-name"><span class="users-table-avatar">${getInitials(user)}</span><span>${getFullName(user)}</span></div></td>
       <td class="users-table-email">${user.email}</td>
       <td class="users-table-role"><span class="role-pill role-pill--${user.role}">${user.role}</span></td>
-      <td class="users-table-password${state.showPasswordColumn ? '' : ' users-table-password--hidden'}">${user.mot_de_passe ?? '••••••••'}</td>
+      <td class="users-table-date">${formatDate(user.date_creation)}</td>
       <td class="users-table-actions">
-        <button type="button" class="table-action-btn toggle-password-btn" title="Afficher le mot de passe">${icons.eye}</button>
         <div class="action-menu-wrapper">
           <button type="button" class="table-action-btn action-menu-btn" data-user-id="${user.id}" title="Plus d'actions">${icons.more}</button>
           ${menuOpen ? `<div class="action-menu">
@@ -154,7 +157,7 @@ function renderUsersContent(state: UsersPageState): string {
             <thead>
               <tr>
                 <th>Nom</th><th>Email</th><th>Rôle</th>
-                <th class="users-table-password-col${state.showPasswordColumn ? '' : ' users-table-password--hidden'}">Mot de passe</th>
+                <th>Date de création</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -300,13 +303,6 @@ function bindPageEvents(): void {
     }
   })
 
-  pageRoot.querySelectorAll('.toggle-password-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      if (!stateRef.current) return
-      renderPage({ ...stateRef.current, showPasswordColumn: !stateRef.current.showPasswordColumn })
-    })
-  })
-
   pageRoot.querySelectorAll('.action-menu-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation()
@@ -392,7 +388,7 @@ export async function mountAdminUsersPage(root: HTMLElement): Promise<void> {
     const users = await loadUsers('', '')
     renderPage({
       allUsers: users, search: '', roleFilter: '', page: 1,
-      showPasswordColumn: false, openMenuId: null, modalMode: null, editingUser: null,
+      openMenuId: null, modalMode: null, editingUser: null,
     })
   } catch (error) {
     root.querySelector('.admin-content')!.innerHTML = `

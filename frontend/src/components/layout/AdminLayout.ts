@@ -59,7 +59,7 @@ export function renderAdminLayout(options: AdminLayoutOptions): string {
               <span class="admin-topbar-user-name">${user.prenom} ${user.nom}</span>
               <span class="admin-topbar-user-email">${user.email}</span>
             </div>
-            <div class="admin-topbar-avatar">${user.prenom.charAt(0)}${user.nom.charAt(0)}</div>
+            <a href="/admin/profil" class="admin-topbar-avatar">${user.prenom.charAt(0)}${user.nom.charAt(0)}</a>
           </div>
         </header>
         <main class="admin-content">

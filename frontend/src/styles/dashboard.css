@@ -156,6 +156,26 @@
   color: var(--text-heading);
 }
 
+.dashboard-topbar-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.dashboard-topbar-avatar:hover {
+  opacity: 0.85;
+}
+
 /* ── Dashboard action buttons ── */
 
 .btn-action {

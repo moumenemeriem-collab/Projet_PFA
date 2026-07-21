@@ -57,6 +57,7 @@ export function renderDashboardLayout(options: DashboardLayoutOptions): string {
           <div class="header-actions">
             <span class="nav-link nav-link--user">${user.prenom} ${user.nom}</span>
             <span class="role-badge">${user.role}</span>
+            <a href="/profil" class="dashboard-topbar-avatar">${user.prenom.charAt(0)}${user.nom.charAt(0)}</a>
           </div>
         </header>
         <main class="dashboard-content">

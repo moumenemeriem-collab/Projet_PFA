@@ -215,6 +215,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.admin-topbar-avatar:hover {
+  opacity: 0.85;
 }
 
 /* ── Users page ── */
@@ -533,17 +540,12 @@
   }
 }
 
-/* ── Password column ── */
+/* ── Date column ── */
 
-.users-table-password--hidden,
-.users-table-password-col.users-table-password--hidden {
-  display: none;
-}
-
-.users-table-password {
-  font-family: monospace;
+.users-table-date {
   color: var(--text-muted);
-  letter-spacing: 2px;
+  font-size: 0.875rem;
+  white-space: nowrap;
 }
 
 /* ── Action menu ── */
