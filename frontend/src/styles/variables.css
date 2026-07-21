@@ -1,0 +1,32 @@
+:root {
+  --font-sans: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-light: #dbeafe;
+  --primary-muted: #eff6ff;
+
+  --text: #374151;
+  --text-heading: #111827;
+  --text-muted: #6b7280;
+  --text-label: #4b5563;
+
+  --bg-page: #eef2ff;
+  --bg-card: #ffffff;
+  --border: #e5e7eb;
+  --border-input: #d1d5db;
+  --input-bg: #f9fafb;
+
+  --success: #16a34a;
+  --error: #dc2626;
+  --error-bg: #fef2f2;
+
+  --shadow-card: 0 4px 24px rgba(15, 23, 42, 0.08);
+  --shadow-btn: 0 2px 8px rgba(37, 99, 235, 0.25);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --header-height: 64px;
+}
