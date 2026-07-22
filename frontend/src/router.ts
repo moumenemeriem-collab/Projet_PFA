@@ -3,9 +3,17 @@ import {
   getStoredUser,
   isAuthenticated,
 } from './api/auth.ts'
+import { Header, setupHeader } from './components/Header'
+import { Hero } from './components/Hero'
+import { Features } from './components/Features'
+import { Benefits } from './components/Benefits'
+import { CtaBanner } from './components/CtaBanner'
+import { setupScrollAnimations } from './utils/scrollAnimations'
+import { mountAdminMessagesPage } from './pages/admin/messages.ts'
 import { mountAdminProfilePage } from './pages/admin/profile.ts'
 import { mountAdminUsersPage } from './pages/admin/users.ts'
 import { mountLoginPage } from './pages/login.ts'
+import { mountMessagesPage } from './pages/messages.ts'
 import { mountProfilePage } from './pages/profile.ts'
 import { mountProjectsPage } from './pages/projects.ts'
 import { mountRegisterPage } from './pages/register.ts'
@@ -24,8 +32,10 @@ const routes: Record<string, RouteConfig> = {
   '/login': { handler: mountLoginPage, guestOnly: true },
   '/register': { handler: mountRegisterPage, guestOnly: true },
   '/projets': { handler: mountProjectsPage, requiresAuth: true, investisseurOnly: true },
+  '/messages': { handler: mountMessagesPage, requiresAuth: true, investisseurOnly: true },
   '/profil': { handler: mountProfilePage, requiresAuth: true, investisseurOnly: true },
   '/admin/utilisateurs': { handler: mountAdminUsersPage, requiresAuth: true, adminOnly: true },
+  '/admin/messages': { handler: mountAdminMessagesPage, requiresAuth: true, adminOnly: true },
   '/admin/profil': { handler: mountAdminProfilePage, requiresAuth: true, adminOnly: true },
   '/': { handler: renderHome },
 }
@@ -46,39 +56,22 @@ function renderHome(root: HTMLElement): void {
   }
 
   root.innerHTML = `
-    <div class="home-page">
-      <header class="site-header">
-        <a href="/" class="brand">
-          <span class="brand-icon"><svg viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="4" fill="currentColor"/><path d="M6 8h4l2 3 2-3h4l-5 7 5 7h-4l-2-3-2 3H6l5-7-5-7z" fill="white"/></svg></span>
-          <span class="brand-name">WebSIG</span>
-        </a>
-        <nav class="site-nav">
-          <a href="/" class="nav-link nav-link--active">Accueil</a>
-          <a href="/" class="nav-link">Services</a>
-        </nav>
-        <div class="header-actions">
-          ${
-            user
-              ? `<span class="nav-link">Bonjour, ${user.prenom}</span>`
-              : '<a href="/login" class="nav-link">Se connecter</a>'
-          }
-          <a href="/register" class="btn btn-primary btn-sm">Commencer <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></a>
-        </div>
-      </header>
-      <main class="home-main">
-        <h1>Plateforme WebSIG Potentiel Foncier</h1>
-        <p>Analysez le potentiel foncier de la province de Khémisset.</p>
-        ${
-          user
-            ? `<p class="home-user">Connecté en tant que <strong>${user.prenom} ${user.nom}</strong> (${user.role})</p>`
-            : `<div class="home-actions">
-                <a href="/login" class="btn btn-outline">Se connecter</a>
-                <a href="/register" class="btn btn-primary">Créer un compte</a>
-              </div>`
-        }
-      </main>
-    </div>
+    ${Header()}
+    <main>
+      ${Hero()}
+      ${Features()}
+      ${Benefits()}
+      ${CtaBanner()}
+    </main>
+    <footer class="footer">
+      <div class="container">
+        <p>&copy; ${new Date().getFullYear()} GEO INVEST.</p>
+      </div>
+    </footer>
   `
+
+  setupHeader()
+  setupScrollAnimations()
 }
 
 function redirectTo(path: string): void {

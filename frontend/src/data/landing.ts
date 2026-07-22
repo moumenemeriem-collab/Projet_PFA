@@ -18,7 +18,7 @@ export interface Benefit {
 }
 
 export const navLinks = [
-  { label: 'Accueil', href: '#accueil' },
+  { label: 'Accueil', href: '/' },
   { label: 'Services', href: '#services' },
 ]
 

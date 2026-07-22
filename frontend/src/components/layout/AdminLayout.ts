@@ -1,7 +1,7 @@
 import { icons } from '../icons.ts'
 import { clearSession, type Utilisateur } from '../../api/auth.ts'
 
-export type AdminPage = 'dashboard' | 'users' | 'data' | 'profile'
+export type AdminPage = 'dashboard' | 'users' | 'messages' | 'data' | 'profile'
 
 export interface AdminLayoutOptions {
   user: Utilisateur
@@ -12,6 +12,7 @@ export interface AdminLayoutOptions {
 const navItems: { id: AdminPage; label: string; icon: keyof typeof icons; href: string }[] = [
   { id: 'dashboard', label: 'Tableau de bord', icon: 'dashboard', href: '/admin/utilisateurs' },
   { id: 'users', label: 'Gestion des utilisateurs', icon: 'users', href: '/admin/utilisateurs' },
+  { id: 'messages', label: 'Messagerie', icon: 'message', href: '/admin/messages' },
   { id: 'data', label: 'Gestion de données', icon: 'database', href: '/admin/utilisateurs' },
   { id: 'profile', label: 'Profil Admin', icon: 'profile', href: '/admin/profil' },
 ]
@@ -19,6 +20,7 @@ const navItems: { id: AdminPage; label: string; icon: keyof typeof icons; href: 
 const pageTitles: Record<AdminPage, string> = {
   dashboard: 'Tableau de bord',
   users: 'Gestion des Utilisateurs',
+  messages: 'Messagerie',
   data: 'Gestion de données',
   profile: 'Profil Admin',
 }
@@ -31,7 +33,7 @@ export function renderAdminLayout(options: AdminLayoutOptions): string {
       <aside class="admin-sidebar">
         <div class="admin-sidebar-brand">
           <span class="admin-sidebar-icon">${icons.logo}</span>
-          <span class="admin-sidebar-name">Admin</span>
+          <span class="admin-sidebar-name">GEO INVEST</span>
         </div>
         <nav class="admin-sidebar-nav">
           ${navItems
@@ -46,17 +48,20 @@ export function renderAdminLayout(options: AdminLayoutOptions): string {
             )
             .join('')}
         </nav>
-        <button type="button" class="admin-sidebar-logout" id="logout-btn">
-          <span class="admin-sidebar-link-icon">${icons.logout}</span>
+        <button type="button" class="sidebar-logout" id="logout-btn">
+          <span class="sidebar-link-icon">${icons.logout}</span>
           Déconnexion
         </button>
       </aside>
       <div class="admin-main">
         <header class="admin-topbar">
-          <h1 class="admin-topbar-title">${pageTitles[activePage]}</h1>
+          <div class="brand">
+            <span class="brand-icon">${icons.logo}</span>
+            <span class="brand-name">Espace Administrateur</span>
+          </div>
           <div class="admin-topbar-user">
-            <div class="admin-topbar-user-info" style="margin-left: 140px;">
-              <span class="admin-topbar-user-name">${user.prenom} ${user.nom}</span>
+            <div class="admin-topbar-user-info">
+              <span class="admin-topbar-user-name" style="margin-left: 150px;">${user.prenom} ${user.nom}</span>
               <span class="admin-topbar-user-email">${user.email}</span>
             </div>
             <a href="/admin/profil" class="admin-topbar-avatar">${user.prenom.charAt(0)}${user.nom.charAt(0)}</a>

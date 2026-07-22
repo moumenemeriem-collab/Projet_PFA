@@ -11,7 +11,7 @@ export function renderHeader(options: HeaderOptions = {}): string {
     <header class="site-header">
       <a href="/" class="brand">
         <span class="brand-icon">${icons.logo}</span>
-        <span class="brand-name">WebSIG</span>
+        <span class="brand-name">GEO INVEST</span>
       </a>
       <nav class="site-nav">
         <a href="/" class="nav-link">Accueil</a>

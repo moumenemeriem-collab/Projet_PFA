@@ -71,8 +71,8 @@ export function getInitials(user: Utilisateur): string {
 
 export function getRoleLabel(role: Utilisateur['role']): string {
   return role === 'investisseur'
-    ? 'Investisseur • WebSIG Khémisset'
-    : 'Administrateur • WebSIG Khémisset'
+    ? 'Investisseur • GEO INVEST'
+    : 'Administrateur • GEO INVEST'
 }
 
 export { formatApiErrors }

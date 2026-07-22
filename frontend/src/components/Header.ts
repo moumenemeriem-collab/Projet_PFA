@@ -17,8 +17,8 @@ export function Header(): string {
           ${links}
         </nav>
         <div class="header-actions">
-          <a href="#connexion" class="btn-text">Se connecter</a>
-          <a href="#inscription" class="btn btn-primary btn-sm">
+          <a href="/login" class="btn-text">Se connecter</a>
+          <a href="/register" class="btn btn-primary btn-sm">
             Commencer
             ${icon('chevron', 'btn-icon')}
           </a>

@@ -7,7 +7,7 @@ export function renderLoginPage(): string {
   return renderAuthLayout({
     activePage: 'login',
     title: 'Connexion',
-    subtitle: 'Accédez à votre espace investisseur WebSIG Khemisset',
+    subtitle: 'Accédez à votre espace investisseur GEO INVEST',
     cardContent: `
       <form id="login-form" class="auth-form" novalidate>
         <div id="login-error" class="form-alert form-alert--error" hidden></div>

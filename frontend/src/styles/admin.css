@@ -262,8 +262,11 @@
   font-size: 0.875rem;
 }
 
-.btn-action-admin--export {
+.btn-action-admin.btn-action-admin--export {
   width: 160px;
+  background-color: #16a34a !important;
+  border-color: #16a34a !important;
+  color: #fff !important;
 }
 
 .btn-action-admin--create {
