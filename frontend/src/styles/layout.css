@@ -1,0 +1,242 @@
+/* ── Shared layout (replaces dashboard.css + admin.css shell) ── */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+  background: #ffffff;
+}
+
+.app-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #4169e1 0%, #3b5bdb 100%);
+  padding: 24px 16px;
+  border-radius: 0 20px 20px 0;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  overflow-y: auto;
+}
+
+.app-sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.app-sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  color: #e8edff;
+  text-decoration: none;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s;
+}
+
+.app-sidebar-link:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.app-sidebar-link--active {
+  background: #ffffff;
+  color: #3b5bdb;
+}
+
+.app-sidebar-link-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.app-sidebar-link-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.app-sidebar-logout {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  margin-top: 8px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #e8edff;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.app-sidebar-logout:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.app-sidebar-logout-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.app-sidebar-logout-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.app-body {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  width: 100%;
+  height: 70px;
+  flex-shrink: 0;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+}
+
+.app-topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-topbar-logo {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.app-topbar-logo svg {
+  width: 26px;
+  height: 26px;
+}
+
+.app-topbar-logo svg rect {
+  fill: transparent;
+}
+
+.app-topbar-logo svg path {
+  fill: #3b5bdb;
+}
+
+.app-topbar-title {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--color-dark, #1e293b);
+}
+
+.app-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-content {
+  flex: 1;
+  min-width: 0;
+  padding: 28px 40px 40px;
+}
+
+/* ── Light gray search bars (all variants) ── */
+
+.search-field,
+.msg-search-field,
+.users-search-field,
+.classement-search {
+  background: #f3f4f6 !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 12px !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05) !important;
+  color: #6b7280 !important;
+}
+
+.search-field svg,
+.msg-search-field svg,
+.users-search-field svg,
+.classement-search svg {
+  color: #6b7280 !important;
+}
+
+.search-input,
+.msg-search-input,
+.users-search-input,
+.classement-search-input {
+  color: #1f2937 !important;
+}
+
+.search-input::placeholder,
+.msg-search-input::placeholder,
+.users-search-input::placeholder,
+.classement-search-input::placeholder {
+  color: #9ca3af !important;
+}
+
+/* ── Cards with enhanced shadow / border ── */
+
+.stat-card,
+.project-card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid #eaeaea !important;
+  border-radius: 12px !important;
+}
+
+.project-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+}
+
+@media (max-width: 768px) {
+  .app-shell {
+    flex-direction: column;
+  }
+
+  .app-body {
+    flex-direction: column;
+  }
+
+  .app-sidebar {
+    width: 100%;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 16px;
+  }
+
+  .app-topbar {
+    padding: 0 16px;
+  }
+
+  .app-content {
+    padding: 20px 16px 32px;
+  }
+}

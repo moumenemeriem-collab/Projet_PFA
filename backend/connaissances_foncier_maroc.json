@@ -1,0 +1,152 @@
+[
+  {
+    "id": "fg01",
+    "categorie": "foncier_general",
+    "titre": "Présentation de GEO INVEST",
+    "contenu": "GEO INVEST est une plateforme web géospatiale dédiée à l'analyse du potentiel foncier dans la région Rabat-Témara au Maroc. Elle permet aux investisseurs d'identifier les terrains les plus prometteurs grâce à une analyse multicritères croisant données cadastrales, prix fonciers, plans d'aménagement et infrastructures. La plateforme propose un classement automatique des terrains selon neuf critères pondérés et une estimation de prix basée sur les données du marché local."
+  },
+  {
+    "id": "fg02",
+    "categorie": "foncier_general",
+    "titre": "Processus d'analyse multicritères",
+    "contenu": "L'analyse multicritères de GEO INVEST évalue chaque terrain selon neuf critères : accessibilité via le réseau routier, positionnement stratégique, topographie du terrain, proximité des équipements publics (écoles, hôpitaux, marchés), densité de population, prix foncier au mètre carré, alignement avec le plan d'aménagement, superficie du terrain et viabilisation. Chaque critère est pondéré par l'investisseur selon ses priorités, puis un score global est calculé automatiquement."
+  },
+  {
+    "id": "fg03",
+    "categorie": "foncier_general",
+    "titre": "Workflow de l'investisseur",
+    "contenu": "L'investisseur suit un parcours en cinq étapes sur GEO INVEST : 1) Création d'un compte investisseur. 2) Création d'un projet d'investissement avec sélection du type (résidentiel, commercial, industriel, touristique). 3) Ajout de terrains à analyser sur la carte interactive. 4) Classement multicritères avec pondération personnalisée. 5) Sélection du terrain optimal pour l'investissement. Chaque étape est guidée par une interface intuitive."
+  },
+  {
+    "id": "fg04",
+    "categorie": "foncier_general",
+    "titre": "Sources de données utilisées",
+    "contenu": "GEO INVEST s'appuie sur sept sources de données : le cadastre marocain pour les limites parcellaires, le plan d'aménagement pour les zones constructibles, les prix fonciers du marché local, le réseau routier pour l'accessibilité, le MNT (Modèle Numérique de Terrain) pour la topographie, les limites administratives et OpenStreetMap pour les équipements de proximité. Ces données sont hébergées dans une base PostgreSQL avec extension PostGIS et servies via GeoServer."
+  },
+  {
+    "id": "fg05",
+    "categorie": "foncier_general",
+    "titre": "Types de projets supportés",
+    "contenu": "GEO INVEST prend en charge six types de projets immobiliers : résidentiel (logements et villas), commercial (commerces et centres commerciaux), industriel (zones industrielles et entrepôts), touristique (hôtels et résidences touristiques), équipements publics (écoles, hôpitaux) et bureaux-services. Chaque type de projet a ses propres critères d'évaluation et ses zonages d'aménagement spécifiques."
+  },
+  {
+    "id": "fg06",
+    "categorie": "foncier_general",
+    "titre": "Données cadastrales au Maroc",
+    "contenu": "Le cadastre marocain est géré par l'ANCFCC (Agence Nationale de la Conservation Foncière, du Cadastre et de la Cartographie). Il fournit les limites parcellaires, la superficie des terrains et les informations de propriété. GEO INVEST intègre les données cadastrales pour afficher les parcelles sur la carte interactive et fournir des informations de base sur chaque terrain analysé."
+  },
+  {
+    "id": "fg07",
+    "categorie": "foncier_general",
+    "titre": "GeoServer et services cartographiques",
+    "contenu": "GEO INVEST utilise GeoServer pour diffuser les couches géospatiales via les standards OGC (WMS, WFS). Les couches servies incluent le cadastre, les prix fonciers, le réseau routier, le plan d'aménagement et les limites administratives. L'architecture PostGIS + GeoServer permet des requêtes spatiales performantes et une visualisation cartographique dynamique sur la carte Leaflet du frontend."
+  },
+  {
+    "id": "fis01",
+    "categorie": "fiscalite",
+    "titre": "Droits d'enregistrement au Maroc",
+    "contenu": "Les droits d'enregistrement sont une taxe perçue lors de la transaction immobilière au Maroc. Le taux est de 4% de la valeur vénale ou de la valeur forfaitaire, selon la plus élevée. Ce droit est payé par l'acquéreur au moment de la signature de l'acte de vente devant notaire. Il constitue l'un des principaux coûts de transaction dans l'immobilier au Maroc."
+  },
+  {
+    "id": "fis02",
+    "categorie": "fiscalite",
+    "titre": "Taxe sur la propriété bâtie et non bâtie",
+    "contenu": "La taxe foncière au Maroc s'applique aux propriétés bâties et non bâties. Pour les propriétés non bâties, elle est calculée sur la valeur locative cadastrale. Pour les propriétés bâties, le taux est de 10% de la valeur locative. Les terrains constructibles paient cette taxe annuellement. L'exonération partielle peut s'appliquer aux terrains en cours de construction pendant une durée limitée."
+  },
+  {
+    "id": "fis03",
+    "categorie": "fiscalite",
+    "titre": "Plus-value immobilière",
+    "contenu": "La plus-value immobilière au Maroc est soumise à l'impôt sur le revenu. Le taux est de 20% sur le montant de la plus-value réalisée. Toutefois, les personnes physiques qui vendent leur résidence principale sont exonérées. La plus-value est calculée entre le prix d'acquisition et le prix de vente. Les frais notariés et les droits d'enregistrement s'ajoutent aux charges de la transaction."
+  },
+  {
+    "id": "fis04",
+    "categorie": "fiscalite",
+    "titre": "TVA sur l'immobilier au Maroc",
+    "contenu": "La TVA au Maroc est de 20% pour les opérations immobilières. Cependant, les logements sociaux bénéficient d'un taux réduit de 10%. Les opérations de promotion immobilière sont soumises à la TVA dès le premier dirham de marge. Les lots à usage professionnel sont taxés au taux normal de 20%. La TVA est collectée par le promoteur et reversée à l'Administration des Contributions Directes."
+  },
+  {
+    "id": "fis05",
+    "categorie": "fiscalite",
+    "titre": "Frais de notaire et honoraires",
+    "contenu": "Les frais de notaire au Maroc comprennent les émoluments du notaire, les droits d'enregistrement et les frais administratifs. Les émoluments sont calculés selon un barème réglementé en fonction de la valeur de la transaction. Pour une vente immobilière, les frais totaux représentent généralement entre 5% et 8% du prix de vente. Le notaire vérifie la situation hypothécaire du bien et rédige l'acte de vente."
+  },
+  {
+    "id": "urb01",
+    "categorie": "urbanisme",
+    "titre": "Plan d'aménagement et zones constructibles",
+    "contenu": "Le plan d'aménagement au Maroc définit les zones constructibles, les zones agricoles, les espaces verts et les zones industrielles. GEO INVEST intègre ce plan pour identifier les terrains constructibles selon le zonage en vigueur. Le plan d'aménagement est établi par les autorités locales et peut évoluer en fonction des nouveaux projets de développement urbain."
+  },
+  {
+    "id": "urb02",
+    "categorie": "urbanisme",
+    "titre": "COS (Coefficient d'Occupation du Sol)",
+    "contenu": "Le COS définit la superficie maximale de construction par rapport à la superficie du terrain. Par exemple, un COS de 0,6 pour un terrain de 1000 m² autorise une surface bâtie maximale de 600 m². Le COS varie selon le zonage : élevé en zone urbaine centrale, plus faible en périphérie. Il est fixé par le plan d'aménagement et conditionne la rentabilité d'un terrain pour la promotion immobilière."
+  },
+  {
+    "id": "urb03",
+    "categorie": "urbanisme",
+    "titre": "CES (Coefficient d'Emprise au Sol)",
+    "contenu": "Le CES définit la superficie maximale occupée par les constructions au niveau du rez-de-chaussée par rapport à la superficie du terrain. Contrairement au COS qui prend en compte tous les étages, le CES ne concerne que l'emprise au sol. Par exemple, un CES de 0,5 signifie que la moitié maximum du terrain peut être couverte par le bâtiment au niveau du sol."
+  },
+  {
+    "id": "urb04",
+    "categorie": "urbanisme",
+    "titre": "Zonage d'aménagement",
+    "contenu": "Le zonage d'aménagement classe les terrains en plusieurs catégories : zone résidentielle (R1, R2, R3), zone commerciale (C), zone industrielle (I), zone agricole (A), zone d'équipements publics (EP) et zone d'activités mixtes (AM). Chaque zone a ses propres règles de construction, hauteur maximale, COS et CES. GEO INVEST affiche ces zonages sur la carte pour guider l'investisseur."
+  },
+  {
+    "id": "urb05",
+    "categorie": "urbanisme",
+    "titre": "Servitude d'utilité publique",
+    "contenu": "Les servitudes d'utilité publique sont des contraintes pesant sur un terrain en raison de son utilité publique. Elles peuvent inclure des emprises pour les réseaux (eau, électricité, assainissement), des zones de recul par rapport aux voies publiques ou des servitudes de passage. Ces servitudes réduisent la surface constructible effective d'un terrain et doivent être vérifiées avant tout investissement."
+  },
+  {
+    "id": "urb06",
+    "categorie": "urbanisme",
+    "titre": "Viabilisation d'un terrain",
+    "contenu": "La viabilisation d'un terrain consiste à raccorder ce terrain aux réseaux de base : eau potable, électricité, assainissement, gaz et voirie. Un terrain viabilisé est prêt à construire. Le coût de viabilisation varie selon la localisation et les réseaux disponibles. GEO INVEST intègre le niveau de viabilisation comme critère d'évaluation dans son analyse multicritères."
+  },
+  {
+    "id": "lex01",
+    "categorie": "lexique",
+    "titre": "Titre foncier",
+    "contenu": "Le titre foncier est le document officiel qui atteste la propriété d'un terrain au Maroc. Délivré par l'ANCFCC, il garantit la sécurité juridique de la propriété. Il existe plusieurs types de titres : le titre foncier (certificat de propriété), l'acte de vente notarié et le récépissé de déclaration de vente. Le titre foncier est indispensable pour toute transaction immobilière et pour obtenir un financement bancaire."
+  },
+  {
+    "id": "lex02",
+    "categorie": "lexique",
+    "titre": "ANCFCC",
+    "contenu": "L'ANCFCC (Agence Nationale de la Conservation Foncière, du Cadastre et de la Cartographie) est l'établissement public marocain chargé de la conservation foncière, du cadastre et de la cartographie. Elle gère le registre foncier, délivre les titres de propriété et produit les cartes cadastrales. L'ANCFCC joue un rôle central dans la sécurisation de la propriété foncière au Maroc."
+  },
+  {
+    "id": "lex03",
+    "categorie": "lexique",
+    "titre": "Adoul",
+    "contenu": "L'adoul (ou adoul) est un officier public au Maroc, comparable à un notaire dans les pays européens. Il rédige les actes de vente, les contrats de mariage et autres actes juridiques. En matière immobilière, l'adoul authentifie les transactions et enregistre les mutations foncières. Sa signature est nécessaire pour la validité juridique de nombreux actes de propriété."
+  },
+  {
+    "id": "lex04",
+    "categorie": "lexique",
+    "titre": "Mutación foncière",
+    "contenu": "La mutation foncière est le transfert de propriété d'un terrain d'une personne à une autre au Maroc. Elle se fait devant un notaire (adoul) et nécessite l'enregistrement auprès de la Conservation Foncière. La mutation foncière entraîne la mise à jour du registre foncier et la délivrance d'un nouveau titre de propriété au nom du nouvel acquéreur. Les droits de mutation sont de 4% de la valeur de la transaction."
+  },
+  {
+    "id": "lex05",
+    "categorie": "lexique",
+    "titre": "Cadastre immobilier",
+    "contenu": "Le cadastre immobilier est le registre public qui recense toutes les parcelles de terre d'une commune, avec leurs limites, superficies et références. Au Maroc, le cadastre est géré par l'ANCFCC. Il permet d'identifier chaque parcelle par un numéro cadastral unique. GEO INVEST utilise les données cadastrales pour afficher les parcelles sur la carte interactive et calculer les superficies des terrains analysés."
+  },
+  {
+    "id": "lex06",
+    "categorie": "lexique",
+    "titre": "Zone d'aménagement concerté (ZAC)",
+    "contenu": "La ZAC est un instrument d'urbanisme qui permet la réalisation d'opérations d'aménagement d'intérêt général. Elle définit un périmètre précis où les règles d'urbanisme sont adaptées pour faciliter la réalisation de projets. La ZAC peut inclure des logements, des équipements publics et des espaces verts. Elle est créée par arrêté ministériel et donne lieu à un plan d'aménagement spécifique."
+  },
+  {
+    "id": "lex07",
+    "categorie": "lexique",
+    "titre": "Étude de sol",
+    "contenu": "L'étude de sol est une analyse géotechnique qui évalue les caractéristiques physiques et mécaniques du terrain avant la construction. Elle détermine la nature du sol, sa capacité portante, le niveau de la nappe phréatique et les risques de mouvement de terrain. L'étude de sol est obligatoire avant toute construction et influence le choix du type de fondations. Elle est réalisée par un bureau d'études agréé."
+  }
+]
