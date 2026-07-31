@@ -67,7 +67,8 @@ function setupActiveNav(): void {
 
         const id = entry.target.id
         navLinks.forEach((link) => {
-          link.classList.toggle('nav-link-active', link.getAttribute('href') === `#${id}`)
+          const target = link.getAttribute('href')?.split('#')[1]
+          link.classList.toggle('nav-link-active', target === id)
         })
       })
     },

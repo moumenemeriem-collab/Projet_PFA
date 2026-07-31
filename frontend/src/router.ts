@@ -90,6 +90,13 @@ function redirectTo(path: string): void {
   navigate()
 }
 
+function scrollToHash(hash: string): void {
+  const id = hash.replace(/^#/, '')
+  const el = document.getElementById(id)
+  if (!el) return
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
 function matchRoute(path: string): { handler: RouteHandler; config: RouteConfig } | null {
   if (routes[path]) return { handler: routes[path].handler, config: routes[path] }
 
@@ -138,6 +145,14 @@ function navigate(): void {
   }
 
   handler(root)
+
+  // Every navigation starts from the top of the page, unless a hash
+  // requests scrolling to a specific section (e.g. /#services).
+  if (window.location.hash) {
+    requestAnimationFrame(() => scrollToHash(window.location.hash))
+  } else {
+    requestAnimationFrame(() => window.scrollTo(0, 0))
+  }
 }
 
 export function initRouter(): void {
@@ -149,9 +164,34 @@ export function initRouter(): void {
     if (!link) return
 
     const href = link.getAttribute('href')
-    if (!href || href.startsWith('http') || href.startsWith('#')) return
+    if (!href || href.startsWith('http')) return
+
+    // Pure in-page anchor: let the browser scroll if the target exists
+    // on the current page, otherwise route to the page containing it.
+    if (href.startsWith('#')) {
+      if (document.querySelector(href)) return
+      event.preventDefault()
+      window.history.pushState({}, '', href)
+      navigate()
+      return
+    }
 
     event.preventDefault()
+
+    const [path, hash] = href.split('#')
+
+    // Same page: scroll to the hash, or back to the top when no hash
+    // (e.g. clicking "Accueil" while already on the homepage).
+    if (path === window.location.pathname) {
+      window.history.pushState({}, '', href)
+      if (hash) {
+        scrollToHash(hash)
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      }
+      return
+    }
+
     window.history.pushState({}, '', href)
     navigate()
   })

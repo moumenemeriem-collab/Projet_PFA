@@ -13,7 +13,7 @@ export function Header(): string {
         <div class="header-right">
           <nav class="nav" aria-label="Navigation principale">
             <a href="/" class="nav-link">${t('nav.accueil')}</a>
-            <a href="#services" class="nav-link">${t('nav.services')}</a>
+            <a href="/#services" class="nav-link">${t('nav.services')}</a>
             <a href="/a-propos" class="nav-link">${t('nav.about')}</a>
           </nav>
           <div class="header-actions">

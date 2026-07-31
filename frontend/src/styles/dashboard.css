@@ -791,10 +791,6 @@
   max-width: 720px;
 }
 
-.admin-modal--detail .admin-modal-header {
-  border-bottom: 1px solid var(--border);
-}
-
 .project-detail-content {
   max-height: 70vh;
   overflow-y: auto;
