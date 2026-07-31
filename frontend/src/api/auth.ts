@@ -88,18 +88,28 @@ async function refreshAccessToken(): Promise<string | null> {
   const refresh = localStorage.getItem('refresh_token')
   if (!refresh) return null
 
-  const response = await fetch(`${API_BASE}/token/refresh/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh }),
-  })
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000)
 
-  if (!response.ok) return null
+    const response = await fetch(`${API_BASE}/token/refresh/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh }),
+      signal: controller.signal,
+    })
 
-  const data = (await response.json()) as { access: string; refresh?: string }
-  localStorage.setItem('access_token', data.access)
-  if (data.refresh) localStorage.setItem('refresh_token', data.refresh)
-  return data.access
+    clearTimeout(timeoutId)
+
+    if (!response.ok) return null
+
+    const data = (await response.json()) as { access: string; refresh?: string }
+    localStorage.setItem('access_token', data.access)
+    if (data.refresh) localStorage.setItem('refresh_token', data.refresh)
+    return data.access
+  } catch {
+    return null
+  }
 }
 
 export async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
@@ -113,20 +123,35 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
     return headers
   }
 
-  let response = await fetch(url, { ...options, headers: buildHeaders() })
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 15000)
 
-  if (response.status === 401) {
-    const newToken = await refreshAccessToken()
-    if (newToken) {
-      response = await fetch(url, { ...options, headers: buildHeaders() })
-    } else {
-      clearSession()
-      window.location.href = '/login'
-      throw new ApiError('Session expirée. Veuillez vous reconnecter.', 401)
+  try {
+    let response = await fetch(url, {
+      ...options,
+      headers: buildHeaders(),
+      signal: controller.signal,
+    })
+
+    if (response.status === 401) {
+      const newToken = await refreshAccessToken()
+      if (newToken) {
+        response = await fetch(url, {
+          ...options,
+          headers: buildHeaders(),
+          signal: controller.signal,
+        })
+      } else {
+        clearSession()
+        window.location.href = '/login'
+        throw new ApiError('Session expirée. Veuillez vous reconnecter.', 401)
+      }
     }
-  }
 
-  return response
+    return response
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }
 
 export async function apiJson<T>(url: string, options: RequestInit = {}): Promise<T> {

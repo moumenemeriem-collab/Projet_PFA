@@ -1,5 +1,7 @@
 import { icons } from '../icons.ts'
 import { clearSession, type Utilisateur } from '../../api/auth.ts'
+import { deleteNotification, fetchNotifications, markNotificationsRead } from '../../api/messagerie.ts'
+import { t, langSwitcherHTML, setupLangSwitcher, formatDateTime } from '../../i18n/index'
 
 export type AdminPage = 'dashboard' | 'users' | 'messages' | 'data' | 'profile'
 
@@ -7,26 +9,19 @@ export interface AdminLayoutOptions {
   user: Utilisateur
   activePage: AdminPage
   content: string
+  nonLues?: number
 }
 
-const navItems: { id: AdminPage; label: string; icon: keyof typeof icons; href: string }[] = [
-  { id: 'dashboard', label: 'Tableau de bord', icon: 'dashboard', href: '/admin/utilisateurs' },
-  { id: 'users', label: 'Gestion des utilisateurs', icon: 'users', href: '/admin/utilisateurs' },
-  { id: 'messages', label: 'Messagerie', icon: 'message', href: '/admin/messages' },
-  { id: 'data', label: 'Gestion de données', icon: 'database', href: '/admin/utilisateurs' },
-  { id: 'profile', label: 'Profil Admin', icon: 'profile', href: '/admin/profil' },
+const navItems: { id: AdminPage; labelKey: string; icon: keyof typeof icons; href: string }[] = [
+  { id: 'dashboard', labelKey: 'admin.sidebar.home', icon: 'dashboard', href: '/admin/utilisateurs' },
+  { id: 'users', labelKey: 'admin.sidebar.users', icon: 'users', href: '/admin/utilisateurs' },
+  { id: 'messages', labelKey: 'admin.sidebar.messages', icon: 'message', href: '/admin/messages' },
+  { id: 'data', labelKey: 'admin.sidebar.data', icon: 'database', href: '/admin/utilisateurs' },
+  { id: 'profile', labelKey: 'admin.sidebar.profile', icon: 'profile', href: '/admin/profil' },
 ]
 
-const pageTitles: Record<AdminPage, string> = {
-  dashboard: 'Tableau de bord',
-  users: 'Gestion des Utilisateurs',
-  messages: 'Messagerie',
-  data: 'Gestion de données',
-  profile: 'Profil Admin',
-}
-
 export function renderAdminLayout(options: AdminLayoutOptions): string {
-  const { user, activePage, content } = options
+  const { user, activePage, content, nonLues = 0 } = options
 
   return `
     <div class="admin-dashboard">
@@ -41,7 +36,7 @@ export function renderAdminLayout(options: AdminLayoutOptions): string {
               (item) => `
             <a href="${item.href}" class="admin-sidebar-link${activePage === item.id ? ' admin-sidebar-link--active' : ''}">
               <span class="admin-sidebar-link-icon">${icons[item.icon]}</span>
-              <span class="admin-sidebar-link-label">${item.label}</span>
+              <span class="admin-sidebar-link-label">${t(item.labelKey)}</span>
               ${activePage === item.id ? `<span class="admin-sidebar-chevron">${icons.chevron}</span>` : ''}
             </a>
           `,
@@ -50,21 +45,31 @@ export function renderAdminLayout(options: AdminLayoutOptions): string {
         </nav>
         <button type="button" class="sidebar-logout" id="logout-btn">
           <span class="sidebar-link-icon">${icons.logout}</span>
-          Déconnexion
+          ${t('admin.sidebar.logout')}
         </button>
       </aside>
       <div class="admin-main">
         <header class="admin-topbar">
           <div class="brand">
             <span class="brand-icon">${icons.logo}</span>
-            <span class="brand-name">Espace Administrateur</span>
+            <span class="brand-name">${t('admin.topbar.space')}</span>
           </div>
-          <div class="admin-topbar-user">
-            <div class="admin-topbar-user-info">
-              <span class="admin-topbar-user-name" style="margin-left: 150px;">${user.prenom} ${user.nom}</span>
-              <span class="admin-topbar-user-email">${user.email}</span>
+          <div class="admin-topbar-right">
+            <div class="notification-wrapper" id="admin-notif-wrapper">
+              <button type="button" class="notification-bell" id="admin-notif-bell" title="${t('notif.title')}">
+                ${icons.bell}
+                ${nonLues > 0 ? `<span class="notification-badge">${nonLues}</span>` : ''}
+              </button>
+              <div class="notification-dropdown" id="admin-notif-dropdown" hidden></div>
             </div>
-            <a href="/admin/profil" class="admin-topbar-avatar">${user.prenom.charAt(0)}${user.nom.charAt(0)}</a>
+            ${langSwitcherHTML('lang-switcher--topbar')}
+            <div class="admin-topbar-user">
+              <div class="admin-topbar-user-info">
+                <span class="admin-topbar-user-name">${user.prenom} ${user.nom}</span>
+                <span class="admin-topbar-user-email">${user.email}</span>
+              </div>
+              <a href="/admin/profil" class="admin-topbar-avatar">${user.prenom.charAt(0)}${user.nom.charAt(0)}</a>
+            </div>
           </div>
         </header>
         <main class="admin-content">
@@ -80,4 +85,92 @@ export function setupAdminLayout(root: HTMLElement): void {
     clearSession()
     window.location.href = '/login'
   })
+
+  const bell = root.querySelector('#admin-notif-bell')
+
+  fetchNotifications().then(data => {
+    if (!bell) return
+    const existing = bell.querySelector('.notification-badge')
+    if (existing) existing.remove()
+    if (data.non_lues > 0) {
+      const badge = document.createElement('span')
+      badge.className = 'notification-badge'
+      badge.textContent = String(data.non_lues)
+      bell.appendChild(badge)
+    }
+  }).catch(() => {})
+
+  const dropdown = root.querySelector<HTMLElement>('#admin-notif-dropdown')
+  if (bell && dropdown) {
+    bell.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      if (!dropdown.hidden) { dropdown.hidden = true; return }
+      try {
+        const data = await fetchNotifications()
+        dropdown.innerHTML = `
+          <div class="notif-header">${t('notif.title')}</div>
+          <div class="notif-list">
+            ${data.results.length > 0
+              ? data.results.map(n => `
+                <div class="notif-item${n.lu ? '' : ' notif-item--unread'}" data-notif-id="${n.id}" data-msg-id="${n.message_id ?? ''}">
+                  <div class="notif-item-body">
+                    <div class="notif-item-title">${n.titre}</div>
+                    <div class="notif-item-content">${n.contenu}</div>
+                    <div class="notif-item-date">${formatDateTime(n.date_creation)}</div>
+                  </div>
+                  <button type="button" class="notif-dismiss" data-dismiss-id="${n.id}" title="${t('common.dismiss')}">${icons.close}</button>
+                </div>
+              `).join('')
+              : `<div class="notif-empty">${t('notif.empty')}</div>`}
+          </div>
+        `
+        dropdown.hidden = false
+
+        dropdown.querySelectorAll('.notif-item').forEach(item => {
+          item.addEventListener('click', (e) => {
+            if ((e.target as HTMLElement).closest('.notif-dismiss')) return
+            const msgId = (item as HTMLElement).dataset.msgId
+            if (msgId) {
+              dropdown.hidden = true
+              window.location.href = `/admin/messages`
+            }
+          })
+        })
+
+        dropdown.querySelectorAll('.notif-dismiss').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation()
+            const id = Number((btn as HTMLElement).dataset.dismissId)
+            try {
+              await deleteNotification(id)
+              const item = dropdown.querySelector(`[data-notif-id="${id}"]`)
+              if (item) item.remove()
+              if (!dropdown.querySelector('.notif-item')) {
+                dropdown.innerHTML = `
+                  <div class="notif-header">${t('notif.title')}</div>
+                  <div class="notif-list"><div class="notif-empty">${t('notif.empty')}</div></div>
+                `
+              }
+              const badge = bell.querySelector('.notification-badge')
+              if (badge) {
+                const count = parseInt(badge.textContent || '1') - 1
+                if (count <= 0) badge.remove()
+                else badge.textContent = String(count)
+              }
+            } catch { /* ignore */ }
+          })
+        })
+
+        if (data.non_lues > 0) {
+          await markNotificationsRead()
+          const badge = bell.querySelector('.notification-badge')
+          if (badge) badge.remove()
+        }
+      } catch { /* ignore */ }
+    })
+    document.addEventListener('click', () => { dropdown.hidden = true })
+    dropdown.addEventListener('click', (e) => { e.stopPropagation() })
+  }
+
+  setupLangSwitcher(root)
 }

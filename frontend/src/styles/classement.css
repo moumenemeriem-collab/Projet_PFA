@@ -1,0 +1,270 @@
+/* ── Classement (terrain table) page ── */
+
+.classement-page {
+  width: 100%;
+}
+
+.classement-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.classement-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  margin: 0;
+}
+
+.classement-desc {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin: 4px 0 0;
+}
+
+.classement-actions {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.classement-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.classement-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--input-bg);
+  border: 1.5px solid var(--border-input);
+  border-radius: var(--radius-sm);
+  padding: 0 12px;
+  flex: 1;
+  max-width: 360px;
+}
+
+.classement-search svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.classement-search-input {
+  width: 100%;
+  padding: 10px 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--text);
+  outline: none;
+}
+
+.classement-count {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.classement-table-wrapper {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.classement-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.classement-table thead {
+  background: var(--bg-page);
+  border-bottom: 1px solid var(--border);
+}
+
+.classement-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.classement-table td {
+  padding: 12px 16px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.classement-table tbody tr:hover {
+  background: rgba(37, 99, 235, 0.03);
+}
+
+.classement-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.classement-table-empty td {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.classement-score {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.8125rem;
+}
+
+.classement-score--high {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.classement-score--mid {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.classement-score--low {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.classement-criteria {
+  display: flex;
+  gap: 6px;
+}
+
+.classement-criteria .criteria-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--bg-page);
+  color: var(--text);
+}
+
+.classement-table-actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* ── Empty state ── */
+
+.classement-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 32px;
+  text-align: center;
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+
+.classement-empty-icon {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 24px;
+  color: var(--text-muted);
+  opacity: 0.4;
+}
+
+.classement-empty-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  margin: 0 0 8px;
+}
+
+.classement-empty-desc {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin: 0 0 28px;
+  max-width: 400px;
+}
+
+.classement-empty .btn {
+  padding: 16px 36px;
+  font-size: 1rem;
+  border-radius: var(--radius-md);
+}
+
+/* ── Pagination ── */
+
+.classement-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+}
+
+.classement-pagination-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.pagination-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--bg-page);
+  border-color: var(--primary);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-btn--active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.pagination-btn--active:hover {
+  background: var(--primary-dark);
+}

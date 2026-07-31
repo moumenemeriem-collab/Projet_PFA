@@ -1,4 +1,5 @@
 import { icons } from '../icons.ts'
+import { t } from '../../i18n/index'
 
 export interface FormFieldOptions {
   id: string
@@ -54,7 +55,7 @@ export function renderFormField(options: FormFieldOptions): string {
         />
         ${
           togglePassword
-            ? `<button type="button" class="password-toggle" data-target="${id}" aria-label="Afficher le mot de passe">${icons.eye}</button>`
+            ? `<button type="button" class="password-toggle" data-target="${id}" aria-label="${t('common.show_password')}">${icons.eye}</button>`
             : ''
         }
       </div>
@@ -72,7 +73,7 @@ export function setupPasswordToggles(root: ParentNode): void {
       const isPassword = input.type === 'password'
       input.type = isPassword ? 'text' : 'password'
       btn.innerHTML = isPassword ? icons.eyeOff : icons.eye
-      btn.setAttribute('aria-label', isPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe')
+      btn.setAttribute('aria-label', isPassword ? t('common.hide_password') : t('common.show_password'))
     })
   })
 }

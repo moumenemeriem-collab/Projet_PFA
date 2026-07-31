@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -6,15 +7,36 @@ from rest_framework.views import APIView
 from accounts.authentication import JWTAuthentication
 from accounts.permissions import IsAdmin
 
-from .models import Message, Reponse
+from .models import Message, Notification, Reponse
 from .serializers import (
     MessageCreateSerializer,
     MessageDetailSerializer,
     MessageListSerializer,
     MessageUpdateSerializer,
+    NotificationSerializer,
     ReponseCreateSerializer,
     ReponseSerializer,
+    ReponseUpdateSerializer,
 )
+
+PAGE_SIZE = 6
+
+
+def _paginate(queryset, page: int, page_size: int = PAGE_SIZE):
+    total = queryset.count()
+    start = (page - 1) * page_size
+    end = start + page_size
+    return queryset[start:end], total
+
+
+def _creer_notification(destinataire, titre, contenu, type_notif, message_id=None):
+    Notification.objects.create(
+        destinataire=destinataire,
+        titre=titre,
+        contenu=contenu,
+        type_notif=type_notif,
+        message_id=message_id,
+    )
 
 
 class MessageListView(APIView):
@@ -30,7 +52,6 @@ class MessageListView(APIView):
 
         search = request.query_params.get('search', '').strip()
         if search:
-            from django.db.models import Q
             queryset = queryset.filter(
                 Q(sujet__icontains=search) | Q(contenu__icontains=search)
             )
@@ -41,10 +62,14 @@ class MessageListView(APIView):
         elif statut == 'non_lu':
             queryset = queryset.filter(est_lu=False)
 
-        messages = queryset.order_by('-date_creation')
+        queryset = queryset.order_by('-date_creation')
+        page = int(request.query_params.get('page', 1))
+        page = max(1, page)
+        paginated, total = _paginate(queryset, page)
+
         return Response({
-            'count': messages.count(),
-            'results': MessageListSerializer(messages, many=True).data,
+            'count': total,
+            'results': MessageListSerializer(paginated, many=True).data,
         })
 
     def post(self, request):
@@ -55,6 +80,16 @@ class MessageListView(APIView):
             sujet=serializer.validated_data['sujet'],
             contenu=serializer.validated_data['contenu'],
         )
+        from accounts.models import Utilisateur
+        admins = Utilisateur.objects.filter(role='admin')
+        for admin in admins:
+            _creer_notification(
+                destinataire=admin,
+                titre='Nouveau message reçu',
+                contenu=f'{request.user.prenom} {request.user.nom} a envoyé un message : "{message.sujet}"',
+                type_notif='nouveau_message',
+                message_id=message.id,
+            )
         return Response(
             {
                 'message': 'Message envoyé avec succès.',
@@ -83,9 +118,6 @@ class MessageDetailView(APIView):
                 {'detail': 'Message introuvable.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        if request.user.role == 'admin':
-            message.est_lu = True
-            message.save(update_fields=['est_lu'])
         return Response(MessageDetailSerializer(message).data)
 
     def patch(self, request, pk):
@@ -112,7 +144,27 @@ class MessageDetailView(APIView):
                 {'detail': 'Message introuvable.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
+        sujet = message.sujet
+        expediteur = message.expediteur
         message.delete()
+        auteur_name = f'{request.user.prenom} {request.user.nom}'
+        if request.user.role == 'admin':
+            _creer_notification(
+                destinataire=expediteur,
+                titre='Message supprimé',
+                contenu=f"L'administrateur {auteur_name} a supprimé votre message \"{sujet}\"",
+                type_notif='message_supprime',
+            )
+        else:
+            from accounts.models import Utilisateur
+            admins = Utilisateur.objects.filter(role='admin')
+            for admin in admins:
+                _creer_notification(
+                    destinataire=admin,
+                    titre='Message supprimé',
+                    contenu=f'{auteur_name} a supprimé le message "{sujet}"',
+                    type_notif='message_supprime',
+                )
         return Response({'message': 'Message supprimé avec succès.'})
 
 
@@ -139,6 +191,31 @@ class ReponseCreateView(APIView):
             auteur=request.user,
             contenu=serializer.validated_data['contenu'],
         )
+        auteur_name = f'{request.user.prenom} {request.user.nom}'
+        if request.user.role == 'admin' and not message.est_lu:
+            message.est_lu = True
+            message.save(update_fields=['est_lu'])
+        if request.user.role == 'admin':
+            destinataire = message.expediteur
+            _creer_notification(
+                destinataire=destinataire,
+                titre='Nouvelle réponse à votre message',
+                contenu=f"L'administrateur {auteur_name} a répondu à votre message \"{message.sujet}\"",
+                type_notif='nouvelle_reponse',
+                message_id=message.id,
+            )
+        else:
+            from accounts.models import Utilisateur
+            admins = Utilisateur.objects.filter(role='admin')
+            for admin in admins:
+                if admin.pk != request.user.pk:
+                    _creer_notification(
+                        destinataire=admin,
+                        titre='Nouvelle réponse reçue',
+                        contenu=f'{auteur_name} a répondu au message "{message.sujet}"',
+                        type_notif='nouvelle_reponse',
+                        message_id=message.id,
+                    )
         return Response(
             {
                 'message': 'Réponse envoyée avec succès.',
@@ -157,7 +234,6 @@ class AdminMessageListView(APIView):
 
         search = request.query_params.get('search', '').strip()
         if search:
-            from django.db.models import Q
             queryset = queryset.filter(
                 Q(sujet__icontains=search)
                 | Q(contenu__icontains=search)
@@ -175,12 +251,16 @@ class AdminMessageListView(APIView):
         non_lus_count = Message.objects.filter(est_lu=False).count()
         total_count = Message.objects.count()
 
-        messages = queryset.order_by('-date_creation')
+        queryset = queryset.order_by('-date_creation')
+        page = int(request.query_params.get('page', 1))
+        page = max(1, page)
+        paginated, _ = _paginate(queryset, page)
+
         return Response({
-            'count': messages.count(),
+            'count': queryset.count(),
             'non_lus': non_lus_count,
             'total': total_count,
-            'results': MessageListSerializer(messages, many=True).data,
+            'results': MessageListSerializer(paginated, many=True).data,
         })
 
 
@@ -199,3 +279,93 @@ class MarquerLuView(APIView):
         message.est_lu = True
         message.save(update_fields=['est_lu'])
         return Response({'message': 'Message marqué comme lu.'})
+
+
+class ReponseDetailView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def _get_reponse(self, pk, user):
+        try:
+            rep = Reponse.objects.get(pk=pk)
+        except Reponse.DoesNotExist:
+            return None
+        if rep.auteur_id != user.pk:
+            return None
+        return rep
+
+    def patch(self, request, pk):
+        rep = self._get_reponse(pk, request.user)
+        if not rep:
+            return Response(
+                {'detail': 'Réponse introuvable ou accès refusé.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        serializer = ReponseUpdateSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        for field, value in serializer.validated_data.items():
+            setattr(rep, field, value)
+        rep.save()
+        return Response({
+            'message': 'Réponse modifiée avec succès.',
+            'data': ReponseSerializer(rep).data,
+        })
+
+    def delete(self, request, pk):
+        rep = self._get_reponse(pk, request.user)
+        if not rep:
+            return Response(
+                {'detail': 'Réponse introuvable ou accès refusé.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        message = rep.message
+        auteur_name = f'{request.user.prenom} {request.user.nom}'
+        destinataire = message.expediteur if request.user.role == 'admin' else None
+        rep.delete()
+        if request.user.role == 'admin' and destinataire:
+            _creer_notification(
+                destinataire=destinataire,
+                titre='Réponse supprimée',
+                contenu=f"L'administrateur {auteur_name} a supprimé une réponse à votre message \"{message.sujet}\"",
+                type_notif='reponse_supprimee',
+            )
+        return Response({'message': 'Réponse supprimée avec succès.'})
+
+
+class NotificationListView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        notifications = Notification.objects.filter(destinataire=request.user)
+        non_lues = notifications.filter(lu=False).count()
+        notifications = notifications[:20]
+        return Response({
+            'non_lues': non_lues,
+            'results': NotificationSerializer(notifications, many=True).data,
+        })
+
+
+class NotificationMarkReadView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        Notification.objects.filter(destinataire=request.user, lu=False).update(lu=True)
+        return Response({'message': 'Notifications marquées comme lues.'})
+
+
+class NotificationDeleteView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        try:
+            notif = Notification.objects.get(pk=pk, destinataire=request.user)
+        except Notification.DoesNotExist:
+            return Response(
+                {'detail': 'Notification introuvable.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        notif.delete()
+        return Response({'message': 'Notification supprimée.'})

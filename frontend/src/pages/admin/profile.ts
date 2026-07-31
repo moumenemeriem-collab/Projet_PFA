@@ -1,5 +1,5 @@
 import { icons } from '../../components/icons.ts'
-import { renderAdminLayout, setupAdminLayout } from '../../components/layout/AdminLayout.ts'
+import { renderAppLayout, setupAppLayout } from '../../components/layout/AppLayout.ts'
 import { renderFormField, setupPasswordToggles } from '../../components/ui/FormField.ts'
 import { formatApiErrors, getStoredUser, type Utilisateur } from '../../api/auth.ts'
 import {
@@ -9,6 +9,7 @@ import {
   getRoleLabel,
   updateProfile,
 } from '../../api/profile.ts'
+import { t } from '../../i18n/index'
 
 interface ProfileFormState {
   prenom: string
@@ -24,8 +25,8 @@ function renderAdminProfileContent(user: Utilisateur): string {
     <div class="admin-profile-page">
       <header class="admin-profile-header">
         <div>
-          <h2 class="admin-profile-title">Mon Profil</h2>
-          <p class="admin-profile-desc">Gérez vos informations personnelles et vos paramètres de sécurité.</p>
+          <h2 class="admin-profile-title">${t('admin_profile.title')}</h2>
+          <p class="admin-profile-desc">${t('admin_profile.subtitle')}</p>
         </div>
       </header>
 
@@ -36,8 +37,8 @@ function renderAdminProfileContent(user: Utilisateur): string {
         <div class="admin-profile-card-header">
           <span class="admin-profile-card-icon admin-profile-card-icon--blue">${icons.user}</span>
           <div>
-            <h3 class="admin-profile-card-title">Informations générales</h3>
-            <p class="admin-profile-card-desc">Ces détails sont utilisés pour l'administration de la plateforme.</p>
+            <h3 class="admin-profile-card-title">${t('admin_profile.general_title')}</h3>
+            <p class="admin-profile-card-desc">${t('admin_profile.general_desc')}</p>
           </div>
         </div>
 
@@ -52,7 +53,7 @@ function renderAdminProfileContent(user: Utilisateur): string {
         <div class="form-row">
           ${renderFormField({
             id: 'prenom',
-            label: 'Prénom',
+            label: t('admin_profile.field_prenom'),
             placeholder: 'Jean',
             icon: 'user',
             autocomplete: 'given-name',
@@ -61,7 +62,7 @@ function renderAdminProfileContent(user: Utilisateur): string {
           })}
           ${renderFormField({
             id: 'nom',
-            label: 'Nom',
+            label: t('admin_profile.field_nom'),
             placeholder: 'Dupont',
             icon: 'user',
             autocomplete: 'family-name',
@@ -71,17 +72,17 @@ function renderAdminProfileContent(user: Utilisateur): string {
         </div>
         ${renderFormField({
           id: 'email',
-          label: 'Email professionnel',
+          label: t('admin_profile.field_email'),
           type: 'email',
           placeholder: 'nom@exemple.com',
           icon: 'mail',
           autocomplete: 'email',
           value: user.email,
-          extraLabel: `<span class="email-verified">${icons.check} Email vérifié</span>`,
+          extraLabel: `<span class="email-verified">${icons.check} ${t('admin_profile.email_verified')}</span>`,
         })}
         ${renderFormField({
           id: 'telephone',
-          label: 'Numéro de téléphone',
+          label: t('admin_profile.field_telephone'),
           type: 'tel',
           placeholder: '+212 6XX XX XX XX',
           icon: 'phone',
@@ -92,9 +93,9 @@ function renderAdminProfileContent(user: Utilisateur): string {
 
         <div class="admin-profile-save-bar" id="admin-profile-save-bar" hidden>
           <div class="admin-profile-save-actions">
-            <button type="button" class="btn btn-text" id="admin-profile-cancel-btn">Annuler les changements</button>
+            <button type="button" class="btn btn-text" id="admin-profile-cancel-btn">${t('admin_profile.cancel')}</button>
             <button type="submit" class="btn btn-primary btn-sm" id="admin-profile-save-btn">
-              ${icons.save} Sauvegarder
+              ${icons.save} ${t('admin_profile.save')}
             </button>
           </div>
         </div>
@@ -104,14 +105,14 @@ function renderAdminProfileContent(user: Utilisateur): string {
         <div class="admin-profile-card-header">
           <span class="admin-profile-card-icon admin-profile-card-icon--red">${icons.lock}</span>
           <div>
-            <h3 class="admin-profile-card-title">Changer le mot de passe</h3>
-            <p class="admin-profile-card-desc">Mettez à jour votre mot de passe pour sécuriser votre compte.</p>
+            <h3 class="admin-profile-card-title">${t('admin_profile.password_title')}</h3>
+            <p class="admin-profile-card-desc">${t('admin_profile.password_desc')}</p>
           </div>
         </div>
 
         ${renderFormField({
           id: 'mot_de_passe_actuel',
-          label: 'Mot de passe actuel',
+          label: t('admin_profile.current_password'),
           placeholder: '••••••••',
           icon: 'lock',
           togglePassword: true,
@@ -120,7 +121,7 @@ function renderAdminProfileContent(user: Utilisateur): string {
         <div class="form-row">
           ${renderFormField({
             id: 'nouveau_mot_de_passe',
-            label: 'Nouveau mot de passe',
+            label: t('admin_profile.new_password'),
             placeholder: '••••••••',
             icon: 'lock',
             togglePassword: true,
@@ -129,7 +130,7 @@ function renderAdminProfileContent(user: Utilisateur): string {
           })}
           ${renderFormField({
             id: 'confirmer_mot_de_passe',
-            label: 'Confirmer le mot de passe',
+            label: t('admin_profile.confirm_password'),
             placeholder: '••••••••',
             icon: 'lock',
             togglePassword: true,
@@ -139,18 +140,18 @@ function renderAdminProfileContent(user: Utilisateur): string {
         </div>
 
         <div class="password-rules">
-          <p class="password-rules-title">Règles de sécurité :</p>
+          <p class="password-rules-title">${t('admin_profile.security_rules')}</p>
           <ul>
-            <li>Minimum 8 caractères</li>
-            <li>Au moins une majuscule et un chiffre</li>
-            <li>Éviter les mots de passe courants</li>
-            <li>Différent de vos informations personnelles</li>
+            <li>${t('admin_profile.rule_1')}</li>
+            <li>${t('admin_profile.rule_2')}</li>
+            <li>${t('admin_profile.rule_3')}</li>
+            <li>${t('admin_profile.rule_4')}</li>
           </ul>
         </div>
 
         <div class="admin-profile-form-actions">
           <button type="submit" class="btn btn-primary btn-action btn-action--password" id="password-submit-btn">
-            ${icons.save} Mettre à jour le mot de passe
+            ${icons.save} ${t('admin_profile.update_password')}
           </button>
         </div>
       </form>
@@ -256,7 +257,7 @@ function setupProfileForm(root: HTMLElement, initial: ProfileFormState): void {
       if (topbarAvatar) topbarAvatar.textContent = `${updated.prenom.charAt(0)}${updated.nom.charAt(0)}`
 
       saveBar.hidden = true
-      showAlert(successEl, 'Profil mis à jour avec succès.')
+      showAlert(successEl, t('admin_profile.success'))
     } catch (error) {
       showAlert(errorEl, formatApiErrors(error))
     } finally {
@@ -305,21 +306,22 @@ export async function mountAdminProfilePage(root: HTMLElement): Promise<void> {
   const storedUser = getStoredUser()
   if (!storedUser) return
 
-  root.innerHTML = renderAdminLayout({
+  root.innerHTML = renderAppLayout({
     user: storedUser,
+    role: 'admin',
     activePage: 'profile',
     content: `
       <div class="admin-loading">
         <div class="admin-loading-spinner"></div>
-        <p>Chargement du profil…</p>
+        <p>${t('admin_profile.loading')}</p>
       </div>
     `,
   })
-  setupAdminLayout(root)
+  setupAppLayout(root)
 
   try {
     const user = await fetchProfile()
-    root.querySelector('.admin-content')!.innerHTML = renderAdminProfileContent(user)
+    root.querySelector('.app-content')!.innerHTML = renderAdminProfileContent(user)
     setupPasswordToggles(root)
 
     const initial: ProfileFormState = {
@@ -332,10 +334,10 @@ export async function mountAdminProfilePage(root: HTMLElement): Promise<void> {
     setupProfileForm(root, initial)
     setupPasswordForm(root)
   } catch {
-    root.querySelector('.admin-content')!.innerHTML = `
+    root.querySelector('.app-content')!.innerHTML = `
       <div class="admin-error-state">
-        <p>Impossible de charger votre profil.</p>
-        <a href="/login" class="btn btn-primary">Se reconnecter</a>
+        <p>${t('admin_profile.error')}</p>
+        <a href="/login" class="btn btn-primary">${t('admin_profile.retry')}</a>
       </div>
     `
   }

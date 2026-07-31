@@ -4,10 +4,7 @@
   min-height: 100svh;
   display: flex;
   flex-direction: column;
-  background:
-    linear-gradient(135deg, rgba(219, 234, 254, 0.9) 0%, rgba(237, 233, 254, 0.85) 100%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='800' viewBox='0 0 800 800'%3E%3Cg fill='none' stroke='%23c7d2fe' stroke-width='1' opacity='0.5'%3E%3Cpath d='M0 200 Q200 100 400 200 T800 200'/%3E%3Cpath d='M0 400 Q200 300 400 400 T800 400'/%3E%3Cpath d='M0 600 Q200 500 400 600 T800 600'/%3E%3Cpath d='M100 0 Q200 200 100 400 T100 800'/%3E%3Cpath d='M300 0 Q400 200 300 400 T300 800'/%3E%3Cpath d='M500 0 Q600 200 500 400 T500 800'/%3E%3Cpath d='M700 0 Q800 200 700 400 T700 800'/%3E%3C/g%3E%3C/svg%3E");
-  background-size: cover, 800px 800px;
+  background: url('../assets/features/bg.jpg') center / cover no-repeat;
 }
 
 .auth-main {
@@ -21,9 +18,9 @@
 .auth-card {
   width: 100%;
   max-width: 480px;
-  background: var(--bg-card);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  background: linear-gradient(to bottom, #dcebfa 0%, #ffffff 33%, #ffffff 100%);
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.07);
   padding: 40px 36px 28px;
   text-align: center;
 }
@@ -176,6 +173,16 @@
   background: var(--primary-hover);
 }
 
+.auth-form .btn-primary {
+  background: linear-gradient(135deg, #7fa8ef 0%, #4a6fe3 100%);
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(74, 111, 227, 0.25);
+}
+
+.auth-form .btn-primary:hover {
+  background: linear-gradient(135deg, #7fa8ef 0%, #3d5fd4 100%);
+}
+
 .btn-outline {
   background: transparent;
   color: var(--primary);
@@ -236,7 +243,7 @@
 
 .form-link {
   font-size: 0.8125rem;
-  color: var(--primary);
+  color: #4a6fe3;
   text-decoration: none;
   font-weight: 500;
 }
@@ -277,9 +284,9 @@
   font-family: inherit;
   font-size: 0.9375rem;
   color: var(--text-heading);
-  background: var(--input-bg);
-  border: 1.5px solid var(--border-input);
-  border-radius: var(--radius-sm);
+  background: #eef2f8;
+  border: 1.5px solid #dfe6f0;
+  border-radius: 14px;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
@@ -289,9 +296,9 @@
 }
 
 .form-input:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-  background: #fff;
+  border-color: #5b7df0;
+  box-shadow: 0 0 0 3px rgba(91, 125, 240, 0.14);
+  background: #ffffff;
 }
 
 .password-toggle {

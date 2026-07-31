@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from accounts.serializers import UtilisateurSerializer
 
-from .models import Message, Reponse
+from .models import Message, Notification, Reponse
 
 
 class ReponseSerializer(serializers.ModelSerializer):
@@ -79,3 +79,17 @@ class ReponseCreateSerializer(serializers.Serializer):
 
     def validate_contenu(self, value: str) -> str:
         return value.strip()
+
+
+class ReponseUpdateSerializer(serializers.Serializer):
+    contenu = serializers.CharField()
+
+    def validate_contenu(self, value: str) -> str:
+        return value.strip()
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'titre', 'contenu', 'type_notif', 'message_id', 'lu', 'date_creation']
+        read_only_fields = ['id', 'date_creation']

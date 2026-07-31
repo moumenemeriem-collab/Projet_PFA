@@ -1,5 +1,6 @@
 import { features } from '../data/landing'
 import { icon } from './icons'
+import { t } from '../i18n/index'
 
 export function Features(): string {
   const cards = features
@@ -15,7 +16,6 @@ export function Features(): string {
             <h3>${feature.title}</h3>
           </div>
           <p>${feature.description}</p>
-        
         </div>
       </article>
     `,
@@ -26,11 +26,8 @@ export function Features(): string {
     <section id="services" class="features">
       <div class="container">
         <div class="section-header" data-reveal="fade-up">
-          <h2>Des outils précis pour l'investisseur moderne</h2>
-          <p>
-            Une suite complète d'outils géospatiaux conçue pour simplifier
-            l'analyse foncière et accélérer vos décisions d'investissement.
-          </p>
+          <h2>${t('features.title')}</h2>
+          <p>${t('features.subtitle')}</p>
         </div>
         <div class="features-grid">
           ${cards}

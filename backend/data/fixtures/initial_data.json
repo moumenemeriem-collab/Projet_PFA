@@ -1,0 +1,1208 @@
+[
+{
+  "model": "accounts.utilisateur",
+  "pk": 17,
+  "fields": {
+    "prenom": "Meryem",
+    "nom": "Moumene",
+    "email": "moumenemeryem66@gmail.com",
+    "telephone": null,
+    "mot_de_passe_hash": "pbkdf2_sha256$1200000$vj6JcOHQJfZGCOEuLhJzDT$gCTHdmo5YCUEjR0zhUthQlb8pfmDcNqoK5+PNyKUDbU=",
+    "role": "investisseur",
+    "date_creation": "2026-07-23T14:26:58.463Z"
+  }
+},
+{
+  "model": "accounts.utilisateur",
+  "pk": 16,
+  "fields": {
+    "prenom": "aas",
+    "nom": "a",
+    "email": "admin11adaas@gmail.com",
+    "telephone": null,
+    "mot_de_passe_hash": "pbkdf2_sha256$1200000$WpVcyA0tgHFfaLGOkoKgvW$Kn5jVQwBYhle6B58kFoUoRZb6sWnHxOjnBu8rjiBYtU=",
+    "role": "investisseur",
+    "date_creation": "2026-07-22T15:31:46.195Z"
+  }
+},
+{
+  "model": "accounts.utilisateur",
+  "pk": 15,
+  "fields": {
+    "prenom": "aad",
+    "nom": "aad",
+    "email": "admin11adaa@gmail.com",
+    "telephone": null,
+    "mot_de_passe_hash": "pbkdf2_sha256$1200000$JZWNiPKtRSqhBs8Jw0ksID$LwdawArB8hjQtX2cPiFPX0Cs+3JErUxm6/DGe2vl4/E=",
+    "role": "investisseur",
+    "date_creation": "2026-07-22T15:31:27.872Z"
+  }
+},
+{
+  "model": "accounts.utilisateur",
+  "pk": 14,
+  "fields": {
+    "prenom": "aa",
+    "nom": "aa",
+    "email": "admin11ada@gmail.com",
+    "telephone": null,
+    "mot_de_passe_hash": "pbkdf2_sha256$1200000$jDtQl532IftTdOXijWJzrG$ZNjOR3Zj8j6YbEiF8B6wt1BJ4oI/yyMd2MwZRrs5WWs=",
+    "role": "investisseur",
+    "date_creation": "2026-07-22T15:31:09.059Z"
+  }
+},
+{
+  "model": "accounts.utilisateur",
+  "pk": 13,
+  "fields": {
+    "prenom": "ad",
+    "nom": "ad",
+    "email": "admin11ad@gmail.com",
+    "telephone": null,
+    "mot_de_passe_hash": "pbkdf2_sha256$1200000$t7cGGRL0dm2kixud1LdSJO$oQzhZzXN3X1hwhrvgJ2oT3G0470QU6UJoBg8pSdczIQ=",
+    "role": "investisseur",
+    "date_creation": "2026-07-22T15:30:50.360Z"
+  }
+},
+{
+  "model": "accounts.utilisateur",
+  "pk": 12,
+  "fields": {
+    "prenom": "admin1",
+    "nom": "admin1",
+    "email": "admin1@gmail.com",
+    "telephone": null,
+    "mot_de_passe_hash": "pbkdf2_sha256$1200000$eTbJvj8Z4Qs8YpQS5DzKRm$UQAJ/faCEwj3D+2tYc6d86Uh5+kvAaVpZM/8num1h+c=",
+    "role": "admin",
+    "date_creation": "2026-07-22T13:58:46.274Z"
+  }
+},
+{
+  "model": "accounts.utilisateur",
+  "pk": 10,
+  "fields": {
+    "prenom": "salma",
+    "nom": "samla",
+    "email": "salma@gmail.com",
+    "telephone": null,
+    "mot_de_passe_hash": "pbkdf2_sha256$1200000$Uw4Au6IsKdM65h2x7CKKKL$TK5eMj7Yh2CmbAbJbvSX7aimVmtF8SE9KvrJenc2J4k=",
+    "role": "investisseur",
+    "date_creation": "2026-07-21T15:13:58.303Z"
+  }
+},
+{
+  "model": "accounts.utilisateur",
+  "pk": 9,
+  "fields": {
+    "prenom": "karim",
+    "nom": "moumene",
+    "email": "karim13@gmail.com",
+    "telephone": null,
+    "mot_de_passe_hash": "pbkdf2_sha256$1200000$OjEsjliesr5SrU8LBLWv7G$PEhLXNcjtb78PIdLsoevUj5lulCoBDHaYUV50vNkUcM=",
+    "role": "investisseur",
+    "date_creation": "2026-07-21T11:58:51.823Z"
+  }
+},
+{
+  "model": "accounts.utilisateur",
+  "pk": 8,
+  "fields": {
+    "prenom": "Investisseur",
+    "nom": "Investisseur",
+    "email": "investisseur@gmail.com",
+    "telephone": null,
+    "mot_de_passe_hash": "pbkdf2_sha256$1200000$SMntVR8ig6pbdJSiu7Gtxa$lVXYB0zNaPTD7WQiqHfjCVNfp3cPMbzU3155p9AQmIg=",
+    "role": "investisseur",
+    "date_creation": "2026-07-21T10:40:08.168Z"
+  }
+},
+{
+  "model": "accounts.utilisateur",
+  "pk": 7,
+  "fields": {
+    "prenom": "Admin",
+    "nom": "Admin",
+    "email": "admin@gmail.com",
+    "telephone": "0600000000",
+    "mot_de_passe_hash": "pbkdf2_sha256$1200000$4i6oHug5pbZUQYlXoA1P1Q$CNlrLgf7n8fQja7YGNUQMu1NTzxfdZOzkVAaEK03RoI=",
+    "role": "admin",
+    "date_creation": "2026-07-21T09:56:21.158Z"
+  }
+},
+{
+  "model": "accounts.utilisateur",
+  "pk": 3,
+  "fields": {
+    "prenom": "Salma",
+    "nom": "Bennani",
+    "email": "salma.bennani@example.com",
+    "telephone": "0623456789",
+    "mot_de_passe_hash": "$2b$12$ExempleHashMotDePasse2",
+    "role": "investisseur",
+    "date_creation": "2026-07-21T09:40:50.626Z"
+  }
+},
+{
+  "model": "accounts.utilisateur",
+  "pk": 2,
+  "fields": {
+    "prenom": "Ahmed",
+    "nom": "El Amrani",
+    "email": "ahmed.elamrani@example.com",
+    "telephone": "0612345678",
+    "mot_de_passe_hash": "$2b$12$ExempleHashMotDePasse1",
+    "role": "investisseur",
+    "date_creation": "2026-07-21T09:40:50.626Z"
+  }
+},
+{
+  "model": "projets.typeprojet",
+  "pk": 6,
+  "fields": {
+    "nom": "Administratif",
+    "description": "Projet destiné aux bâtiments administratifs ou aux services publics.",
+    "image_defaut": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS-tANISw5H6sMZCZ7g-Mf3oz0K81zej7mOfnkTDJbwGA&s=10",
+    "actif": true
+  }
+},
+{
+  "model": "projets.typeprojet",
+  "pk": 12,
+  "fields": {
+    "nom": "Bureaux et services",
+    "description": "Immeubles de bureaux, espaces de coworking et centres d'affaires.",
+    "image_defaut": null,
+    "actif": true
+  }
+},
+{
+  "model": "projets.typeprojet",
+  "pk": 2,
+  "fields": {
+    "nom": "Commercial",
+    "description": "Projet destiné aux commerces, centres commerciaux, bureaux ou espaces de services.",
+    "image_defaut": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQVCEN2c5IbV4pOyuQO2Qkh3uu61Eh7uSJPmMONhMIhEw&s=10",
+    "actif": true
+  }
+},
+{
+  "model": "projets.typeprojet",
+  "pk": 7,
+  "fields": {
+    "nom": "Éducatif",
+    "description": "Établissements scolaires, universités, centres de formation ou instituts.",
+    "image_defaut": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQaO-CvuETdPCtOUqwPLd6CAk9WXGqQRvFy3GiiZNdMmQ&s=10",
+    "actif": true
+  }
+},
+{
+  "model": "projets.typeprojet",
+  "pk": 11,
+  "fields": {
+    "nom": "Équipements publics",
+    "description": "Écoles, centres de santé, équipements sportifs et culturels.",
+    "image_defaut": null,
+    "actif": true
+  }
+},
+{
+  "model": "projets.typeprojet",
+  "pk": 3,
+  "fields": {
+    "nom": "Industriel",
+    "description": "Projet destiné aux activités industrielles, usines ou entrepôts.",
+    "image_defaut": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS9khYd1K_LcQ5DIvU5jl_pLunoa1Ct4L8cxP_9wYN-3Q&s=10",
+    "actif": true
+  }
+},
+{
+  "model": "projets.typeprojet",
+  "pk": 9,
+  "fields": {
+    "nom": "Logistique",
+    "description": "Plateformes logistiques, centres de distribution ou zones de stockage.",
+    "image_defaut": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcREe7R3SCZ1hs8gAiy95aenq5VM4B6aQgNJt6Y4y2-VqA&s=10",
+    "actif": true
+  }
+},
+{
+  "model": "projets.typeprojet",
+  "pk": 5,
+  "fields": {
+    "nom": "Mixte",
+    "description": "Projet combinant plusieurs usages tels que résidentiel, commercial ou bureaux.",
+    "image_defaut": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSeTP94liLJ4M0ErK51oBXfRR3FaafQBIPqhgmOa3RB4A&s=10",
+    "actif": true
+  }
+},
+{
+  "model": "projets.typeprojet",
+  "pk": 1,
+  "fields": {
+    "nom": "Résidentiel",
+    "description": "Projet destiné à la construction de logements individuels ou collectifs.",
+    "image_defaut": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQGCQl6RwWTvDxnSSMsObsuy0GHaC5T-HRlbNV1E26R8w&s=10",
+    "actif": true
+  }
+},
+{
+  "model": "projets.typeprojet",
+  "pk": 8,
+  "fields": {
+    "nom": "Sanitaire",
+    "description": "Hôpitaux, cliniques, centres de santé ou laboratoires médicaux.",
+    "image_defaut": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT9be-yXHYh6UvZNLP2K-HYO8d9EtXnzQ9OyBnS7RH98Q&s=10",
+    "actif": true
+  }
+},
+{
+  "model": "projets.typeprojet",
+  "pk": 10,
+  "fields": {
+    "nom": "Sportif et loisirs",
+    "description": "Complexes sportifs, stades, salles de sport, parcs ou espaces de loisirs.",
+    "image_defaut": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSjlGnId3NCLh-4gAQ7dTOIhVAe_h6KEXl6FlwzpAzxKw&s=10",
+    "actif": true
+  }
+},
+{
+  "model": "projets.typeprojet",
+  "pk": 4,
+  "fields": {
+    "nom": "Touristique",
+    "description": "Projet destiné aux hôtels, complexes touristiques, résidences de vacances ou loisirs.",
+    "image_defaut": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRZGFMKNgk7PXOoZrJUVrhK_zfG0ypLSEuowInU0oEowQ&s=10",
+    "actif": true
+  }
+},
+{
+  "model": "projets.projet",
+  "pk": 5,
+  "fields": {
+    "nom": "projet1",
+    "description": "",
+    "id_type": 6,
+    "surface_souhaitee": "300.00",
+    "budget_total": "300000.00",
+    "nombre_unites": 3,
+    "surface_construite": null,
+    "cout_construction": null,
+    "autres_charges": null,
+    "prix_vente_unitaire": null,
+    "revenu_estime": null,
+    "image": "",
+    "date_creation": "2026-07-28T10:33:19.323Z",
+    "investisseur": 8
+  }
+},
+{
+  "model": "projets.projet",
+  "pk": 4,
+  "fields": {
+    "nom": "projet2",
+    "description": "",
+    "id_type": 9,
+    "surface_souhaitee": "500.00",
+    "budget_total": "50000.00",
+    "nombre_unites": 2,
+    "surface_construite": null,
+    "cout_construction": null,
+    "autres_charges": null,
+    "prix_vente_unitaire": null,
+    "revenu_estime": null,
+    "image": "",
+    "date_creation": "2026-07-28T10:15:10.840Z",
+    "investisseur": 8
+  }
+},
+{
+  "model": "projets.projet",
+  "pk": 3,
+  "fields": {
+    "nom": "projet2",
+    "description": "",
+    "id_type": 3,
+    "surface_souhaitee": "400.00",
+    "budget_total": "400000.00",
+    "nombre_unites": 20,
+    "surface_construite": null,
+    "cout_construction": null,
+    "autres_charges": null,
+    "prix_vente_unitaire": null,
+    "revenu_estime": null,
+    "image": "",
+    "date_creation": "2026-07-27T22:26:58.879Z",
+    "investisseur": 8
+  }
+},
+{
+  "model": "projets.projet",
+  "pk": 2,
+  "fields": {
+    "nom": "projet1",
+    "description": "",
+    "id_type": 6,
+    "surface_souhaitee": "500.00",
+    "budget_total": "50000.00",
+    "nombre_unites": 2,
+    "surface_construite": null,
+    "cout_construction": null,
+    "autres_charges": null,
+    "prix_vente_unitaire": null,
+    "revenu_estime": null,
+    "image": "",
+    "date_creation": "2026-07-27T15:27:26.491Z",
+    "investisseur": 8
+  }
+},
+{
+  "model": "projets.couche",
+  "pk": 1,
+  "fields": {
+    "nom": "cadastre",
+    "nom_affichage": "Cadastre",
+    "description": "Carte cadastrale officielle (Maille foncière) — parcelles et limites foncières",
+    "categorie": "foncier",
+    "type_geometrie": "MultiPolygon",
+    "attributs": [
+      {
+        "nom": "id_parcelle",
+        "type": "string"
+      },
+      {
+        "nom": "section",
+        "type": "string"
+      },
+      {
+        "nom": "numero",
+        "type": "string"
+      },
+      {
+        "nom": "superficie",
+        "type": "number"
+      },
+      {
+        "nom": "commune",
+        "type": "string"
+      }
+    ],
+    "table_liee": "couche_cadastre",
+    "fichier": "",
+    "taille_fichier": null,
+    "format_fichier": "",
+    "etat": "non_importe",
+    "message_erreur": "",
+    "date_creation": "2026-07-29T12:28:46.620Z",
+    "date_mise_a_jour": "2026-07-29T12:52:39.140Z",
+    "ordre": 1
+  }
+},
+{
+  "model": "projets.couche",
+  "pk": 2,
+  "fields": {
+    "nom": "plan_amenagement",
+    "nom_affichage": "Plan d'aménagement",
+    "description": "Plan d'aménagement (PA) — zones et secteurs d'aménagement",
+    "categorie": "urbanisme",
+    "type_geometrie": "MultiPolygon",
+    "attributs": [
+      {
+        "nom": "zone",
+        "type": "string"
+      },
+      {
+        "nom": "secteur",
+        "type": "string"
+      },
+      {
+        "nom": "superficie",
+        "type": "number"
+      },
+      {
+        "nom": "coefficient",
+        "type": "string"
+      }
+    ],
+    "table_liee": "couche_plan_amenagement",
+    "fichier": "",
+    "taille_fichier": null,
+    "format_fichier": "",
+    "etat": "non_importe",
+    "message_erreur": "",
+    "date_creation": "2026-07-29T12:28:46.716Z",
+    "date_mise_a_jour": "2026-07-29T12:52:39.145Z",
+    "ordre": 2
+  }
+},
+{
+  "model": "projets.couche",
+  "pk": 3,
+  "fields": {
+    "nom": "reglement_pa",
+    "nom_affichage": "Règlement PA",
+    "description": "Règlement du plan d'aménagement — servitudes et règles d'urbanisme",
+    "categorie": "urbanisme",
+    "type_geometrie": "MultiPolygon",
+    "attributs": [
+      {
+        "nom": "zone",
+        "type": "string"
+      },
+      {
+        "nom": "regle",
+        "type": "string"
+      },
+      {
+        "nom": "description",
+        "type": "string"
+      }
+    ],
+    "table_liee": "couche_reglement_pa",
+    "fichier": "",
+    "taille_fichier": null,
+    "format_fichier": "",
+    "etat": "non_importe",
+    "message_erreur": "",
+    "date_creation": "2026-07-29T12:28:46.720Z",
+    "date_mise_a_jour": "2026-07-29T12:52:39.148Z",
+    "ordre": 3
+  }
+},
+{
+  "model": "projets.couche",
+  "pk": 4,
+  "fields": {
+    "nom": "limites_admin",
+    "nom_affichage": "Limites administratives",
+    "description": "Limites administratives — communes, provinces et régions",
+    "categorie": "administratif",
+    "type_geometrie": "MultiPolygon",
+    "attributs": [
+      {
+        "nom": "nom",
+        "type": "string"
+      },
+      {
+        "nom": "niveau",
+        "type": "string"
+      },
+      {
+        "nom": "code",
+        "type": "string"
+      }
+    ],
+    "table_liee": "couche_limites_admin",
+    "fichier": "",
+    "taille_fichier": null,
+    "format_fichier": "",
+    "etat": "non_importe",
+    "message_erreur": "",
+    "date_creation": "2026-07-29T12:28:46.724Z",
+    "date_mise_a_jour": "2026-07-29T12:52:39.152Z",
+    "ordre": 4
+  }
+},
+{
+  "model": "projets.couche",
+  "pk": 5,
+  "fields": {
+    "nom": "equipements_publics",
+    "nom_affichage": "Équipements publics",
+    "description": "Couche des équipements publics (EP + EPIG) — écoles, hôpitaux, administrations",
+    "categorie": "equipements",
+    "type_geometrie": "Point",
+    "attributs": [
+      {
+        "nom": "nom",
+        "type": "string"
+      },
+      {
+        "nom": "type",
+        "type": "string"
+      },
+      {
+        "nom": "categorie",
+        "type": "string"
+      },
+      {
+        "nom": "commune",
+        "type": "string"
+      }
+    ],
+    "table_liee": "couche_equipements_publics",
+    "fichier": "",
+    "taille_fichier": null,
+    "format_fichier": "",
+    "etat": "importe",
+    "message_erreur": "",
+    "date_creation": "2026-07-29T12:28:46.729Z",
+    "date_mise_a_jour": "2026-07-29T14:45:07.625Z",
+    "ordre": 5
+  }
+},
+{
+  "model": "projets.couche",
+  "pk": 6,
+  "fields": {
+    "nom": "reseau_routier",
+    "nom_affichage": "Réseau routier",
+    "description": "Réseau routier — routes principales et secondaires",
+    "categorie": "infrastructure",
+    "type_geometrie": "MultiLineString",
+    "attributs": [
+      {
+        "nom": "nom",
+        "type": "string"
+      },
+      {
+        "nom": "type",
+        "type": "string"
+      },
+      {
+        "nom": "revetement",
+        "type": "string"
+      },
+      {
+        "nom": "longueur_km",
+        "type": "number"
+      }
+    ],
+    "table_liee": "couche_reseau_routier",
+    "fichier": "",
+    "taille_fichier": null,
+    "format_fichier": "",
+    "etat": "importe",
+    "message_erreur": "",
+    "date_creation": "2026-07-29T12:28:46.733Z",
+    "date_mise_a_jour": "2026-07-29T14:45:07.242Z",
+    "ordre": 6
+  }
+},
+{
+  "model": "projets.couche",
+  "pk": 7,
+  "fields": {
+    "nom": "mnt",
+    "nom_affichage": "MNT",
+    "description": "Modèle Numérique de Terrain (MNT) — données altimétriques",
+    "categorie": "topographie",
+    "type_geometrie": "MultiPolygon",
+    "attributs": [
+      {
+        "nom": "altitude_min",
+        "type": "number"
+      },
+      {
+        "nom": "altitude_max",
+        "type": "number"
+      },
+      {
+        "nom": "pente_moyenne",
+        "type": "number"
+      }
+    ],
+    "table_liee": "couche_mnt",
+    "fichier": "",
+    "taille_fichier": null,
+    "format_fichier": "",
+    "etat": "non_importe",
+    "message_erreur": "",
+    "date_creation": "2026-07-29T12:28:46.737Z",
+    "date_mise_a_jour": "2026-07-29T12:52:39.165Z",
+    "ordre": 7
+  }
+},
+{
+  "model": "projets.couche",
+  "pk": 8,
+  "fields": {
+    "nom": "prix_fonciers",
+    "nom_affichage": "Prix fonciers",
+    "description": "Référentiel des prix fonciers — valeurs foncières par secteur",
+    "categorie": "foncier",
+    "type_geometrie": "MultiPolygon",
+    "attributs": [
+      {
+        "nom": "secteur",
+        "type": "string"
+      },
+      {
+        "nom": "prix_m2_min",
+        "type": "number"
+      },
+      {
+        "nom": "prix_m2_max",
+        "type": "number"
+      },
+      {
+        "nom": "prix_m2_moyen",
+        "type": "number"
+      },
+      {
+        "nom": "annee",
+        "type": "number"
+      }
+    ],
+    "table_liee": "couche_prix_fonciers",
+    "fichier": "",
+    "taille_fichier": null,
+    "format_fichier": "",
+    "etat": "non_importe",
+    "message_erreur": "",
+    "date_creation": "2026-07-29T12:28:46.741Z",
+    "date_mise_a_jour": "2026-07-29T12:52:39.170Z",
+    "ordre": 8
+  }
+},
+{
+  "model": "messagerie.message",
+  "pk": 13,
+  "fields": {
+    "expediteur": 8,
+    "sujet": "ac",
+    "contenu": "ac",
+    "date_creation": "2026-07-23T14:56:07.610Z",
+    "date_modification": "2026-07-23T14:56:07.610Z",
+    "est_lu": true
+  }
+},
+{
+  "model": "messagerie.message",
+  "pk": 12,
+  "fields": {
+    "expediteur": 8,
+    "sujet": "ab",
+    "contenu": "ab",
+    "date_creation": "2026-07-23T14:55:46.931Z",
+    "date_modification": "2026-07-23T14:55:46.931Z",
+    "est_lu": true
+  }
+},
+{
+  "model": "messagerie.message",
+  "pk": 11,
+  "fields": {
+    "expediteur": 8,
+    "sujet": "aa",
+    "contenu": "aa",
+    "date_creation": "2026-07-23T14:55:39.985Z",
+    "date_modification": "2026-07-23T14:55:39.985Z",
+    "est_lu": true
+  }
+},
+{
+  "model": "messagerie.message",
+  "pk": 10,
+  "fields": {
+    "expediteur": 8,
+    "sujet": "d5",
+    "contenu": "m5",
+    "date_creation": "2026-07-23T14:42:16.759Z",
+    "date_modification": "2026-07-23T14:42:16.759Z",
+    "est_lu": true
+  }
+},
+{
+  "model": "messagerie.message",
+  "pk": 9,
+  "fields": {
+    "expediteur": 8,
+    "sujet": "D4",
+    "contenu": "test notification",
+    "date_creation": "2026-07-23T14:14:41.790Z",
+    "date_modification": "2026-07-23T14:14:41.790Z",
+    "est_lu": true
+  }
+},
+{
+  "model": "messagerie.message",
+  "pk": 8,
+  "fields": {
+    "expediteur": 8,
+    "sujet": "D2",
+    "contenu": "M2",
+    "date_creation": "2026-07-23T10:17:52.709Z",
+    "date_modification": "2026-07-23T10:46:54.764Z",
+    "est_lu": true
+  }
+},
+{
+  "model": "messagerie.message",
+  "pk": 7,
+  "fields": {
+    "expediteur": 9,
+    "sujet": "d4",
+    "contenu": "M4",
+    "date_creation": "2026-07-22T14:00:04.672Z",
+    "date_modification": "2026-07-22T14:00:04.672Z",
+    "est_lu": true
+  }
+},
+{
+  "model": "messagerie.message",
+  "pk": 6,
+  "fields": {
+    "expediteur": 9,
+    "sujet": "D3",
+    "contenu": "M3",
+    "date_creation": "2026-07-22T13:55:42.887Z",
+    "date_modification": "2026-07-22T13:55:42.887Z",
+    "est_lu": true
+  }
+},
+{
+  "model": "messagerie.message",
+  "pk": 4,
+  "fields": {
+    "expediteur": 8,
+    "sujet": "d1",
+    "contenu": "M1",
+    "date_creation": "2026-07-22T13:50:45.365Z",
+    "date_modification": "2026-07-22T13:50:45.365Z",
+    "est_lu": true
+  }
+},
+{
+  "model": "messagerie.reponse",
+  "pk": 8,
+  "fields": {
+    "message": 4,
+    "auteur": 7,
+    "contenu": "hi",
+    "date_creation": "2026-07-23T10:25:15.100Z",
+    "date_modification": "2026-07-23T10:25:15.100Z"
+  }
+},
+{
+  "model": "messagerie.reponse",
+  "pk": 11,
+  "fields": {
+    "message": 4,
+    "auteur": 8,
+    "contenu": "hiiii",
+    "date_creation": "2026-07-23T13:41:25.432Z",
+    "date_modification": "2026-07-23T13:41:25.432Z"
+  }
+},
+{
+  "model": "messagerie.reponse",
+  "pk": 12,
+  "fields": {
+    "message": 4,
+    "auteur": 7,
+    "contenu": "hello",
+    "date_creation": "2026-07-23T13:46:02.609Z",
+    "date_modification": "2026-07-23T13:46:02.609Z"
+  }
+},
+{
+  "model": "messagerie.reponse",
+  "pk": 13,
+  "fields": {
+    "message": 8,
+    "auteur": 7,
+    "contenu": "r1",
+    "date_creation": "2026-07-23T13:47:52.651Z",
+    "date_modification": "2026-07-23T13:47:52.651Z"
+  }
+},
+{
+  "model": "messagerie.reponse",
+  "pk": 14,
+  "fields": {
+    "message": 4,
+    "auteur": 8,
+    "contenu": "hi",
+    "date_creation": "2026-07-23T14:04:56.778Z",
+    "date_modification": "2026-07-23T14:04:56.778Z"
+  }
+},
+{
+  "model": "messagerie.reponse",
+  "pk": 15,
+  "fields": {
+    "message": 9,
+    "auteur": 7,
+    "contenu": "hi",
+    "date_creation": "2026-07-23T14:22:46.439Z",
+    "date_modification": "2026-07-23T14:22:46.439Z"
+  }
+},
+{
+  "model": "messagerie.reponse",
+  "pk": 16,
+  "fields": {
+    "message": 10,
+    "auteur": 7,
+    "contenu": "r5",
+    "date_creation": "2026-07-23T14:42:44.547Z",
+    "date_modification": "2026-07-23T14:42:44.547Z"
+  }
+},
+{
+  "model": "messagerie.reponse",
+  "pk": 17,
+  "fields": {
+    "message": 10,
+    "auteur": 8,
+    "contenu": "hi",
+    "date_creation": "2026-07-23T14:43:23.676Z",
+    "date_modification": "2026-07-23T14:43:23.676Z"
+  }
+},
+{
+  "model": "messagerie.reponse",
+  "pk": 18,
+  "fields": {
+    "message": 10,
+    "auteur": 7,
+    "contenu": "hii",
+    "date_creation": "2026-07-23T14:49:04.093Z",
+    "date_modification": "2026-07-23T14:49:04.093Z"
+  }
+},
+{
+  "model": "messagerie.reponse",
+  "pk": 19,
+  "fields": {
+    "message": 9,
+    "auteur": 7,
+    "contenu": "hiii",
+    "date_creation": "2026-07-23T14:49:33.626Z",
+    "date_modification": "2026-07-23T14:49:33.626Z"
+  }
+},
+{
+  "model": "messagerie.reponse",
+  "pk": 20,
+  "fields": {
+    "message": 4,
+    "auteur": 8,
+    "contenu": "hiii",
+    "date_creation": "2026-07-23T14:50:16.533Z",
+    "date_modification": "2026-07-23T14:50:16.533Z"
+  }
+},
+{
+  "model": "messagerie.reponse",
+  "pk": 21,
+  "fields": {
+    "message": 8,
+    "auteur": 7,
+    "contenu": "deee",
+    "date_creation": "2026-07-23T15:10:25.406Z",
+    "date_modification": "2026-07-23T15:10:25.406Z"
+  }
+},
+{
+  "model": "messagerie.reponse",
+  "pk": 22,
+  "fields": {
+    "message": 9,
+    "auteur": 8,
+    "contenu": "hi",
+    "date_creation": "2026-07-27T15:02:03.760Z",
+    "date_modification": "2026-07-27T15:02:03.760Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 25,
+  "fields": {
+    "destinataire": 7,
+    "titre": "Nouvelle réponse reçue",
+    "contenu": "Investisseur Investisseur a répondu au message \"d5\"",
+    "type_notif": "nouvelle_reponse",
+    "message_id": 10,
+    "lu": true,
+    "date_creation": "2026-07-27T22:27:38.702Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 24,
+  "fields": {
+    "destinataire": 12,
+    "titre": "Nouvelle réponse reçue",
+    "contenu": "Investisseur Investisseur a répondu au message \"d5\"",
+    "type_notif": "nouvelle_reponse",
+    "message_id": 10,
+    "lu": false,
+    "date_creation": "2026-07-27T22:27:38.697Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 23,
+  "fields": {
+    "destinataire": 7,
+    "titre": "Nouvelle réponse reçue",
+    "contenu": "Investisseur Investisseur a répondu au message \"D4\"",
+    "type_notif": "nouvelle_reponse",
+    "message_id": 9,
+    "lu": true,
+    "date_creation": "2026-07-27T15:02:03.813Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 22,
+  "fields": {
+    "destinataire": 12,
+    "titre": "Nouvelle réponse reçue",
+    "contenu": "Investisseur Investisseur a répondu au message \"D4\"",
+    "type_notif": "nouvelle_reponse",
+    "message_id": 9,
+    "lu": false,
+    "date_creation": "2026-07-27T15:02:03.795Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 21,
+  "fields": {
+    "destinataire": 8,
+    "titre": "Nouvelle réponse à votre message",
+    "contenu": "L'administrateur Admin Admin a répondu à votre message \"D2\"",
+    "type_notif": "nouvelle_reponse",
+    "message_id": 8,
+    "lu": true,
+    "date_creation": "2026-07-23T15:10:25.417Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 20,
+  "fields": {
+    "destinataire": 7,
+    "titre": "Nouveau message reçu",
+    "contenu": "Investisseur Investisseur a envoyé un message : \"ac\"",
+    "type_notif": "nouveau_message",
+    "message_id": 13,
+    "lu": true,
+    "date_creation": "2026-07-23T14:56:07.631Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 19,
+  "fields": {
+    "destinataire": 12,
+    "titre": "Nouveau message reçu",
+    "contenu": "Investisseur Investisseur a envoyé un message : \"ac\"",
+    "type_notif": "nouveau_message",
+    "message_id": 13,
+    "lu": false,
+    "date_creation": "2026-07-23T14:56:07.628Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 18,
+  "fields": {
+    "destinataire": 7,
+    "titre": "Nouveau message reçu",
+    "contenu": "Investisseur Investisseur a envoyé un message : \"ab\"",
+    "type_notif": "nouveau_message",
+    "message_id": 12,
+    "lu": true,
+    "date_creation": "2026-07-23T14:55:46.945Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 17,
+  "fields": {
+    "destinataire": 12,
+    "titre": "Nouveau message reçu",
+    "contenu": "Investisseur Investisseur a envoyé un message : \"ab\"",
+    "type_notif": "nouveau_message",
+    "message_id": 12,
+    "lu": false,
+    "date_creation": "2026-07-23T14:55:46.942Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 16,
+  "fields": {
+    "destinataire": 7,
+    "titre": "Nouveau message reçu",
+    "contenu": "Investisseur Investisseur a envoyé un message : \"aa\"",
+    "type_notif": "nouveau_message",
+    "message_id": 11,
+    "lu": true,
+    "date_creation": "2026-07-23T14:55:40.003Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 15,
+  "fields": {
+    "destinataire": 12,
+    "titre": "Nouveau message reçu",
+    "contenu": "Investisseur Investisseur a envoyé un message : \"aa\"",
+    "type_notif": "nouveau_message",
+    "message_id": 11,
+    "lu": false,
+    "date_creation": "2026-07-23T14:55:39.999Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 14,
+  "fields": {
+    "destinataire": 7,
+    "titre": "Nouvelle réponse reçue",
+    "contenu": "Investisseur Investisseur a répondu au message \"d1\"",
+    "type_notif": "nouvelle_reponse",
+    "message_id": 4,
+    "lu": true,
+    "date_creation": "2026-07-23T14:50:16.548Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 13,
+  "fields": {
+    "destinataire": 12,
+    "titre": "Nouvelle réponse reçue",
+    "contenu": "Investisseur Investisseur a répondu au message \"d1\"",
+    "type_notif": "nouvelle_reponse",
+    "message_id": 4,
+    "lu": false,
+    "date_creation": "2026-07-23T14:50:16.545Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 12,
+  "fields": {
+    "destinataire": 8,
+    "titre": "Nouvelle réponse à votre message",
+    "contenu": "L'administrateur Admin Admin a répondu à votre message \"D4\"",
+    "type_notif": "nouvelle_reponse",
+    "message_id": 9,
+    "lu": true,
+    "date_creation": "2026-07-23T14:49:33.632Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 11,
+  "fields": {
+    "destinataire": 8,
+    "titre": "Nouvelle réponse à votre message",
+    "contenu": "L'administrateur Admin Admin a répondu à votre message \"d5\"",
+    "type_notif": "nouvelle_reponse",
+    "message_id": 10,
+    "lu": true,
+    "date_creation": "2026-07-23T14:49:04.101Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 9,
+  "fields": {
+    "destinataire": 12,
+    "titre": "Nouvelle réponse reçue",
+    "contenu": "Investisseur Investisseur a répondu au message \"d5\"",
+    "type_notif": "nouvelle_reponse",
+    "message_id": 10,
+    "lu": false,
+    "date_creation": "2026-07-23T14:43:23.685Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 8,
+  "fields": {
+    "destinataire": 8,
+    "titre": "Nouvelle réponse à votre message",
+    "contenu": "L'administrateur Admin Admin a répondu à votre message \"d5\"",
+    "type_notif": "nouvelle_reponse",
+    "message_id": 10,
+    "lu": true,
+    "date_creation": "2026-07-23T14:42:44.553Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 7,
+  "fields": {
+    "destinataire": 7,
+    "titre": "Nouveau message reçu",
+    "contenu": "Investisseur Investisseur a envoyé un message : \"d5\"",
+    "type_notif": "nouveau_message",
+    "message_id": 10,
+    "lu": true,
+    "date_creation": "2026-07-23T14:42:16.804Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 6,
+  "fields": {
+    "destinataire": 12,
+    "titre": "Nouveau message reçu",
+    "contenu": "Investisseur Investisseur a envoyé un message : \"d5\"",
+    "type_notif": "nouveau_message",
+    "message_id": 10,
+    "lu": false,
+    "date_creation": "2026-07-23T14:42:16.801Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 4,
+  "fields": {
+    "destinataire": 7,
+    "titre": "Nouveau message reçu",
+    "contenu": "Investisseur Investisseur a envoyé un message : \"D4\"",
+    "type_notif": "nouveau_message",
+    "message_id": null,
+    "lu": true,
+    "date_creation": "2026-07-23T14:14:41.802Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 3,
+  "fields": {
+    "destinataire": 12,
+    "titre": "Nouveau message reçu",
+    "contenu": "Investisseur Investisseur a envoyé un message : \"D4\"",
+    "type_notif": "nouveau_message",
+    "message_id": null,
+    "lu": false,
+    "date_creation": "2026-07-23T14:14:41.799Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 2,
+  "fields": {
+    "destinataire": 7,
+    "titre": "Nouvelle réponse reçue",
+    "contenu": "Investisseur Investisseur a répondu au message \"d1\"",
+    "type_notif": "nouvelle_reponse",
+    "message_id": null,
+    "lu": true,
+    "date_creation": "2026-07-23T14:04:56.933Z"
+  }
+},
+{
+  "model": "messagerie.notification",
+  "pk": 1,
+  "fields": {
+    "destinataire": 12,
+    "titre": "Nouvelle réponse reçue",
+    "contenu": "Investisseur Investisseur a répondu au message \"d1\"",
+    "type_notif": "nouvelle_reponse",
+    "message_id": null,
+    "lu": false,
+    "date_creation": "2026-07-23T14:04:56.929Z"
+  }
+}
+]

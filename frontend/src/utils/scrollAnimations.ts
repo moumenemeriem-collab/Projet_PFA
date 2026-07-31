@@ -79,9 +79,9 @@ function setupActiveNav(): void {
 
 function setupHeroParallax(): void {
   const hero = document.querySelector<HTMLElement>('.hero')
-  const heroBg = document.querySelector<HTMLElement>('.hero-bg')
+  const heroSlides = document.querySelector<HTMLElement>('.hero-slides')
 
-  if (!hero || !heroBg || REDUCED_MOTION) return
+  if (!hero || !heroSlides || REDUCED_MOTION) return
 
   let ticking = false
 
@@ -90,7 +90,7 @@ function setupHeroParallax(): void {
     const heroHeight = hero.offsetHeight
 
     if (scrollY <= heroHeight) {
-      heroBg.style.transform = `translate3d(0, ${scrollY * 0.28}px, 0) scale(1.05)`
+      heroSlides.style.transform = `translate3d(0, ${scrollY * 0.28}px, 0)`
     }
 
     ticking = false
@@ -108,9 +108,63 @@ function setupHeroParallax(): void {
   )
 }
 
+const SLIDESHOW_INTERVAL = 3_000
+
+function setupHeroSlideshow(): void {
+  const slides = document.querySelectorAll<HTMLElement>('.hero-slide')
+  const dots = document.querySelectorAll<HTMLElement>('.hero-dot')
+
+  if (slides.length <= 1) return
+
+  let currentIndex = 0
+  let timer: ReturnType<typeof setInterval>
+
+  function goToSlide(index: number): void {
+    if (index === currentIndex) return
+
+    const prev = slides[currentIndex]
+    const next = slides[index]
+
+    prev.classList.add('was-active')
+    prev.classList.remove('is-active')
+
+    next.classList.add('is-active')
+
+    setTimeout(() => {
+      prev.classList.remove('was-active')
+    }, 1800)
+
+    dots.forEach((dot, i) => {
+      dot.classList.toggle('is-active', i === index)
+    })
+
+    currentIndex = index
+  }
+
+  function nextSlide(): void {
+    goToSlide((currentIndex + 1) % slides.length)
+  }
+
+  function startTimer(): void {
+    clearInterval(timer)
+    timer = setInterval(nextSlide, SLIDESHOW_INTERVAL)
+  }
+
+  dots.forEach((dot) => {
+    dot.addEventListener('click', () => {
+      const index = Number(dot.dataset.slide)
+      goToSlide(index)
+      startTimer()
+    })
+  })
+
+  startTimer()
+}
+
 export function setupScrollAnimations(): void {
   setupScrollReveal()
   setupHeaderScroll()
   setupActiveNav()
   setupHeroParallax()
+  setupHeroSlideshow()
 }

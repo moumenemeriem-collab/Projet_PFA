@@ -2,18 +2,19 @@ import { icons } from '../components/icons.ts'
 import { renderAuthLayout } from '../components/layout/AuthLayout.ts'
 import { renderFormField, setupPasswordToggles } from '../components/ui/FormField.ts'
 import { formatApiErrors, getPostAuthRedirect, login, saveSession } from '../api/auth.ts'
+import { t, setupLangSwitcher } from '../i18n/index'
 
 export function renderLoginPage(): string {
   return renderAuthLayout({
     activePage: 'login',
-    title: 'Connexion',
-    subtitle: 'Accédez à votre espace investisseur GEO INVEST',
+    title: t('auth.login.title'),
+    subtitle: t('auth.login.subtitle'),
     cardContent: `
       <form id="login-form" class="auth-form" novalidate>
         <div id="login-error" class="form-alert form-alert--error" hidden></div>
         ${renderFormField({
           id: 'email',
-          label: 'Adresse e-mail',
+          label: t('auth.login.email_label'),
           type: 'email',
           placeholder: 'nom@exemple.com',
           icon: 'mail',
@@ -21,21 +22,21 @@ export function renderLoginPage(): string {
         })}
         ${renderFormField({
           id: 'mot_de_passe',
-          label: 'Mot de passe',
+          label: t('auth.login.password_label'),
           placeholder: '••••••••',
           icon: 'lock',
           togglePassword: true,
           autocomplete: 'current-password',
-          extraLabel: '<a href="#" class="form-link">Mot de passe oublié ?</a>',
+          extraLabel: `<a href="#" class="form-link">${t('auth.login.forgot_password')}</a>`,
         })}
         <button type="submit" class="btn btn-primary btn-block" id="login-submit">
-          Se connecter ${icons.chevron}
+          ${t('auth.login.submit')} ${icons.chevron}
         </button>
       </form>
     `,
     footerContent: `
-      Nouveau sur la plateforme ?
-      <a href="/register" class="form-link form-link--strong">Créer un compte</a>
+      ${t('auth.login.no_account')}
+      <a href="/register" class="form-link form-link--strong">${t('auth.login.create_account')}</a>
     `,
     
   })
@@ -44,6 +45,7 @@ export function renderLoginPage(): string {
 export function mountLoginPage(root: HTMLElement): void {
   root.innerHTML = renderLoginPage()
   setupPasswordToggles(root)
+  setupLangSwitcher(root)
 
   const form = root.querySelector<HTMLFormElement>('#login-form')
   const errorEl = root.querySelector<HTMLDivElement>('#login-error')

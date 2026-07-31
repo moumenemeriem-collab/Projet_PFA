@@ -46,18 +46,20 @@ export interface AdminMessageListResponse {
 
 const MESSAGES_BASE = '/api/messages'
 
-export function fetchMessages(search = '', statut = ''): Promise<MessageListResponse> {
+export function fetchMessages(search = '', statut = '', page = 1): Promise<MessageListResponse> {
   const params = new URLSearchParams()
   if (search) params.set('search', search)
   if (statut) params.set('statut', statut)
+  if (page > 1) params.set('page', String(page))
   const qs = params.toString()
   return apiJson<MessageListResponse>(`${MESSAGES_BASE}/${qs ? '?' + qs : ''}`)
 }
 
-export function fetchAdminMessages(search = '', statut = ''): Promise<AdminMessageListResponse> {
+export function fetchAdminMessages(search = '', statut = '', page = 1): Promise<AdminMessageListResponse> {
   const params = new URLSearchParams()
   if (search) params.set('search', search)
   if (statut) params.set('statut', statut)
+  if (page > 1) params.set('page', String(page))
   const qs = params.toString()
   return apiJson<AdminMessageListResponse>(`${MESSAGES_BASE}/admin/${qs ? '?' + qs : ''}`)
 }
@@ -93,6 +95,19 @@ export function createReponse(messageId: number, contenu: string): Promise<{ mes
   })
 }
 
+export function updateReponse(id: number, payload: { contenu: string }): Promise<{ message: string; data: Reponse }> {
+  return apiJson<{ message: string; data: Reponse }>(`${MESSAGES_BASE}/reponses/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function deleteReponse(id: number): Promise<{ message: string }> {
+  return apiJson<{ message: string }>(`${MESSAGES_BASE}/reponses/${id}/`, {
+    method: 'DELETE',
+  })
+}
+
 export function marquerMessageLu(id: number): Promise<{ message: string }> {
   return apiJson<{ message: string }>(`${MESSAGES_BASE}/admin/${id}/marquer-lu/`, {
     method: 'POST',
@@ -117,5 +132,36 @@ export function formatDateTime(iso: string): string {
   return d.toLocaleDateString('fr-FR', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
+  })
+}
+
+export interface Notification {
+  id: number
+  titre: string
+  contenu: string
+  type_notif: string
+  message_id: number | null
+  lu: boolean
+  date_creation: string
+}
+
+export interface NotificationListResponse {
+  non_lues: number
+  results: Notification[]
+}
+
+export function fetchNotifications(): Promise<NotificationListResponse> {
+  return apiJson<NotificationListResponse>(`${MESSAGES_BASE}/notifications/`)
+}
+
+export function markNotificationsRead(): Promise<{ message: string }> {
+  return apiJson<{ message: string }>(`${MESSAGES_BASE}/notifications/marquer-lues/`, {
+    method: 'POST',
+  })
+}
+
+export function deleteNotification(id: number): Promise<{ message: string }> {
+  return apiJson<{ message: string }>(`${MESSAGES_BASE}/notifications/${id}/`, {
+    method: 'DELETE',
   })
 }

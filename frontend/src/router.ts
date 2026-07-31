@@ -4,19 +4,24 @@ import {
   isAuthenticated,
 } from './api/auth.ts'
 import { Header, setupHeader } from './components/Header'
-import { Hero } from './components/Hero'
+import { Hero, setupHeroSlideshow } from './components/Hero'
 import { Features } from './components/Features'
 import { Benefits } from './components/Benefits'
 import { CtaBanner } from './components/CtaBanner'
 import { setupScrollAnimations } from './utils/scrollAnimations'
+import { mountAdminDataPage } from './pages/admin/data.ts'
 import { mountAdminMessagesPage } from './pages/admin/messages.ts'
 import { mountAdminProfilePage } from './pages/admin/profile.ts'
 import { mountAdminUsersPage } from './pages/admin/users.ts'
+import { mountAboutPage } from './pages/about.ts'
 import { mountLoginPage } from './pages/login.ts'
 import { mountMessagesPage } from './pages/messages.ts'
 import { mountProfilePage } from './pages/profile.ts'
+import { mountCreateProjectPage } from './pages/create-project.ts'
 import { mountProjectsPage } from './pages/projects.ts'
 import { mountRegisterPage } from './pages/register.ts'
+import { mountClassementPage } from './pages/classement.ts'
+import { mountGeoportalPage } from './pages/geoportal.ts'
 
 type RouteHandler = (root: HTMLElement) => void | Promise<void>
 
@@ -31,10 +36,15 @@ interface RouteConfig {
 const routes: Record<string, RouteConfig> = {
   '/login': { handler: mountLoginPage, guestOnly: true },
   '/register': { handler: mountRegisterPage, guestOnly: true },
+  '/a-propos': { handler: mountAboutPage },
   '/projets': { handler: mountProjectsPage, requiresAuth: true, investisseurOnly: true },
+  '/projets/nouveau': { handler: mountCreateProjectPage, requiresAuth: true, investisseurOnly: true },
+  '/projets/:id/classement': { handler: mountClassementPage, requiresAuth: true, investisseurOnly: true },
+  '/projets/:id/classement/ajouter': { handler: mountGeoportalPage, requiresAuth: true, investisseurOnly: true },
   '/messages': { handler: mountMessagesPage, requiresAuth: true, investisseurOnly: true },
   '/profil': { handler: mountProfilePage, requiresAuth: true, investisseurOnly: true },
   '/admin/utilisateurs': { handler: mountAdminUsersPage, requiresAuth: true, adminOnly: true },
+  '/admin/donnees': { handler: mountAdminDataPage, requiresAuth: true, adminOnly: true },
   '/admin/messages': { handler: mountAdminMessagesPage, requiresAuth: true, adminOnly: true },
   '/admin/profil': { handler: mountAdminProfilePage, requiresAuth: true, adminOnly: true },
   '/': { handler: renderHome },
@@ -71,6 +81,7 @@ function renderHome(root: HTMLElement): void {
   `
 
   setupHeader()
+  setupHeroSlideshow()
   setupScrollAnimations()
 }
 
@@ -79,12 +90,31 @@ function redirectTo(path: string): void {
   navigate()
 }
 
+function matchRoute(path: string): { handler: RouteHandler; config: RouteConfig } | null {
+  if (routes[path]) return { handler: routes[path].handler, config: routes[path] }
+
+  for (const [pattern, config] of Object.entries(routes)) {
+    const paramPattern = pattern.replace(/:(\w+)/g, '([^/]+)')
+    if (paramPattern !== pattern) {
+      const regex = new RegExp(`^${paramPattern}$`)
+      if (regex.test(path)) return { handler: config.handler, config }
+    }
+  }
+
+  return null
+}
+
 function navigate(): void {
   const root = document.querySelector<HTMLDivElement>('#app')
   if (!root) return
 
   const path = window.location.pathname
-  const route = routes[path] ?? routes['/']
+  const match = matchRoute(path)
+  if (!match) {
+    routes['/'].handler(root)
+    return
+  }
+  const { handler, config: route } = match
   const user = getStoredUser()
 
   if (route.guestOnly && isAuthenticated()) {
@@ -107,7 +137,7 @@ function navigate(): void {
     return
   }
 
-  route.handler(root)
+  handler(root)
 }
 
 export function initRouter(): void {

@@ -1,28 +1,31 @@
-import { navLinks } from '../data/landing'
 import { icon, logoIcon } from './icons'
+import { t, langSwitcherHTML, setupLangSwitcher } from '../i18n/index'
 
 export function Header(): string {
-  const links = navLinks
-    .map(({ label, href }) => `<a href="${href}" class="nav-link">${label}</a>`)
-    .join('')
-
   return `
     <header class="header">
-      <div class="container header-inner">
-        <a href="#accueil" class="logo">
+      <div class="header-container">
+        <a href="/" class="logo">
           ${logoIcon()}
           <span class="logo-text">GEO INVEST</span>
         </a>
-        <nav class="nav" aria-label="Navigation principale">
-          ${links}
-        </nav>
-        <div class="header-actions">
-          <a href="/login" class="btn-text">Se connecter</a>
-          <a href="/register" class="btn btn-primary btn-sm">
-            Commencer
-            ${icon('chevron', 'btn-icon')}
-          </a>
+
+        <div class="header-right">
+          <nav class="nav" aria-label="Navigation principale">
+            <a href="/" class="nav-link">${t('nav.accueil')}</a>
+            <a href="#services" class="nav-link">${t('nav.services')}</a>
+            <a href="/a-propos" class="nav-link">${t('nav.about')}</a>
+          </nav>
+          <div class="header-actions">
+            ${langSwitcherHTML('lang-switcher--topbar')}
+            <a href="/login" class="btn-text">${t('nav.login')}</a>
+            <a href="/register" class="btn btn-primary btn-sm">
+              ${t('nav.cta')}
+              ${icon('chevron', 'btn-icon')}
+            </a>
+          </div>
         </div>
+
         <button class="menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false">
           <span></span>
           <span></span>
@@ -35,14 +38,22 @@ export function Header(): string {
 
 export function setupHeader(): void {
   const toggle = document.querySelector<HTMLButtonElement>('.menu-toggle')
-  const nav = document.querySelector<HTMLElement>('.nav')
-  const headerActions = document.querySelector<HTMLElement>('.header-actions')
+  const headerRight = document.querySelector<HTMLElement>('.header-right')
 
   toggle?.addEventListener('click', () => {
     const isOpen = toggle.getAttribute('aria-expanded') === 'true'
     toggle.setAttribute('aria-expanded', String(!isOpen))
-    nav?.classList.toggle('nav-open')
-    headerActions?.classList.toggle('nav-open')
+    headerRight?.classList.toggle('header-right-open')
     toggle.classList.toggle('menu-open')
   })
+
+  document.querySelectorAll<HTMLAnchorElement>('.nav-link').forEach((link) => {
+    link.addEventListener('click', () => {
+      link.classList.remove('is-clicked')
+      void link.offsetWidth
+      link.classList.add('is-clicked')
+    })
+  })
+
+  setupLangSwitcher()
 }

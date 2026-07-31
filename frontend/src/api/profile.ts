@@ -1,4 +1,5 @@
 import { ApiError, formatApiErrors, type Utilisateur, updateStoredUser } from './auth.ts'
+import { t } from '../i18n/index'
 
 const API_BASE = '/api/auth'
 
@@ -71,8 +72,8 @@ export function getInitials(user: Utilisateur): string {
 
 export function getRoleLabel(role: Utilisateur['role']): string {
   return role === 'investisseur'
-    ? 'Investisseur • GEO INVEST'
-    : 'Administrateur • GEO INVEST'
+    ? t('profile.role_investor')
+    : t('profile.role_admin')
 }
 
 export { formatApiErrors }

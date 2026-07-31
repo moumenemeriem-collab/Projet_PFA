@@ -1,5 +1,5 @@
 import { icons } from '../../components/icons.ts'
-import { renderAdminLayout, setupAdminLayout } from '../../components/layout/AdminLayout.ts'
+import { renderAppLayout, setupAppLayout } from '../../components/layout/AppLayout.ts'
 import { setupPasswordToggles } from '../../components/ui/FormField.ts'
 import { formatApiErrors, getStoredUser } from '../../api/auth.ts'
 import {
@@ -13,6 +13,7 @@ import {
   type AdminUtilisateur,
   type UserFormPayload,
 } from '../../api/admin.ts'
+import { t, formatDate as fmtDate } from '../../i18n/index'
 
 const PAGE_SIZE = 10
 
@@ -21,7 +22,6 @@ interface UsersPageState {
   search: string
   roleFilter: '' | 'admin' | 'investisseur'
   page: number
-  openMenuId: number | null
   modalMode: 'create' | 'edit' | null
   editingUser: AdminUtilisateur | null
 }
@@ -36,55 +36,56 @@ function renderUserModal(mode: 'create' | 'edit', user: AdminUtilisateur | null)
     <div class="admin-modal-overlay" id="user-modal">
       <div class="admin-modal" role="dialog" aria-modal="true">
         <div class="admin-modal-header">
-          <h3>${isEdit ? 'Modifier l\'utilisateur' : 'Nouvel utilisateur'}</h3>
-          <button type="button" class="admin-modal-close" id="modal-close-btn" aria-label="Fermer">${icons.close}</button>
+          <h3>${isEdit ? t('users.modal_edit') : t('users.modal_new')}</h3>
+          <button type="button" class="admin-modal-close" id="modal-close-btn" aria-label="${t('common.close')}">${icons.close}</button>
         </div>
         <form id="user-form" class="admin-modal-form" novalidate>
           <div id="modal-error" class="form-alert form-alert--error" hidden></div>
           <div class="form-row">
             <div class="form-field form-field--half">
-              <label for="modal-prenom" class="form-label">Prénom</label>
+              <label for="modal-prenom" class="form-label">${t('users.field_prenom')}</label>
               <input id="modal-prenom" name="prenom" class="modal-input" value="${user?.prenom ?? ''}" required />
             </div>
             <div class="form-field form-field--half">
-              <label for="modal-nom" class="form-label">Nom</label>
+              <label for="modal-nom" class="form-label">${t('users.field_nom')}</label>
               <input id="modal-nom" name="nom" class="modal-input" value="${user?.nom ?? ''}" required />
             </div>
           </div>
           <div class="form-field">
-            <label for="modal-email" class="form-label">Email</label>
+            <label for="modal-email" class="form-label">${t('users.field_email')}</label>
             <input id="modal-email" name="email" type="email" class="modal-input" value="${user?.email ?? ''}" required />
           </div>
           <div class="form-field">
-            <label for="modal-telephone" class="form-label">Téléphone</label>
+            <label for="modal-telephone" class="form-label">${t('users.field_telephone')}</label>
             <input id="modal-telephone" name="telephone" type="tel" class="modal-input" value="${user?.telephone ?? ''}" />
           </div>
           <div class="form-field">
-            <label for="modal-role" class="form-label">Rôle</label>
+            <label for="modal-role" class="form-label">${t('users.field_role')}</label>
             <select id="modal-role" name="role" class="modal-input" required>
-              <option value="investisseur" ${user?.role === 'investisseur' || !user ? 'selected' : ''}>Investisseur</option>
-              <option value="admin" ${user?.role === 'admin' ? 'selected' : ''}>Admin</option>
+              <option value="investisseur" ${user?.role === 'investisseur' || !user ? 'selected' : ''}>${t('users.role_investor')}</option>
+              <option value="admin" ${user?.role === 'admin' ? 'selected' : ''}>${t('users.role_admin')}</option>
             </select>
           </div>
           <div class="form-row">
             <div class="form-field form-field--half">
-              <label for="modal-mot_de_passe" class="form-label">${isEdit ? 'Nouveau mot de passe' : 'Mot de passe'}</label>
+              <label for="modal-mot_de_passe" class="form-label">${isEdit ? t('users.field_new_password') : t('users.field_password')}</label>
               <div class="input-wrapper">
-                <input id="modal-mot_de_passe" name="mot_de_passe" type="password" class="modal-input modal-input--password" placeholder="${isEdit ? 'Laisser vide pour conserver' : ''}" ${isEdit ? '' : 'required minlength="8"'} />
-                <button type="button" class="password-toggle" data-target="modal-mot_de_passe" aria-label="Afficher">${icons.eye}</button>
+                <input id="modal-mot_de_passe" name="mot_de_passe" type="password" class="modal-input modal-input--password" placeholder="${isEdit ? t('users.field_password_edit_hint') : ''}" ${isEdit ? '' : 'required minlength="8"'} />
+                <button type="button" class="password-toggle" data-target="modal-mot_de_passe" aria-label="${t('users.btn_show')}">${icons.eye}</button>
               </div>
             </div>
             <div class="form-field form-field--half">
-              <label for="modal-confirmer" class="form-label">Confirmer</label>
+              <label for="modal-confirmer" class="form-label">${t('users.field_confirm')}</label>
               <div class="input-wrapper">
                 <input id="modal-confirmer" name="confirmer_mot_de_passe" type="password" class="modal-input modal-input--password" ${isEdit ? '' : 'required minlength="8"'} />
-                <button type="button" class="password-toggle" data-target="modal-confirmer" aria-label="Afficher">${icons.eye}</button>
+                <button type="button" class="password-toggle" data-target="modal-confirmer" aria-label="${t('users.btn_show')}">${icons.eye}</button>
               </div>
             </div>
           </div>
           <div class="admin-modal-actions">
-            <button type="button" class="btn btn-outline" id="modal-cancel-btn">Annuler</button>
-            <button type="submit" class="btn btn-primary" id="modal-submit-btn">${isEdit ? 'Enregistrer' : 'Créer'}</button>
+            <button type="button" class="btn btn-outline" id="modal-cancel-btn">${t('users.btn_cancel')}</button>
+            <button type="button" class="btn btn-text" id="modal-reset-btn">${t('common.reset')}</button>
+            <button type="submit" class="btn btn-primary" id="modal-submit-btn">${isEdit ? t('users.btn_edit') : t('users.btn_create')}</button>
           </div>
         </form>
       </div>
@@ -93,12 +94,10 @@ function renderUserModal(mode: 'create' | 'edit', user: AdminUtilisateur | null)
 }
 
 function formatDate(iso: string): string {
-  const d = new Date(iso)
-  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+  return fmtDate(iso)
 }
 
-function renderUserRow(user: AdminUtilisateur, state: UsersPageState): string {
-  const menuOpen = state.openMenuId === user.id
+function renderUserRow(user: AdminUtilisateur, _state: UsersPageState): string {
   return `
     <tr data-user-id="${user.id}">
       <td><div class="users-table-name"><span class="users-table-avatar">${getInitials(user)}</span><span>${getFullName(user)}</span></div></td>
@@ -106,13 +105,8 @@ function renderUserRow(user: AdminUtilisateur, state: UsersPageState): string {
       <td class="users-table-role"><span class="role-pill role-pill--${user.role}">${user.role}</span></td>
       <td class="users-table-date">${formatDate(user.date_creation)}</td>
       <td class="users-table-actions">
-        <div class="action-menu-wrapper">
-          <button type="button" class="table-action-btn action-menu-btn" data-user-id="${user.id}" title="Plus d'actions">${icons.more}</button>
-          ${menuOpen ? `<div class="action-menu">
-            <button type="button" class="action-menu-item" data-action="edit" data-user-id="${user.id}">${icons.edit} Modifier</button>
-            <button type="button" class="action-menu-item action-menu-item--danger" data-action="delete" data-user-id="${user.id}">${icons.trash} Supprimer</button>
-          </div>` : ''}
-        </div>
+        <button type="button" class="table-action-btn" data-action="edit" data-user-id="${user.id}" title="${t('common.edit')}">${icons.edit}</button>
+        <button type="button" class="table-action-btn table-action-btn--danger" data-action="delete" data-user-id="${user.id}" title="${t('common.delete')}">${icons.trash}</button>
       </td>
     </tr>
   `
@@ -132,42 +126,42 @@ function renderUsersContent(state: UsersPageState): string {
       <div id="page-error" class="form-alert form-alert--error" hidden></div>
       <div class="admin-users-header">
         <div>
-          <h2 class="admin-users-title">Gestion des Utilisateurs</h2>
-          <p class="admin-users-desc">Visualisez et gérez les droits d'accès de tous les utilisateurs de la plateforme.</p>
+          <h2 class="admin-users-title">${t('users.title')}</h2>
+          <p class="admin-users-desc">${t('users.desc')}</p>
         </div>
         <div class="admin-users-actions">
-          <button type="button" class="btn btn-outline btn-action-admin btn-action-admin--export" id="export-csv-btn">${icons.download} Exporter CSV</button>
-          <button type="button" class="btn btn-primary btn-action-admin btn-action-admin--create" id="create-user-btn">${icons.plus} Nouvel Utilisateur</button>
+          <button type="button" class="btn btn-outline btn-action-admin btn-action-admin--export" id="export-csv-btn">${icons.download} ${t('users.export_csv')}</button>
+          <button type="button" class="btn btn-primary btn-action-admin btn-action-admin--create" id="create-user-btn">${icons.plus} ${t('users.new_user')}</button>
         </div>
       </div>
       <div class="users-panel">
         <div class="users-panel-toolbar">
           <div class="users-search-field">${icons.search}
-            <input type="search" id="users-search" class="users-search-input" placeholder="Rechercher par nom ou email..." value="${state.search}" />
+            <input type="search" id="users-search" class="users-search-input" placeholder="${t('users.search_placeholder')}" value="${state.search}" />
           </div>
           <select id="role-filter" class="toolbar-select role-filter-select">
-            <option value="" ${state.roleFilter === '' ? 'selected' : ''}>Tous les rôles</option>
-            <option value="investisseur" ${state.roleFilter === 'investisseur' ? 'selected' : ''}>Investisseur</option>
-            <option value="admin" ${state.roleFilter === 'admin' ? 'selected' : ''}>Admin</option>
+            <option value="" ${state.roleFilter === '' ? 'selected' : ''}>${t('users.all_roles')}</option>
+            <option value="investisseur" ${state.roleFilter === 'investisseur' ? 'selected' : ''}>${t('users.role_investor')}</option>
+            <option value="admin" ${state.roleFilter === 'admin' ? 'selected' : ''}>${t('users.role_admin')}</option>
           </select>
-          <span class="users-count">${total} utilisateur${total > 1 ? 's' : ''} au total</span>
+          <span class="users-count">${total} ${t('users.total_label')}</span>
         </div>
         <div class="users-table-wrapper">
           <table class="users-table">
             <thead>
               <tr>
-                <th>Nom</th><th>Email</th><th>Rôle</th>
-                <th>Date de création</th>
-                <th>Actions</th>
+                <th>${t('users.col_name')}</th><th>${t('users.col_email')}</th><th>${t('users.col_role')}</th>
+                <th>${t('users.col_date')}</th>
+                <th>${t('users.col_actions')}</th>
               </tr>
             </thead>
             <tbody>
-              ${pageUsers.length > 0 ? pageUsers.map((u) => renderUserRow(u, state)).join('') : `<tr><td colspan="5" class="users-table-empty">Aucun utilisateur trouvé.</td></tr>`}
+              ${pageUsers.length > 0 ? pageUsers.map((u) => renderUserRow(u, state)).join('') : `<tr><td colspan="5" class="users-table-empty">${t('users.empty')}</td></tr>`}
             </tbody>
           </table>
         </div>
         <div class="users-pagination">
-          <span>Affichage de ${start}-${end} sur ${total} résultats</span>
+          <span>${t('users.pagination_showing')} ${start}-${end} ${t('users.pagination_on')} ${total} ${t('users.pagination_results')}</span>
           <div class="users-pagination-controls">
             <button type="button" class="pagination-btn" id="prev-page" ${currentPage <= 1 ? 'disabled' : ''}>${icons.chevronLeft}</button>
             ${Array.from({ length: totalPages }, (_, i) => `<button type="button" class="pagination-btn pagination-btn--page${i + 1 === currentPage ? ' pagination-btn--active' : ''}" data-page="${i + 1}">${i + 1}</button>`).join('')}
@@ -197,7 +191,7 @@ async function loadUsers(search: string, roleFilter: UsersPageState['roleFilter'
 function renderPage(state: UsersPageState): void {
   if (!pageRoot) return
   stateRef.current = state
-  const contentRoot = pageRoot.querySelector('.admin-content')
+  const contentRoot = pageRoot.querySelector('.app-content')
   if (!contentRoot) return
   contentRoot.innerHTML = renderUsersContent(state)
   bindPageEvents()
@@ -216,10 +210,11 @@ function bindModalEvents(): void {
   const editingUser = state.editingUser
   const mode = state.modalMode
 
-  const close = () => renderPage({ ...stateRef.current!, modalMode: null, editingUser: null, openMenuId: null })
+  const close = () => renderPage({ ...stateRef.current!, modalMode: null, editingUser: null })
 
   overlay?.querySelector('#modal-close-btn')?.addEventListener('click', close)
   overlay?.querySelector('#modal-cancel-btn')?.addEventListener('click', close)
+  overlay?.querySelector('#modal-reset-btn')?.addEventListener('click', () => { form?.reset() })
   overlay?.addEventListener('click', (e) => { if (e.target === overlay) close() })
 
   form?.addEventListener('submit', async (e) => {
@@ -242,7 +237,7 @@ function bindModalEvents(): void {
     try {
       if (mode === 'create') {
         await createUser(payload)
-        showPageAlert('Utilisateur créé avec succès.')
+        showPageAlert(t('users.success_created'))
       } else if (mode === 'edit' && editingUser) {
         const updatePayload: Partial<UserFormPayload> = {
           prenom: payload.prenom, nom: payload.nom, email: payload.email,
@@ -253,12 +248,12 @@ function bindModalEvents(): void {
           updatePayload.confirmer_mot_de_passe = payload.confirmer_mot_de_passe
         }
         await updateUser(editingUser.id, updatePayload)
-        showPageAlert('Utilisateur modifié avec succès.')
+        showPageAlert(t('users.success_edited'))
       }
 
       const current = stateRef.current
       const users = await loadUsers(current.search, current.roleFilter)
-      renderPage({ ...current, allUsers: users, modalMode: null, editingUser: null, openMenuId: null })
+      renderPage({ ...current, allUsers: users, modalMode: null, editingUser: null })
     } catch (error) {
       if (errorEl) { errorEl.textContent = formatApiErrors(error); errorEl.hidden = false }
     } finally {
@@ -271,7 +266,7 @@ function bindPageEvents(): void {
   if (!pageRoot || !stateRef.current) return
 
   pageRoot.querySelector('#create-user-btn')?.addEventListener('click', () => {
-    renderPage({ ...stateRef.current!, modalMode: 'create', editingUser: null, openMenuId: null })
+    renderPage({ ...stateRef.current!, modalMode: 'create', editingUser: null })
   })
 
   pageRoot.querySelector('#export-csv-btn')?.addEventListener('click', () => {
@@ -303,22 +298,13 @@ function bindPageEvents(): void {
     }
   })
 
-  pageRoot.querySelectorAll('.action-menu-btn').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation()
-      const id = Number((btn as HTMLElement).dataset.userId)
-      if (!stateRef.current) return
-      renderPage({ ...stateRef.current, openMenuId: stateRef.current.openMenuId === id ? null : id })
-    })
-  })
-
   pageRoot.querySelectorAll('[data-action="edit"]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation()
       const id = Number((btn as HTMLElement).dataset.userId)
       const user = stateRef.current?.allUsers.find((u) => u.id === id)
       if (user && stateRef.current) {
-        renderPage({ ...stateRef.current, modalMode: 'edit', editingUser: user, openMenuId: null })
+        renderPage({ ...stateRef.current, modalMode: 'edit', editingUser: user })
       }
     })
   })
@@ -329,28 +315,18 @@ function bindPageEvents(): void {
       const id = Number((btn as HTMLElement).dataset.userId)
       const user = stateRef.current?.allUsers.find((u) => u.id === id)
       if (!user || !stateRef.current) return
-      if (!confirm(`Supprimer ${getFullName(user)} ?`)) return
+      if (!confirm(`${t('users.confirm_delete_user')} ${getFullName(user)} ?`)) return
       try {
         await deleteUser(id)
-        showPageAlert('Utilisateur supprimé avec succès.')
+        showPageAlert(t('users.success_deleted'))
         const current = stateRef.current
         const users = await loadUsers(current.search, current.roleFilter)
-        renderPage({ ...current, allUsers: users, openMenuId: null })
+        renderPage({ ...current, allUsers: users })
       } catch (error) {
         showPageAlert(formatApiErrors(error), true)
       }
     })
   })
-
-  if (stateRef.current.openMenuId !== null) {
-    setTimeout(() => {
-      document.addEventListener('click', () => {
-        if (stateRef.current?.openMenuId !== null) {
-          renderPage({ ...stateRef.current, openMenuId: null })
-        }
-      }, { once: true })
-    }, 0)
-  }
 
   pageRoot.querySelector('#prev-page')?.addEventListener('click', () => {
     if (!stateRef.current || stateRef.current.page <= 1) return
@@ -377,24 +353,25 @@ export async function mountAdminUsersPage(root: HTMLElement): Promise<void> {
   const storedUser = getStoredUser()
   if (!storedUser) return
 
-  root.innerHTML = renderAdminLayout({
+  root.innerHTML = renderAppLayout({
     user: storedUser,
+    role: 'admin',
     activePage: 'users',
-    content: `<div class="admin-loading"><div class="admin-loading-spinner"></div><p>Chargement des utilisateurs…</p></div>`,
+    content: `<div class="admin-loading"><div class="admin-loading-spinner"></div><p>${t('users.loading')}</p></div>`,
   })
-  setupAdminLayout(root)
+  setupAppLayout(root)
 
   try {
     const users = await loadUsers('', '')
     renderPage({
       allUsers: users, search: '', roleFilter: '', page: 1,
-      openMenuId: null, modalMode: null, editingUser: null,
+      modalMode: null, editingUser: null,
     })
   } catch (error) {
-    root.querySelector('.admin-content')!.innerHTML = `
+    root.querySelector('.app-content')!.innerHTML = `
       <div class="admin-error-state">
         <p>${formatApiErrors(error)}</p>
-        <a href="/login" class="btn btn-primary">Se reconnecter</a>
+        <a href="/login" class="btn btn-primary">${t('users.error_login')}</a>
       </div>
     `
   }

@@ -44,3 +44,34 @@ class Reponse(models.Model):
 
     def __str__(self) -> str:
         return f'Reponse de {self.auteur} a {self.message}'
+
+
+class Notification(models.Model):
+    destinataire = models.ForeignKey(
+        Utilisateur,
+        on_delete=models.CASCADE,
+        related_name='notifications',
+    )
+    titre = models.CharField(max_length=200)
+    contenu = models.TextField()
+    type_notif = models.CharField(
+        max_length=50,
+        choices=[
+            ('nouveau_message', 'Nouveau message'),
+            ('nouvelle_reponse', 'Nouvelle réponse'),
+            ('message_modifie', 'Message modifié'),
+            ('message_supprime', 'Message supprimé'),
+            ('reponse_modifiee', 'Réponse modifiée'),
+            ('reponse_supprimee', 'Réponse supprimée'),
+        ],
+    )
+    message_id = models.IntegerField(null=True, blank=True)
+    lu = models.BooleanField(default=False)
+    date_creation = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'notification'
+        ordering = ['-date_creation']
+
+    def __str__(self) -> str:
+        return f'[{self.type_notif}] pour {self.destinataire}: {self.titre}'

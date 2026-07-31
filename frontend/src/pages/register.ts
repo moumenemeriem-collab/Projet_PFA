@@ -2,26 +2,30 @@ import { icons } from '../components/icons.ts'
 import { renderAuthLayout } from '../components/layout/AuthLayout.ts'
 import { renderFormField, setupPasswordToggles } from '../components/ui/FormField.ts'
 import { formatApiErrors, getPostAuthRedirect, register, saveSession } from '../api/auth.ts'
+import { t, setupLangSwitcher } from '../i18n/index'
 
-const benefits = [
-  'Accès aux parcelles numérisées',
-  'Analyses multicritères avancées',
-  'Rapports d\'investissement PDF',
-]
+function getBenefits() {
+  return [
+    t('auth.register.benefit_1'),
+    t('auth.register.benefit_2'),
+    t('auth.register.benefit_3'),
+  ]
+}
 
 export function renderRegisterPage(): string {
+  const benefits = getBenefits()
   return renderAuthLayout({
     activePage: 'register',
     wide: true,
-    title: 'Créer un compte',
-    subtitle: 'Rejoignez la plateforme SIG leader pour l\'investissement foncier.',
+    title: t('auth.register.title'),
+    subtitle: t('auth.register.subtitle'),
     cardContent: `
       <form id="register-form" class="auth-form" novalidate>
         <div id="register-error" class="form-alert form-alert--error" hidden></div>
         <div class="form-row">
           ${renderFormField({
             id: 'prenom',
-            label: 'Prénom',
+            label: t('auth.register.prenom'),
             placeholder: 'Jean',
             icon: 'user',
             autocomplete: 'given-name',
@@ -29,7 +33,7 @@ export function renderRegisterPage(): string {
           })}
           ${renderFormField({
             id: 'nom',
-            label: 'Nom',
+            label: t('auth.register.nom'),
             placeholder: 'Dupont',
             icon: 'user',
             autocomplete: 'family-name',
@@ -39,7 +43,7 @@ export function renderRegisterPage(): string {
         <div class="form-row">
           ${renderFormField({
             id: 'email',
-            label: 'Adresse e-mail',
+            label: t('auth.register.email'),
             type: 'email',
             placeholder: 'nom@exemple.com',
             icon: 'mail',
@@ -48,7 +52,7 @@ export function renderRegisterPage(): string {
           })}
           ${renderFormField({
             id: 'telephone',
-            label: 'Numéro de téléphone',
+            label: t('auth.register.telephone'),
             type: 'tel',
             placeholder: '+212 6XX XX XX XX',
             icon: 'phone',
@@ -60,7 +64,7 @@ export function renderRegisterPage(): string {
         <div class="form-row">
           ${renderFormField({
             id: 'mot_de_passe',
-            label: 'Mot de passe',
+            label: t('auth.register.password'),
             placeholder: '••••••••',
             icon: 'lock',
             togglePassword: true,
@@ -69,7 +73,7 @@ export function renderRegisterPage(): string {
           })}
           ${renderFormField({
             id: 'confirmer_mot_de_passe',
-            label: 'Confirmer le mot de passe',
+            label: t('auth.register.confirm_password'),
             placeholder: '••••••••',
             icon: 'lock',
             togglePassword: true,
@@ -80,17 +84,17 @@ export function renderRegisterPage(): string {
         <label class="checkbox-field">
           <input type="checkbox" name="cgu" required />
           <span>
-            J'accepte les
-            <a href="#" class="form-link">Conditions Générales d'Utilisation</a>
-            et la
-            <a href="#" class="form-link">Politique de Confidentialité</a>.
+            ${t('auth.register.cgu')}
+            <a href="#" class="form-link">${t('auth.register.cgu_link')}</a>
+            ${t('auth.register.cgu_and')}
+            <a href="#" class="form-link">${t('auth.register.privacy_link')}</a>.
           </span>
         </label>
         <button type="submit" class="btn btn-primary btn-block" id="register-submit">
-          S'inscrire ${icons.chevron}
+          ${t('auth.register.submit')} ${icons.chevron}
         </button>
         <div class="benefits">
-          <h3 class="benefits-title">Pourquoi nous rejoindre ?</h3>
+          <h3 class="benefits-title">${t('auth.register.why_join')}</h3>
           <ul class="benefits-list">
             ${benefits
               .map(
@@ -107,13 +111,13 @@ export function renderRegisterPage(): string {
       </form>
     `,
     footerContent: `
-      Déjà membre de la communauté ?
-      <a href="/login" class="form-link form-link--strong">Se connecter</a>
+      ${t('auth.register.has_account')}
+      <a href="/login" class="form-link form-link--strong">${t('auth.register.login_link')}</a>
     `,
     pageFooter: `
       <div class="register-footer-status">
-        <span>Instance de production — Région</span>
-        <span class="status-dot"><span></span> Serveurs SIG Opérationnels</span>
+        <span>${t('auth.register.instance_label')}</span>
+        <span class="status-dot"><span></span> ${t('auth.register.servers_status')}</span>
       </div>
     `,
   })
@@ -122,6 +126,7 @@ export function renderRegisterPage(): string {
 export function mountRegisterPage(root: HTMLElement): void {
   root.innerHTML = renderRegisterPage()
   setupPasswordToggles(root)
+  setupLangSwitcher(root)
 
   const form = root.querySelector<HTMLFormElement>('#register-form')
   const errorEl = root.querySelector<HTMLDivElement>('#register-error')
