@@ -57,7 +57,7 @@ function extractErrorMessage(data: Record<string, unknown>): string {
         return ''
       })
       .filter(Boolean)
-    if (messages.length > 0) return messages.join(' ')
+    if (messages.length > 0) return [...new Set(messages)].join(' ')
   }
 
   const fieldMessages = Object.entries(data)
@@ -68,7 +68,7 @@ function extractErrorMessage(data: Record<string, unknown>): string {
       return []
     })
 
-  if (fieldMessages.length > 0) return fieldMessages.join(' ')
+  if (fieldMessages.length > 0) return [...new Set(fieldMessages)].join(' ')
 
   return 'Une erreur est survenue. Veuillez réessayer.'
 }
@@ -226,7 +226,7 @@ export function formatApiErrors(error: unknown): string {
         if (typeof value === 'string') return [value]
         return []
       })
-    if (messages.length > 0) return messages.join(' ')
+    if (messages.length > 0) return [...new Set(messages)].join(' ')
   }
 
   if (error.status === 401) {
