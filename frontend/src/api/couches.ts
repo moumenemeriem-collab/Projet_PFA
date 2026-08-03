@@ -90,10 +90,13 @@ export function telechargerCouche(id: number): void {
     })
     .then(blob => {
       const link = document.createElement('a')
-      link.href = URL.createObjectURL(blob)
+      const blobUrl = URL.createObjectURL(blob)
+      link.href = blobUrl
       link.download = `couche-${id}.geojson`
+      document.body.appendChild(link)
       link.click()
-      URL.revokeObjectURL(url)
+      link.remove()
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
     })
     .catch(err => alert(err.message))
 }

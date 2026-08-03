@@ -646,12 +646,39 @@ def telecharger_couche(request, pk):
     except Couche.DoesNotExist:
         return Response({'error': 'Couche introuvable'}, status=status.HTTP_404_NOT_FOUND)
 
-    if not couche.fichier:
+    if couche.fichier:
+        from django.http import FileResponse
+        file_path = couche.fichier.path
+        if os.path.exists(file_path):
+            return FileResponse(open(file_path, 'rb'), as_attachment=True, filename=f'{couche.nom}.geojson')
+
+    from django.db import connection
+    from django.http import HttpResponse
+    import io
+
+    table_liee = couche.table_liee
+    if not table_liee:
         return Response({'error': 'Aucun fichier disponible pour cette couche'}, status=status.HTTP_404_NOT_FOUND)
 
-    from django.http import FileResponse
-    file_path = couche.fichier.path
-    if not os.path.exists(file_path):
-        return Response({'error': 'Fichier introuvable sur le disque'}, status=status.HTTP_404_NOT_FOUND)
+    attributs_attendus = [a['nom'] for a in couche.attributs] if couche.attributs else []
+    col_sql = ', '.join(f'"{c}"' for c in attributs_attendus)
+    sql = f'SELECT geometry, {col_sql} FROM "{table_liee}"' if attributs_attendus else f'SELECT geometry FROM "{table_liee}"'
 
-    return FileResponse(open(file_path, 'rb'), as_attachment=True, filename=f'{couche.nom}.geojson')
+    features = []
+    try:
+        with connection.cursor() as cur:
+            cur.execute(sql)
+            for row in cur.fetchall():
+                props = {}
+                for i, nom in enumerate(attributs_attendus):
+                    props[nom] = row[i + 1]
+                features.append({'type': 'Feature', 'properties': props, 'geometry': row[0]})
+    except Exception as e:
+        return Response({'error': f'Erreur lors de la génération du fichier : {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    collection = {'type': 'FeatureCollection', 'features': features}
+    contenu = json.dumps(collection, ensure_ascii=False).encode('utf-8')
+
+    response = HttpResponse(contenu, content_type='application/geo+json')
+    response['Content-Disposition'] = f'attachment; filename="{couche.nom}.geojson"'
+    return response
