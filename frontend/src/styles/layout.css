@@ -169,6 +169,10 @@
   padding: 28px 40px 40px;
 }
 
+.app-content--full {
+  padding: 0;
+}
+
 /* ── Light gray search bars (all variants) ── */
 
 .search-field,

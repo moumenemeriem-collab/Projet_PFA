@@ -8,6 +8,10 @@
   background: #f0f2f5;
 }
 
+.app-content--full .geo-layout {
+  height: calc(100svh - 70px);
+}
+
 /* ── Left sidebar ── */
 
 .geo-sidebar {
@@ -1526,7 +1530,7 @@
 @media (max-width: 900px) {
   .geo-sidebar {
     position: fixed;
-    top: 52px;
+    top: 70px;
     left: 0;
     bottom: 0;
     z-index: 100;

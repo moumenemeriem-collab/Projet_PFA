@@ -35,9 +35,11 @@ interface DashboardLayoutProps {
   role: 'investisseur' | 'admin'
   activePage: AppPage
   children: React.ReactNode
+  hideSidebar?: boolean
+  topbarTitle?: string
 }
 
-export function DashboardLayout({ role, activePage, children }: DashboardLayoutProps): React.JSX.Element | null {
+export function DashboardLayout({ role, activePage, children, hideSidebar = false, topbarTitle }: DashboardLayoutProps): React.JSX.Element | null {
   const navigate = useNavigate()
   const user = getStoredUser()
   const [notifOpen, setNotifOpen] = useState(false)
@@ -93,10 +95,10 @@ export function DashboardLayout({ role, activePage, children }: DashboardLayoutP
 
   const nav = role === 'admin' ? adminNav : investisseurNav
   const profileUrl = role === 'admin' ? '/admin/profil' : '/profil'
-  const spaceTitle = t(role === 'admin' ? 'admin.topbar.space' : 'dashboard.topbar.space')
+  const spaceTitle = topbarTitle ?? t(role === 'admin' ? 'admin.topbar.space' : 'dashboard.topbar.space')
 
   return (
-    <div className="app-shell">
+    <div className={hideSidebar ? 'app-shell app-shell--full' : 'app-shell'}>
       <header className="app-topbar">
         <div className="app-topbar-brand">
           <span className="app-topbar-logo">{icons.logo}</span>
@@ -160,25 +162,27 @@ export function DashboardLayout({ role, activePage, children }: DashboardLayoutP
         </div>
       </header>
       <div className="app-body">
-        <aside className="app-sidebar">
-          <nav className="app-sidebar-nav">
-            {nav.map((item) => (
-              <Link
-                to={item.href}
-                className={`app-sidebar-link${activePage === item.id ? ' app-sidebar-link--active' : ''}`}
-                key={item.id}
-              >
-                <span className="app-sidebar-link-icon">{icons[item.icon]}</span>
-                {t(item.labelKey)}
-              </Link>
-            ))}
-          </nav>
-          <button type="button" className="app-sidebar-logout" onClick={handleLogout}>
-            <span className="app-sidebar-logout-icon">{icons.logout}</span>
-            {t(role === 'admin' ? 'admin.sidebar.logout' : 'dashboard.sidebar.logout')}
-          </button>
-        </aside>
-        <main className="app-content">
+        {hideSidebar ? null : (
+          <aside className="app-sidebar">
+            <nav className="app-sidebar-nav">
+              {nav.map((item) => (
+                <Link
+                  to={item.href}
+                  className={`app-sidebar-link${activePage === item.id ? ' app-sidebar-link--active' : ''}`}
+                  key={item.id}
+                >
+                  <span className="app-sidebar-link-icon">{icons[item.icon]}</span>
+                  {t(item.labelKey)}
+                </Link>
+              ))}
+            </nav>
+            <button type="button" className="app-sidebar-logout" onClick={handleLogout}>
+              <span className="app-sidebar-logout-icon">{icons.logout}</span>
+              {t(role === 'admin' ? 'admin.sidebar.logout' : 'dashboard.sidebar.logout')}
+            </button>
+          </aside>
+        )}
+        <main className={hideSidebar ? 'app-content app-content--full' : 'app-content'}>
           {children}
         </main>
       </div>

@@ -473,7 +473,7 @@ export function GeoportalPage(): React.JSX.Element {
 
   if (projetError) {
     return (
-      <DashboardLayout role="investisseur" activePage="ranking">
+      <DashboardLayout role="investisseur" activePage="ranking" hideSidebar topbarTitle={t('ranking.geoportal_title')}>
         <div className="admin-error-state">
           <p>{projetError}</p>
           <Link to="/projets" className="btn btn-primary">{t('projects.error_login')}</Link>
@@ -484,7 +484,7 @@ export function GeoportalPage(): React.JSX.Element {
 
   if (!projet) {
     return (
-      <DashboardLayout role="investisseur" activePage="ranking">
+      <DashboardLayout role="investisseur" activePage="ranking" hideSidebar topbarTitle={t('ranking.geoportal_title')}>
         <div className="admin-loading">
           <div className="admin-loading-spinner"></div>
           <p>{t('ranking.loading')}</p>
@@ -497,7 +497,7 @@ export function GeoportalPage(): React.JSX.Element {
   const cardTitle = cardMode === 'search' ? t('ranking.terrain_info') : t('ranking.analyse_title')
 
   return (
-    <DashboardLayout role="investisseur" activePage="ranking">
+    <DashboardLayout role="investisseur" activePage="ranking" hideSidebar topbarTitle={t('ranking.geoportal_title')}>
       <div className="geo-layout">
         <div className="geo-body">
           <aside className={`geo-sidebar${sidebarCollapsed ? ' geo-sidebar--collapsed' : ''}`}>
