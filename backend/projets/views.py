@@ -650,7 +650,8 @@ def telecharger_couche(request, pk):
         from django.http import FileResponse
         file_path = couche.fichier.path
         if os.path.exists(file_path):
-            return FileResponse(open(file_path, 'rb'), as_attachment=True, filename=f'{couche.nom}.geojson')
+            ext = os.path.splitext(couche.fichier.name)[1] or '.geojson'
+            return FileResponse(open(file_path, 'rb'), as_attachment=True, filename=f'{couche.nom}{ext}')
 
     from django.db import connection
     from django.http import HttpResponse
