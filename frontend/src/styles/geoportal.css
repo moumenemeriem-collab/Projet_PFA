@@ -1504,6 +1504,23 @@
   color: #666;
 }
 
+/* ── Leaflet popup overrides (all map popups) ── */
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  box-shadow: none;
+}
+
+.leaflet-popup-content-wrapper {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  max-width: 220px;
+}
+
+.leaflet-popup-content {
+  margin: 10px 12px;
+}
+
 /* ── Responsive ── */
 
 @media (max-width: 900px) {
