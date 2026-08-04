@@ -31,6 +31,24 @@
   flex-shrink: 0;
 }
 
+.classement-actions .btn-secondary {
+  background: #fff;
+  color: var(--text-heading);
+  border: 1.5px solid var(--border);
+  box-shadow: none;
+}
+
+.classement-actions .btn-secondary:hover {
+  background: var(--bg-page);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.classement-actions .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .classement-toolbar {
   display: flex;
   align-items: center;
@@ -216,55 +234,398 @@
   border-radius: var(--radius-md);
 }
 
-/* ── Pagination ── */
+/* ── Onglets ── */
 
-.classement-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  font-size: 0.8125rem;
-  color: var(--text-muted);
-  border-top: 1px solid var(--border);
-}
-
-.classement-pagination-controls {
+.classement-tabs {
   display: flex;
   gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
 }
 
-.pagination-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 32px;
-  height: 32px;
-  padding: 0 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-card);
-  color: var(--text);
+.classement-tab {
+  padding: 10px 18px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
   cursor: pointer;
-  font-size: 0.8125rem;
-  transition: background 0.12s, border-color 0.12s;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
 }
 
-.pagination-btn:hover:not(:disabled) {
-  background: var(--bg-page);
-  border-color: var(--primary);
+.classement-tab:hover {
+  color: var(--text-heading);
 }
 
-.pagination-btn:disabled {
-  opacity: 0.4;
+.classement-tab--active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.classement-actions .btn:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-.pagination-btn--active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: #fff;
+/* ── Barre résumé dernière analyse ── */
+
+.classement-summary-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px 18px;
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+  color: var(--text-muted);
 }
 
-.pagination-btn--active:hover {
-  background: var(--primary-dark);
+.classement-summary-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.classement-summary-item strong {
+  color: var(--text-heading);
+}
+
+/* ── Rang / parcelle / conformité ── */
+
+.classement-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: var(--bg-page);
+  border: 1px solid var(--border);
+  font-weight: 700;
+  font-size: 0.8125rem;
+  color: var(--primary);
+}
+
+.classement-parcelle {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.classement-ref {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.classement-conf {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.8125rem;
+}
+
+.classement-conf--ok {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.classement-conf--warn {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+/* ── Modales ── */
+
+.admin-modal.classement-modal--history {
+  max-width: 520px;
+}
+
+.classement-modal-body {
+  padding: 20px 22px;
+}
+
+/* ── Détails ── */
+
+.classement-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.classement-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bg-page);
+  border: 1px solid var(--border);
+}
+
+.classement-detail-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.classement-detail-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.classement-detail-section {
+  margin-bottom: 18px;
+}
+
+.classement-detail-section-title {
+  margin: 0 0 10px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.classement-criteria-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.classement-criteria-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.classement-criteria-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.classement-criteria-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.classement-criteria-value {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+.classement-criteria-value small {
+  color: var(--text-muted);
+}
+
+.classement-criteria-status {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.classement-criteria-status--ok {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.classement-criteria-status--ko {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.classement-detail-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.875rem;
+}
+
+.classement-detail-list li {
+  margin-bottom: 4px;
+}
+
+.classement-detail-list--forts li::marker {
+  color: #16a34a;
+}
+
+.classement-detail-list--faibles li::marker {
+  color: #dc2626;
+}
+
+/* ── Historique ── */
+
+.classement-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.classement-history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  transition: border-color 0.15s;
+}
+
+.classement-history-item--active {
+  border-color: var(--primary);
+  background: rgba(37, 99, 235, 0.04);
+}
+
+.classement-history-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.classement-history-date {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.classement-history-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.classement-history-item .table-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Sélection de projet (Classement) ── */
+
+.classement-select-page {
+  padding-bottom: 16px;
+}
+
+.classement-select-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.classement-select-title {
+  margin: 0 0 6px;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  letter-spacing: -0.02em;
+}
+
+.classement-select-desc {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.classement-select-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.classement-select-list-title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.classement-select-count {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(37, 99, 235, 0.08);
+  padding: 4px 12px;
+  border-radius: 999px;
+}
+
+.project-classement-btn {
+  height: 40px;
+  padding: 0 18px;
+  font-size: 0.875rem;
+}
+
+.project-classement-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.classement-select-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 64px 24px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  background: #fafafa;
+}
+
+.classement-select-empty-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.1);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.classement-select-empty-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.classement-select-empty-title {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
+.classement-select-empty-desc {
+  max-width: 420px;
+  margin: 0 0 6px;
+  font-size: 0.875rem;
+  color: var(--text-muted);
 }

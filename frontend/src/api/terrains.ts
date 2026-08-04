@@ -79,9 +79,18 @@ export interface AnalyseResultat {
   lat: number
   lng: number
   score_global: number
+  score_final: number
+  score_amc: number
   score_accessibilite: number
   score_positionnement: number
   score_topographie: number
+  score_superficie: number | null
+  roi: number | null
+  marge: number | null
+  benefice_net: number | null
+  score_rentabilite: number | null
+  type_rentabilite: 'personnalisee' | 'benchmark' | 'indisponible'
+  prix_terrain: number | null
   infos_generales: {
     reference_cadastrale: string
     commune: string
@@ -118,7 +127,7 @@ export interface AnalyseResponse {
 }
 
 export async function fetchAnalyse(projetId: number, filtres: AnalyseFiltres): Promise<AnalyseResponse> {
-  const res = await apiFetch(`/api/projets/${projetId}/analyser/`, {
+  const res = await apiFetch(`/api/projets/${projetId}/analyser-parcelles/`, {
     method: 'POST',
     body: JSON.stringify(filtres),
   })

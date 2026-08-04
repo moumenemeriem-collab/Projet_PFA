@@ -3,6 +3,44 @@ from django.db import models
 from accounts.models import Utilisateur
 
 
+def calculer_rentabilite(prix_terrain, cout_construction, autres_charges,
+                         prix_vente_unitaire, nombre_unites, revenu_estime, budget_total=None) -> dict:
+    """Calcule les indicateurs de rentabilité à partir des montants fournis."""
+    def dec(v) -> float:
+        return float(v) if v is not None else 0.0
+
+    investissement_total = (
+        dec(prix_terrain) + dec(cout_construction) + dec(autres_charges)
+    )
+
+    revenu_total = dec(revenu_estime)
+    if revenu_total == 0 and prix_vente_unitaire is not None and nombre_unites:
+        revenu_total = dec(prix_vente_unitaire) * dec(nombre_unites)
+
+    benefice_net = revenu_total - investissement_total
+
+    roi = (benefice_net / investissement_total * 100) if investissement_total > 0 else None
+    marge = (benefice_net / revenu_total * 100) if revenu_total > 0 else None
+    seuil_unites = (investissement_total / dec(prix_vente_unitaire)) if (
+        prix_vente_unitaire is not None and dec(prix_vente_unitaire) > 0
+    ) else None
+    budget_respecte = dec(budget_total) >= dec(prix_terrain) if prix_terrain is not None else None
+
+    def r(v):
+        return round(v, 2) if v is not None else None
+
+    return {
+        'investissement_total': r(investissement_total),
+        'revenu_total': r(revenu_total) if revenu_total > 0 else None,
+        'benefice_net': r(benefice_net),
+        'roi': r(roi),
+        'marge': r(marge),
+        'seuil_unites': r(seuil_unites),
+        'budget_respecte': budget_respecte,
+        'complete': revenu_total > 0 and investissement_total > 0,
+    }
+
+
 class TypeProjet(models.Model):
     nom = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True, null=True)
@@ -55,6 +93,18 @@ class Projet(models.Model):
     def __str__(self) -> str:
         return self.nom
 
+    def calculer_rentabilite(self) -> dict:
+        """Calcule les indicateurs de rentabilité du projet."""
+        return calculer_rentabilite(
+            self.prix_terrain,
+            self.cout_construction,
+            self.autres_charges,
+            self.prix_vente_unitaire,
+            self.nombre_unites,
+            self.revenu_estime,
+            self.budget_total,
+        )
+
 
 class Terrain(models.Model):
     SCORE_CHOICES = [(i, str(i)) for i in range(1, 11)]
@@ -87,6 +137,82 @@ class Terrain(models.Model):
     def save(self, *args, **kwargs):
         self.score = (self.accessibilite + self.positionnement + self.topographie) / 3
         super().save(*args, **kwargs)
+
+
+class Analyse(models.Model):
+    """Exécution sauvegardée de l'analyse multicritère des parcelles."""
+
+    STATUT_CHOICES = [
+        ('complete', 'Complète'),
+        ('en_cours', 'En cours'),
+        ('erreur', 'Erreur'),
+    ]
+
+    projet = models.ForeignKey(
+        Projet,
+        on_delete=models.CASCADE,
+        related_name='analyses',
+        db_column='projet_id',
+    )
+    date_creation = models.DateTimeField(auto_now_add=True)
+    filtres = models.JSONField(blank=True, null=True)
+    poids_amc = models.DecimalField(max_digits=5, decimal_places=2, default=0.70)
+    poids_rentabilite = models.DecimalField(max_digits=5, decimal_places=2, default=0.30)
+    nombre_parcelles = models.IntegerField(default=0)
+    statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='complete')
+
+    class Meta:
+        db_table = 'analyse'
+        ordering = ['-date_creation']
+
+    def __str__(self) -> str:
+        return f'Analyse #{self.pk} - {self.projet.nom}'
+
+
+class ResultatAnalyse(models.Model):
+    """Résultat d'une parcelle au sein d'une analyse sauvegardée."""
+
+    analyse = models.ForeignKey(
+        Analyse,
+        on_delete=models.CASCADE,
+        related_name='resultats',
+        db_column='analyse_id',
+    )
+    id_parcelle = models.CharField(max_length=50)
+    reference_cadastrale = models.CharField(max_length=50, blank=True, default='')
+    nom = models.CharField(max_length=150, blank=True, default='')
+    superficie = models.FloatField(null=True, blank=True)
+    lat = models.FloatField(null=True, blank=True)
+    lng = models.FloatField(null=True, blank=True)
+
+    score_accessibilite = models.IntegerField(null=True, blank=True)
+    score_positionnement = models.IntegerField(null=True, blank=True)
+    score_topographie = models.IntegerField(null=True, blank=True)
+    score_superficie = models.IntegerField(null=True, blank=True)
+    score_amc = models.FloatField(null=True, blank=True)
+
+    roi = models.FloatField(null=True, blank=True)
+    marge = models.FloatField(null=True, blank=True)
+    benefice_net = models.FloatField(null=True, blank=True)
+    prix_terrain = models.FloatField(null=True, blank=True)
+    score_rentabilite = models.FloatField(null=True, blank=True)
+    type_rentabilite = models.CharField(max_length=20, blank=True, default='')
+
+    score_final = models.FloatField(null=True, blank=True)
+    rang = models.IntegerField(null=True, blank=True)
+
+    nombre_criteres_satisfaits = models.IntegerField(default=0)
+    total_criteres = models.IntegerField(default=0)
+    criteres = models.JSONField(blank=True, null=True)
+    points_forts = models.JSONField(blank=True, null=True)
+    points_faibles = models.JSONField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'resultat_analyse'
+        ordering = ['rang']
+
+    def __str__(self) -> str:
+        return f'{self.id_parcelle} - rang {self.rang}'
 
 
 def couche_upload_path(instance, filename):

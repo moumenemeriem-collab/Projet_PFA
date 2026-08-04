@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { icons } from '../../components/icons'
 import { DashboardLayout } from '../../components/DashboardLayout'
 import { formatApiErrors, getStoredUser } from '../../api/auth'
@@ -30,6 +30,8 @@ interface AlertState {
 export function AdminMessagesPage(): React.JSX.Element {
   const storedUser = getStoredUser()
   const currentUserId = storedUser?.id ?? -1
+  const [searchParams, setSearchParams] = useSearchParams()
+  const messageIdParam = searchParams.get('message')
 
   const [messages, setMessages] = useState<Message[]>([])
   const [searchInput, setSearchInput] = useState('')
@@ -129,6 +131,18 @@ export function AdminMessagesPage(): React.JSX.Element {
       showAlert('page-error', formatApiErrors(error), true)
     }
   }
+
+  useEffect(() => {
+    if (!messageIdParam) return
+    const id = Number(messageIdParam)
+    if (Number.isInteger(id) && id > 0) {
+      void openMessage(id)
+    }
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('message')
+    setSearchParams(params, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messageIdParam])
 
   const handleListEdit = async (id: number, e: React.MouseEvent<HTMLButtonElement>): Promise<void> => {
     e.stopPropagation()

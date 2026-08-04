@@ -19,7 +19,7 @@ const investisseurNav: NavItem[] = [
   { id: 'dashboard', labelKey: 'dashboard.sidebar.home', icon: 'dashboard', href: '/projets' },
   { id: 'projects', labelKey: 'dashboard.sidebar.projects', icon: 'projects', href: '/projets' },
   { id: 'messages', labelKey: 'dashboard.sidebar.messages', icon: 'message', href: '/messages' },
-  { id: 'ranking', labelKey: 'dashboard.sidebar.ranking', icon: 'ranking', href: '/projets' },
+  { id: 'ranking', labelKey: 'dashboard.sidebar.ranking', icon: 'ranking', href: '/classement' },
   { id: 'profile', labelKey: 'dashboard.sidebar.profile', icon: 'profile', href: '/profil' },
 ]
 
@@ -121,7 +121,11 @@ export function DashboardLayout({ role, activePage, children, hideSidebar = fals
                         key={n.id}
                         onClick={() => {
                           setNotifOpen(false)
-                          navigate('/messages')
+                          if (n.message_id != null) {
+                            navigate(role === 'admin' ? `/admin/messages?message=${n.message_id}` : `/messages?message=${n.message_id}`)
+                          } else {
+                            navigate(role === 'admin' ? '/admin/messages' : '/messages')
+                          }
                         }}
                       >
                         <div className="notif-item-body">

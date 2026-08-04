@@ -63,6 +63,29 @@ export async function fetchCouche(id: number): Promise<Couche> {
   return apiJson<Couche>(`${API_BASE}/${id}/`)
 }
 
+export interface CoucheFeature {
+  type: string
+  properties: Record<string, unknown>
+  geometry: unknown
+}
+
+export interface CoucheFeatureCollection {
+  type: 'FeatureCollection'
+  features: CoucheFeature[]
+}
+
+export async function fetchCoucheGeoJSON(id: number): Promise<CoucheFeatureCollection> {
+  const token = localStorage.getItem('access_token')
+  const response = await fetch(`${API_BASE}/${id}/download/`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  const data = await response.json().catch(() => null)
+  if (!response.ok || !data || data.type !== 'FeatureCollection') {
+    throw new Error('Erreur lors du chargement de la couche')
+  }
+  return data as CoucheFeatureCollection
+}
+
 export async function importerCouche(id: number, file: File): Promise<ImportCouche> {
   const formData = new FormData()
   formData.append('fichier', file)

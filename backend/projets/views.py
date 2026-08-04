@@ -12,14 +12,18 @@ from rest_framework.views import APIView
 
 from accounts.authentication import JWTOptionalAuthentication
 
-from .models import Couche, ImportCouche, Projet, Terrain, TypeProjet
+from .models import Analyse, Couche, ImportCouche, Projet, ResultatAnalyse, Terrain, TypeProjet
 from .serializers import (
+    AnalyseCreateSerializer,
+    AnalyseDetailSerializer,
+    AnalyseListSerializer,
     CoucheDetailSerializer,
     CoucheListSerializer,
     ProjetCreateSerializer,
     ProjetDetailSerializer,
     ProjetListSerializer,
     ProjetUpdateSerializer,
+    ResultatAnalyseSerializer,
     TerrainCreateSerializer,
     TerrainListSerializer,
     TypeProjetSerializer,
@@ -193,6 +197,29 @@ class AnalyseTerrainView(APIView):
             'total': total,
             'resultats': resultats,
         })
+
+
+class AnalyseParcellesView(APIView):
+    """Analyse multicritère réelle des parcelles cadastrales (couches SIG)."""
+
+    authentication_classes = [JWTOptionalAuthentication]
+    permission_classes = [AllowAny]
+
+    def post(self, request, projet_pk: int):
+        try:
+            Projet.objects.get(pk=projet_pk)
+        except Projet.DoesNotExist:
+            return Response({'detail': 'Projet introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        from .analyse import analyser_parcelles
+
+        filtres = request.data or {}
+        try:
+            return Response(analyser_parcelles(projet_pk, filtres))
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            return Response({'detail': f'Erreur lors de l’analyse : {exc}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 def _generer_infos_terrain(terrain: Terrain) -> dict:
@@ -683,3 +710,71 @@ def telecharger_couche(request, pk):
     response = HttpResponse(contenu, content_type='application/geo+json')
     response['Content-Disposition'] = f'attachment; filename="{couche.nom}.geojson"'
     return response
+
+
+# ---------------------------------------------------------------------------
+# Analyses sauvegardées
+# ---------------------------------------------------------------------------
+
+class AnalyseListView(APIView):
+    """Liste l'historique des analyses d'un projet et en enregistre une nouvelle."""
+
+    authentication_classes = [JWTOptionalAuthentication]
+    permission_classes = [AllowAny]
+
+    def get(self, request, projet_pk: int):
+        try:
+            Projet.objects.get(pk=projet_pk)
+        except Projet.DoesNotExist:
+            return Response({'detail': 'Projet introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        analyses = Analyse.objects.filter(projet_id=projet_pk)
+        return Response(AnalyseListSerializer(analyses, many=True).data)
+
+    def post(self, request, projet_pk: int):
+        try:
+            projet = Projet.objects.get(pk=projet_pk)
+        except Projet.DoesNotExist:
+            return Response({'detail': 'Projet introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = AnalyseCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            analyse = serializer.save(projet=projet)
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            return Response({'detail': f'Erreur lors de l’enregistrement de l’analyse : {exc}'},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(AnalyseDetailSerializer(analyse).data, status=status.HTTP_201_CREATED)
+
+
+class AnalyseDetailView(APIView):
+    """Détail d'une analyse enregistrée (avec ses résultats)."""
+
+    authentication_classes = [JWTOptionalAuthentication]
+    permission_classes = [AllowAny]
+
+    def get(self, request, projet_pk: int, analyse_pk: int):
+        try:
+            analyse = Analyse.objects.get(pk=analyse_pk, projet_id=projet_pk)
+        except Analyse.DoesNotExist:
+            return Response({'detail': 'Analyse introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(AnalyseDetailSerializer(analyse).data)
+
+
+class AnalyseResultatsView(APIView):
+    """Résultats d'une analyse enregistrée."""
+
+    authentication_classes = [JWTOptionalAuthentication]
+    permission_classes = [AllowAny]
+
+    def get(self, request, projet_pk: int, analyse_pk: int):
+        try:
+            analyse = Analyse.objects.get(pk=analyse_pk, projet_id=projet_pk)
+        except Analyse.DoesNotExist:
+            return Response({'detail': 'Analyse introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        resultats = ResultatAnalyse.objects.filter(analyse_id=analyse.pk)
+        return Response({
+            'total': resultats.count(),
+            'resultats': ResultatAnalyseSerializer(resultats, many=True).data,
+        })

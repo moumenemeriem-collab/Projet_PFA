@@ -74,16 +74,6 @@ function projectImage(projet: Projet, w: number, h: number): string {
   return projet.image || projet.type_image_defaut || `https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=${w}&h=${h}&fit=crop`
 }
 
-function computeRentabilite(projet: Projet): string | null {
-  if (!projet.revenu_estime) return null
-  const revenu = parseFloat(projet.revenu_estime)
-  const coutTotal = [projet.prix_terrain, projet.cout_construction, projet.autres_charges]
-    .filter((v): v is string => !!v)
-    .reduce((acc, v) => acc + parseFloat(v), 0)
-  if (coutTotal <= 0) return null
-  return ((revenu - coutTotal) / coutTotal * 100).toFixed(1)
-}
-
 function formFromProjet(projet: Projet): ProjectFormValues {
   return {
     nom: projet.nom,
@@ -166,7 +156,7 @@ export function ProjectsPage(): React.JSX.Element {
   }, [page, search, typeId, reloadKey])
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
-  const rentabilite = detailProjet ? computeRentabilite(detailProjet) : null
+  const rentabilite = detailProjet?.rentabilite ?? null
 
   const openMenu = (e: React.MouseEvent<HTMLButtonElement>, projet: Projet): void => {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -546,14 +536,52 @@ export function ProjectsPage(): React.JSX.Element {
                     ) : null}
                   </div>
                 </div>
-                {rentabilite ? (
+                {rentabilite && rentabilite.complete ? (
                   <div className="project-detail-section">
                     <h4>{t('projects.detail_rentabilite')}</h4>
                     <div className="project-detail-grid">
                       <div className="project-detail-item">
-                        <span className="project-detail-label">ROI</span>
-                        <span className={`project-detail-value ${parseFloat(rentabilite) >= 0 ? 'text-success' : 'text-error'}`}>{rentabilite}%</span>
+                        <span className="project-detail-label">{t('projects.renta_investissement')}</span>
+                        <span className="project-detail-value">{formatBudget(String(rentabilite.investissement_total))}</span>
                       </div>
+                      {rentabilite.revenu_total != null ? (
+                        <div className="project-detail-item">
+                          <span className="project-detail-label">{t('projects.renta_revenu')}</span>
+                          <span className="project-detail-value">{formatBudget(String(rentabilite.revenu_total))}</span>
+                        </div>
+                      ) : null}
+                      <div className="project-detail-item">
+                        <span className="project-detail-label">{t('projects.renta_benefice')}</span>
+                        <span className={`project-detail-value ${(rentabilite.benefice_net ?? 0) >= 0 ? 'text-success' : 'text-error'}`}>
+                          {formatBudget(String(rentabilite.benefice_net))}
+                        </span>
+                      </div>
+                      <div className="project-detail-item">
+                        <span className="project-detail-label">ROI</span>
+                        <span className={`project-detail-value ${(rentabilite.roi ?? 0) >= 0 ? 'text-success' : 'text-error'}`}>
+                          {rentabilite.roi != null ? `${rentabilite.roi}%` : '—'}
+                        </span>
+                      </div>
+                      {rentabilite.marge != null ? (
+                        <div className="project-detail-item">
+                          <span className="project-detail-label">{t('projects.renta_marge')}</span>
+                          <span className="project-detail-value">{rentabilite.marge}%</span>
+                        </div>
+                      ) : null}
+                      {rentabilite.seuil_unites != null ? (
+                        <div className="project-detail-item">
+                          <span className="project-detail-label">{t('projects.renta_seuil')}</span>
+                          <span className="project-detail-value">{Math.ceil(rentabilite.seuil_unites)}</span>
+                        </div>
+                      ) : null}
+                      {rentabilite.budget_respecte != null ? (
+                        <div className="project-detail-item">
+                          <span className="project-detail-label">{t('projects.renta_budget')}</span>
+                          <span className={`project-detail-value ${rentabilite.budget_respecte ? 'text-success' : 'text-error'}`}>
+                            {rentabilite.budget_respecte ? t('projects.renta_budget_ok') : t('projects.renta_budget_ko')}
+                          </span>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 ) : null}

@@ -10,6 +10,17 @@ export interface TypeProjet {
   actif: boolean
 }
 
+export interface Rentabilite {
+  investissement_total: number | null
+  revenu_total: number | null
+  benefice_net: number | null
+  roi: number | null
+  marge: number | null
+  seuil_unites: number | null
+  budget_respecte: boolean | null
+  complete: boolean
+}
+
 export interface Projet {
   id: number
   nom: string
@@ -29,6 +40,7 @@ export interface Projet {
   image: string | null
   date_creation: string
   investisseur: number
+  rentabilite?: Rentabilite | null
 }
 
 export interface ProjetListResponse {

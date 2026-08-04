@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Couche, Projet, Terrain, TypeProjet
+from .models import Analyse, Couche, Projet, ResultatAnalyse, Terrain, TypeProjet
 
 
 class TypeProjetSerializer(serializers.ModelSerializer):
@@ -13,6 +13,7 @@ class TypeProjetSerializer(serializers.ModelSerializer):
 class ProjetListSerializer(serializers.ModelSerializer):
     type_nom = serializers.CharField(source='id_type.nom', read_only=True)
     type_image_defaut = serializers.CharField(source='id_type.image_defaut', read_only=True)
+    rentabilite = serializers.SerializerMethodField()
 
     class Meta:
         model = Projet
@@ -21,14 +22,18 @@ class ProjetListSerializer(serializers.ModelSerializer):
             'surface_souhaitee', 'budget_total', 'prix_terrain',
             'nombre_unites', 'surface_construite', 'cout_construction',
             'autres_charges', 'prix_vente_unitaire', 'revenu_estime',
-            'image', 'date_creation', 'investisseur',
+            'image', 'date_creation', 'investisseur', 'rentabilite',
         ]
         read_only_fields = ['id', 'date_creation', 'investisseur']
+
+    def get_rentabilite(self, obj: Projet) -> dict:
+        return obj.calculer_rentabilite()
 
 
 class ProjetDetailSerializer(serializers.ModelSerializer):
     type_nom = serializers.CharField(source='id_type.nom', read_only=True)
     type_image_defaut = serializers.CharField(source='id_type.image_defaut', read_only=True)
+    rentabilite = serializers.SerializerMethodField()
 
     class Meta:
         model = Projet
@@ -37,9 +42,12 @@ class ProjetDetailSerializer(serializers.ModelSerializer):
             'surface_souhaitee', 'budget_total', 'prix_terrain',
             'nombre_unites', 'surface_construite', 'cout_construction',
             'autres_charges', 'prix_vente_unitaire', 'revenu_estime',
-            'image', 'date_creation', 'investisseur',
+            'image', 'date_creation', 'investisseur', 'rentabilite',
         ]
         read_only_fields = ['id', 'date_creation', 'investisseur']
+
+    def get_rentabilite(self, obj: Projet) -> dict:
+        return obj.calculer_rentabilite()
 
 
 class ProjetCreateSerializer(serializers.Serializer):
@@ -162,3 +170,89 @@ class CoucheDetailSerializer(serializers.ModelSerializer):
             }
             for i in obj.imports.all()[:10]
         ]
+
+
+class ResultatAnalyseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ResultatAnalyse
+        fields = [
+            'id', 'id_parcelle', 'reference_cadastrale', 'nom', 'superficie', 'lat', 'lng',
+            'score_accessibilite', 'score_positionnement', 'score_topographie',
+            'score_superficie', 'score_amc',
+            'roi', 'marge', 'benefice_net', 'prix_terrain',
+            'score_rentabilite', 'type_rentabilite',
+            'score_final', 'rang',
+            'nombre_criteres_satisfaits', 'total_criteres',
+            'criteres', 'points_forts', 'points_faibles',
+        ]
+        read_only_fields = fields
+
+
+class AnalyseListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Analyse
+        fields = [
+            'id', 'projet', 'date_creation', 'filtres',
+            'poids_amc', 'poids_rentabilite',
+            'nombre_parcelles', 'statut',
+        ]
+        read_only_fields = fields
+
+
+class AnalyseDetailSerializer(AnalyseListSerializer):
+    resultats = ResultatAnalyseSerializer(many=True, read_only=True)
+
+    class Meta(AnalyseListSerializer.Meta):
+        fields = AnalyseListSerializer.Meta.fields + ['resultats']
+
+
+class AnalyseCreateSerializer(serializers.Serializer):
+    filtres = serializers.JSONField(required=False, default=dict)
+
+    def create(self, validated_data: dict) -> Analyse:
+        from .analyse import analyser_parcelles
+
+        projet = validated_data.pop('projet')
+        filtres = validated_data.pop('filtres') or {}
+        resultat = analyser_parcelles(projet.pk, filtres)
+        parcelles = resultat.get('resultats', [])
+
+        analyse = Analyse.objects.create(
+            projet=projet,
+            filtres=filtres,
+            poids_amc=0.70,
+            poids_rentabilite=0.30,
+            nombre_parcelles=len(parcelles),
+            statut='complete',
+        )
+        ResultatAnalyse.objects.bulk_create([
+            ResultatAnalyse(
+                analyse=analyse,
+                id_parcelle=str(p.get('id')) if p.get('id') is not None else p.get('id_parcelle'),
+                reference_cadastrale=(p.get('infos_generales') or {}).get('reference_cadastrale', '') or '',
+                nom=p.get('nom', '') or '',
+                superficie=p.get('superficie'),
+                lat=p.get('lat'),
+                lng=p.get('lng'),
+                score_accessibilite=p.get('score_accessibilite'),
+                score_positionnement=p.get('score_positionnement'),
+                score_topographie=p.get('score_topographie'),
+                score_superficie=p.get('score_superficie'),
+                score_amc=p.get('score_amc'),
+                roi=p.get('roi'),
+                marge=p.get('marge'),
+                benefice_net=p.get('benefice_net'),
+                prix_terrain=p.get('prix_terrain'),
+                score_rentabilite=p.get('score_rentabilite'),
+                type_rentabilite=p.get('type_rentabilite', '') or '',
+                score_final=p.get('score_final'),
+                rang=p.get('classement'),
+                nombre_criteres_satisfaits=p.get('criteres_satisfaits', 0) or 0,
+                total_criteres=p.get('criteres_total', 0) or 0,
+                criteres=p.get('criteres'),
+                points_forts=p.get('points_forts'),
+                points_faibles=p.get('points_faibles'),
+            )
+            for p in parcelles
+        ])
+        return analyse
