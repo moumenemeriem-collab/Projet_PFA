@@ -1,7 +1,11 @@
 """Vues de statistiques et tableau de bord administrateur."""
 
+import glob
+import json
+import os
 from datetime import timedelta
 
+from django.conf import settings
 from django.db.models import Count, F
 from django.db.models.functions import TruncMonth
 from django.utils import timezone
@@ -11,8 +15,8 @@ from rest_framework.views import APIView
 
 from accounts.models import Utilisateur
 from accounts.permissions import IsAdmin
-from messagerie.models import Message, Reponse
-from projets.models import Analyse, Couche, ImportCouche, Projet
+from messagerie.models import Message, Notification, Reponse
+from projets.models import Analyse, Couche, Projet
 
 from .models import Activite
 
@@ -40,6 +44,33 @@ def _aggregate_par_mois(queryset, champ='date_creation'):
     for m in _mois_serie():
         serie.append({'mois': m, 'total': rows.get(m, 0)})
     return serie
+
+
+def _nb_parcelles_cadastre():
+    """Compte les parcelles de la couche cadastre (GeoJSON importé).
+
+    Les entités du cadastre ne sont pas en lignes de base : elles vivent dans
+    le fichier de la couche. On lit le dernier GeoJSON importé pour la couche
+    'cadastre'.
+    """
+    chemins = []
+    couche = Couche.objects.filter(nom='cadastre').first()
+    if couche and couche.fichier and couche.fichier.name:
+        try:
+            chemins.append(couche.fichier.path)
+        except Exception:
+            chemins = []
+    if not chemins:
+        dossier = os.path.join(settings.MEDIA_ROOT, 'couches', 'cadastre')
+        chemins = sorted(glob.glob(os.path.join(dossier, '*.geojson')))
+    if not chemins:
+        return 0
+    try:
+        with open(chemins[-1], encoding='utf-8') as f:
+            data = json.load(f)
+        return len(data.get('features', []))
+    except Exception:
+        return 0
 
 
 class DashboardStatsView(APIView):
@@ -84,17 +115,16 @@ class DashboardStatsView(APIView):
         nb_analyses = analyses.count()
         nb_analyses_semaine = analyses.filter(date_creation__gte=il_y_a_7j).count()
 
-        # --- Tâches ---
-        # En attente : couches non importées ; en cours : analyses lancées ;
-        # terminées : imports réussis.
-        nb_taches_attente = couches.filter(etat='non_importe').count()
-        nb_taches_cours = analyses.filter(statut='en_cours').count()
-        nb_taches_terminees = ImportCouche.objects.filter(statut='succes').count()
+        # --- Actifs aujourd'hui (au moins une activité enregistrée ce jour) ---
+        nb_actifs_aujourdhui = activites.filter(
+            date_creation__date=today,
+        ).values('utilisateur_id').distinct().count()
 
-        # --- Messages / projets (activité globale) ---
+        # --- Projets / parcelles cadastrales / messagerie ---
         nb_projets = Projet.objects.count()
+        nb_parcelles_cadastrales = _nb_parcelles_cadastre()
         nb_messages = Message.objects.count()
-        nb_notifications = 0
+        nb_notifications_non_lues = Notification.objects.filter(lu=False).count()
 
         # --- Séries mensuelles ---
         serie_utilisateurs = _aggregate_par_mois(utilisateurs)
@@ -123,11 +153,17 @@ class DashboardStatsView(APIView):
         for r in utilisateurs.values('role').annotate(total=Count('id')):
             par_role[r['role']] = r['total']
 
+        # --- Activité par entité ---
+        par_entite = {}
+        for r in activites.values('entite').annotate(total=Count('id')):
+            par_entite[r['entite']] = r['total']
+
         return Response({
             'date': timezone.now().isoformat(),
             'utilisateurs': {
                 'total': nb_total,
                 'actifs': nb_actifs,
+                'actifs_aujourdhui': nb_actifs_aujourdhui,
                 'nouveaux': nb_nouveaux,
                 'desactives': max(nb_desactives, 0),
                 'par_role': par_role,
@@ -145,16 +181,14 @@ class DashboardStatsView(APIView):
                 'semaine': nb_analyses_semaine,
                 'evolution': serie_analyses,
             },
-            'taches': {
-                'attente': nb_taches_attente,
-                'cours': nb_taches_cours,
-                'terminees': nb_taches_terminees,
-            },
             'activite': {
                 'total': activites.count(),
                 'evolution': serie_activite,
                 'historique': historique,
                 'projets': nb_projets,
+                'parcelles_cadastrales': nb_parcelles_cadastrales,
                 'messages': nb_messages,
+                'notifications_non_lues': nb_notifications_non_lues,
+                'par_entite': par_entite,
             },
         })

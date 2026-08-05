@@ -8,6 +8,7 @@ export interface MoisPoint {
 export interface UtilisateursStats {
   total: number
   actifs: number
+  actifs_aujourdhui: number
   nouveaux: number
   desactives: number
   par_role: Record<string, number>
@@ -28,12 +29,6 @@ export interface AnalysesStats {
   evolution: MoisPoint[]
 }
 
-export interface TachesStats {
-  attente: number
-  cours: number
-  terminees: number
-}
-
 export interface HistoriqueAction {
   id: number
   action: 'ajout' | 'modification' | 'suppression'
@@ -48,7 +43,10 @@ export interface ActiviteStats {
   evolution: MoisPoint[]
   historique: HistoriqueAction[]
   projets: number
+  parcelles_cadastrales: number
   messages: number
+  notifications_non_lues: number
+  par_entite: Record<string, number>
 }
 
 export interface DashboardStats {
@@ -56,7 +54,6 @@ export interface DashboardStats {
   utilisateurs: UtilisateursStats
   couches: CouchesStats
   analyses: AnalysesStats
-  taches: TachesStats
   activite: ActiviteStats
 }
 
