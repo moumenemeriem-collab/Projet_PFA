@@ -674,6 +674,7 @@
     "title": "Tableau de bord",
     "subtitle": "Vue d'ensemble de la plateforme et de l'activité récente",
     "loading": "Chargement des statistiques...",
+    "updated_at": "Actualisé à",
     "error_back": "Retour à la gestion",
     "total": "Total",
     "users_total": "Utilisateurs",

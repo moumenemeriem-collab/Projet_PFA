@@ -28,6 +28,17 @@
   color: #94a3b8;
 }
 
+.dash-updated {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: 100px;
+  background: #f8fafc;
+  border: 1px solid #eef2f7;
+  color: #64748b;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
 /* ── Cartes de statistiques ── */
 
 .dash-stats-grid {

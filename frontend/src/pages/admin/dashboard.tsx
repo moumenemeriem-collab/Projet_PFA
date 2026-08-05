@@ -144,6 +144,7 @@ export function AdminDashboardPage(): React.JSX.Element {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -153,6 +154,7 @@ export function AdminDashboardPage(): React.JSX.Element {
       .then((s) => {
         if (cancelled) return
         setStats(s)
+        setLastUpdate(new Date())
         setLoading(false)
       })
       .catch((err) => {
@@ -163,6 +165,21 @@ export function AdminDashboardPage(): React.JSX.Element {
     return () => {
       cancelled = true
     }
+  }, [])
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      fetchDashboardStats()
+        .then((s) => {
+          setStats(s)
+          setLastUpdate(new Date())
+          setError('')
+        })
+        .catch((err) => {
+          setError(formatApiErrors(err))
+        })
+    }, 30000)
+    return () => clearInterval(id)
   }, [])
 
   let content: React.ReactNode
@@ -203,6 +220,9 @@ export function AdminDashboardPage(): React.JSX.Element {
             <h2 className="dash-title">{t('dash.title')}</h2>
             <p className="dash-subtitle">{t('dash.subtitle')}</p>
           </div>
+          <span className="dash-updated">
+            {t('dash.updated_at')} {lastUpdate ? lastUpdate.toLocaleTimeString('fr-FR') : '—'}
+          </span>
         </div>
 
         <div className="dash-stats-grid">

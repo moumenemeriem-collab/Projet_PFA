@@ -674,6 +674,7 @@
     "title": "Dashboard",
     "subtitle": "Platform overview and recent activity",
     "loading": "Loading statistics...",
+    "updated_at": "Updated at",
     "error_back": "Back to management",
     "total": "Total",
     "users_total": "Users",
