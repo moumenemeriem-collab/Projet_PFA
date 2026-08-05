@@ -1,6 +1,14 @@
 #!/bin/sh
 set -e
 
+if [ -z "$DATABASE_URL" ]; then
+  echo "ERREUR : DATABASE_URL n'est pas défini. Sur Railway :"
+  echo "  1. Crée une base PostgreSQL : New -> Database -> PostgreSQL"
+  echo "  2. Sur le service Web, ajoute la variable : DATABASE_URL = \${{Postgres.DATABASE_URL}}"
+  echo "  3. Redéploie."
+  exit 1
+fi
+
 echo "==> Migrations..."
 python manage.py migrate --noinput
 

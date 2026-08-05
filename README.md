@@ -15,13 +15,15 @@ Tout le monde pourra ouvrir l'application avec un simple navigateur, sans rien i
 2. Railway détecte le `Dockerfile` (build du frontend + backend automatiquement).
 3. Ajouter une base PostgreSQL : **New → Database → PostgreSQL**.
 4. Dans les variables du service web, définir :
+   - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}` (**obligatoire** — sélectionne `Postgres` dans le sélecteur de variable)
    - `DJANGO_DEBUG` = `False`
    - `DJANGO_SECRET_KEY` = une longue chaîne aléatoire
    - `USE_SQLITE` = `False`
    - `DJANGO_SUPERUSER_USERNAME` et `DJANGO_SUPERUSER_PASSWORD` (compte admin créé au démarrage)
-   - `DJANGO_ALLOWED_HOSTS` = (optionnel, Railway ajoute automatiquement ton domaine)
    - `CORS_ALLOWED_ORIGINS` = `https://<ton-domaine>.up.railway.app`
    - `GUNICORN_WORKERS` = `2` (le chatbot est lourd en mémoire)
+
+> Le conteneur refuse de démarrer si `DATABASE_URL` est absent (message d'erreur explicite) : l'application nécessite PostgreSQL.
 5. Au démarrage, `entrypoint.sh` exécute automatiquement : `migrate`, seeds des couches SIG / types de projet, `collectstatic`, création du superutilisateur, puis lance Gunicorn.
 
 ### 3. Récupérer l'URL publique
