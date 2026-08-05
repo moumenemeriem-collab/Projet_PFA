@@ -7,6 +7,7 @@ import { fetchProjet, type Projet } from '../api/projets'
 import { fetchAnalyse, type AnalyseFiltres, type AnalyseResultat } from '../api/terrains'
 import { createAnalyse, fetchAnalyseDetail, type AnalyseDetail, type ResultatAnalyse } from '../api/analyses'
 import { fetchCouches, fetchCoucheGeoJSON, type Couche, type CoucheFeature, type CoucheFeatureCollection } from '../api/couches'
+import { attributeLabel } from '../utils/attributeLabels'
 import { t } from '../i18n/index'
 
 import osmImg from '../assets/features/OSM.png'
@@ -175,40 +176,6 @@ function escapeHtml(value: unknown): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-}
-
-const ATTRIBUTE_LABELS: Record<string, string> = {
-  id_parcelle: 'Identifiant parcelle',
-  num_titre_foncier: 'Titre foncier',
-  type_immatriculation: 'Immatriculation',
-  nature_juridique: 'Nature juridique',
-  superficie_m2: 'Superficie (m²)',
-  commune: 'Commune',
-  cercle: 'Cercle',
-  province: 'Province',
-  nature_occupation_code: 'Code occupation',
-  nature_occupation_libelle: 'Occupation du sol',
-  zone_amenagement: "Zone d'aménagement",
-  statut_foncier: 'Statut foncier',
-  origine: 'Origine',
-  reference_plan: 'Référence plan',
-  echelle_leve: 'Échelle du levé',
-  date_creation: 'Date de création',
-  date_derniere_maj: 'Dernière mise à jour',
-  full_id: 'Identifiant complet',
-  osm_id: 'Identifiant OSM',
-  amenity: 'Type d\'équipement',
-  highway: 'Type de route',
-  name: 'Nom',
-  surface: 'Revêtement',
-}
-
-function attributeLabel(key: string): string {
-  const known = ATTRIBUTE_LABELS[key]
-  if (known) return known
-  return key
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 function isValidGeoJSONFeature(f: CoucheFeature): boolean {

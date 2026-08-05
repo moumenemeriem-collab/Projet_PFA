@@ -12,6 +12,8 @@ import {
   type AnalyseDetail,
   type ResultatAnalyse,
 } from '../api/analyses'
+import { fetchCouches, fetchCoucheGeoJSON } from '../api/couches'
+import { attributeLabel } from '../utils/attributeLabels'
 import { t } from '../i18n/index'
 
 const PAGE_SIZE = 10
@@ -87,7 +89,7 @@ function renderTerrainRow(t_: Terrain, onDelete: (id: number) => void): React.JS
   )
 }
 
-function DetailModal({ resultat, onClose }: { resultat: ResultatAnalyse; onClose: () => void }): React.JSX.Element {
+function DetailModal({ resultat, cadastre, onClose }: { resultat: ResultatAnalyse; cadastre?: Record<string, unknown> | null; onClose: () => void }): React.JSX.Element {
   return (
     <div className="admin-modal-overlay" onClick={onClose}>
       <div className="admin-modal admin-modal--wide" onClick={(e) => e.stopPropagation()}>
@@ -130,6 +132,22 @@ function DetailModal({ resultat, onClose }: { resultat: ResultatAnalyse; onClose
               <span className="classement-detail-value">{confBadge(resultat)}</span>
             </div>
           </div>
+
+          {cadastre && Object.keys(cadastre).length > 0 ? (
+            <div className="classement-detail-section">
+              <h4 className="classement-detail-section-title">{t('ranking.carte_cadastrale')}</h4>
+              <div className="classement-detail-grid">
+                {Object.entries(cadastre)
+                  .filter(([, v]) => v !== null && v !== undefined && v !== '')
+                  .map(([k, v]) => (
+                    <div className="classement-detail-item" key={k}>
+                      <span className="classement-detail-label">{attributeLabel(k)}</span>
+                      <span className="classement-detail-value">{String(v)}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          ) : null}
 
           {resultat.criteres && resultat.criteres.length > 0 ? (
             <div className="classement-detail-section">
@@ -190,6 +208,7 @@ export function ClassementPage(): React.JSX.Element {
   const [historyLoading, setHistoryLoading] = useState(false)
 
   const [terrains, setTerrains] = useState<Terrain[]>([])
+  const [cadastreAttrs, setCadastreAttrs] = useState<Record<string, Record<string, unknown>>>({})
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -277,6 +296,30 @@ export function ClassementPage(): React.JSX.Element {
     const timer = setTimeout(() => setAlert(null), 5000)
     return () => clearTimeout(timer)
   }, [alert])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const list = await fetchCouches()
+        const cad = list.find((c) => c.nom === 'cadastre')
+        if (!cad) return
+        const fc = await fetchCoucheGeoJSON(cad.id)
+        if (cancelled) return
+        const map: Record<string, Record<string, unknown>> = {}
+        fc.features.forEach((f) => {
+          const id = f.properties?.id_parcelle
+          if (id != null) map[String(id)] = f.properties as Record<string, unknown>
+        })
+        setCadastreAttrs(map)
+      } catch {
+        /* ignore */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     setParcellesPage(1)
@@ -588,7 +631,7 @@ export function ClassementPage(): React.JSX.Element {
         )}
       </div>
 
-      {detail ? <DetailModal resultat={detail} onClose={() => setDetail(null)} /> : null}
+      {detail ? <DetailModal resultat={detail} cadastre={cadastreAttrs[String(detail.reference_cadastrale || detail.id_parcelle)] || null} onClose={() => setDetail(null)} /> : null}
 
       {historyOpen ? (
         <div className="admin-modal-overlay" onClick={() => setHistoryOpen(false)}>
