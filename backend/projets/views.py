@@ -30,6 +30,11 @@ from .serializers import (
 )
 
 
+def _log(utilisateur, action, entite, description):
+    from dashboard.models import Activite
+    Activite.log(utilisateur, action, entite, description)
+
+
 class TypeProjetListView(APIView):
     authentication_classes = [JWTOptionalAuthentication]
     permission_classes = [AllowAny]
@@ -85,6 +90,7 @@ class ProjetListView(APIView):
         serializer = ProjetCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         projet = serializer.save(investisseur=request.user)
+        _log(request.user, 'ajout', 'projet', f'Création du projet "{projet.nom}"')
         return Response(
             ProjetDetailSerializer(projet).data,
             status=status.HTTP_201_CREATED,
@@ -121,6 +127,7 @@ class ProjetDetailView(APIView):
         serializer = ProjetUpdateSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         projet = serializer.update(projet, serializer.validated_data)
+        _log(request.user, 'modification', 'projet', f'Modification du projet "{projet.nom}"')
         return Response(ProjetDetailSerializer(projet).data)
 
     def delete(self, request, pk: int):
@@ -138,7 +145,9 @@ class ProjetDetailView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
+        nom_projet = projet.nom
         projet.delete()
+        _log(request.user, 'suppression', 'projet', f'Suppression du projet "{nom_projet}"')
         return Response({'message': 'Projet supprimé avec succès.'}, status=status.HTTP_200_OK)
 
 
@@ -511,6 +520,7 @@ class TerrainListView(APIView):
         serializer = TerrainCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         terrain = serializer.save(projet=projet)
+        _log(request.user, 'ajout', 'terrain', f'Ajout du terrain "{terrain.nom}" (projet {projet.nom})')
         return Response(
             TerrainListSerializer(terrain).data,
             status=status.HTTP_201_CREATED,
@@ -530,7 +540,9 @@ class TerrainDetailView(APIView):
         except Terrain.DoesNotExist:
             return Response({'detail': 'Terrain introuvable.'}, status=status.HTTP_404_NOT_FOUND)
 
+        nom_terrain = terrain.nom
         terrain.delete()
+        _log(request.user, 'suppression', 'terrain', f'Suppression du terrain "{nom_terrain}"')
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -655,6 +667,8 @@ def importer_couche(request, pk):
         couche.format_fichier = 'GeoJSON'
         couche.save()
 
+        _log(request.user, 'modification', 'couche', f'Import de la couche "{couche.nom_affichage}" : {nb} enregistrement(s)')
+
         return Response({'message': f'Import réussi : {nb} enregistrement(s) importé(s)', 'nb_enregistrements': nb})
 
     except Exception as e:
@@ -700,7 +714,15 @@ def telecharger_couche(request, pk):
                 props = {}
                 for i, nom in enumerate(attributs_attendus):
                     props[nom] = row[i + 1]
-                features.append({'type': 'Feature', 'properties': props, 'geometry': row[0]})
+                geometry = row[0]
+                if isinstance(geometry, str):
+                    try:
+                        geometry = json.loads(geometry)
+                    except ValueError:
+                        geometry = None
+                if not isinstance(geometry, dict) or geometry.get('type') not in ('Point', 'MultiPoint', 'LineString', 'MultiLineString', 'Polygon', 'MultiPolygon', 'GeometryCollection'):
+                    continue
+                features.append({'type': 'Feature', 'properties': props, 'geometry': geometry})
     except Exception as e:
         return Response({'error': f'Erreur lors de la génération du fichier : {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -745,6 +767,7 @@ class AnalyseListView(APIView):
         except Exception as exc:
             return Response({'detail': f'Erreur lors de l’enregistrement de l’analyse : {exc}'},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        _log(request.user, 'ajout', 'analyse', f'Analyse #{analyse.pk} sur le projet "{projet.nom}" ({analyse.nombre_parcelles} parcelle(s))')
         return Response(AnalyseDetailSerializer(analyse).data, status=status.HTTP_201_CREATED)
 
 

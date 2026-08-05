@@ -24,7 +24,7 @@ const investisseurNav: NavItem[] = [
 ]
 
 const adminNav: NavItem[] = [
-  { id: 'dashboard', labelKey: 'admin.sidebar.home', icon: 'dashboard', href: '/admin/utilisateurs' },
+  { id: 'dashboard', labelKey: 'admin.sidebar.home', icon: 'dashboard', href: '/admin/tableau-de-bord' },
   { id: 'users', labelKey: 'admin.sidebar.users', icon: 'users', href: '/admin/utilisateurs' },
   { id: 'messages', labelKey: 'admin.sidebar.messages', icon: 'message', href: '/admin/messages' },
   { id: 'data', labelKey: 'admin.sidebar.data', icon: 'database', href: '/admin/donnees' },

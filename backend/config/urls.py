@@ -25,6 +25,7 @@ urlpatterns = [
     path('api/messages/', include('messagerie.urls')),
     path('api/projets/', include('projets.urls')),
     path('api/chatbot/', include('chatbot.urls')),
+    path('api/dashboard/', include('dashboard.urls')),
 ]
 
 if settings.DEBUG:

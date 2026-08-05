@@ -39,6 +39,11 @@ def _creer_notification(destinataire, titre, contenu, type_notif, message_id=Non
     )
 
 
+def _log(utilisateur, action, entite, description):
+    from dashboard.models import Activite
+    Activite.log(utilisateur, action, entite, description)
+
+
 class MessageListView(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
@@ -80,6 +85,7 @@ class MessageListView(APIView):
             sujet=serializer.validated_data['sujet'],
             contenu=serializer.validated_data['contenu'],
         )
+        _log(request.user, 'ajout', 'message', f'Envoi du message "{message.sujet}"')
         from accounts.models import Utilisateur
         admins = Utilisateur.objects.filter(role='admin')
         for admin in admins:
@@ -132,6 +138,7 @@ class MessageDetailView(APIView):
         for field, value in serializer.validated_data.items():
             setattr(message, field, value)
         message.save()
+        _log(request.user, 'modification', 'message', f'Modification du message "{message.sujet}"')
         return Response({
             'message': 'Message modifié avec succès.',
             'data': MessageDetailSerializer(message).data,
@@ -147,6 +154,7 @@ class MessageDetailView(APIView):
         sujet = message.sujet
         expediteur = message.expediteur
         message.delete()
+        _log(request.user, 'suppression', 'message', f'Suppression du message "{sujet}"')
         auteur_name = f'{request.user.prenom} {request.user.nom}'
         if request.user.role == 'admin':
             _creer_notification(
@@ -191,6 +199,7 @@ class ReponseCreateView(APIView):
             auteur=request.user,
             contenu=serializer.validated_data['contenu'],
         )
+        _log(request.user, 'ajout', 'reponse', f'Réponse au message "{message.sujet}"')
         auteur_name = f'{request.user.prenom} {request.user.nom}'
         if request.user.role == 'admin' and not message.est_lu:
             message.est_lu = True

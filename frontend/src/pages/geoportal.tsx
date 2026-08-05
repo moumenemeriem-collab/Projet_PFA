@@ -13,15 +13,42 @@ import osmImg from '../assets/features/OSM.png'
 import satImg from '../assets/features/osm_sat.jpg'
 import topoImg from '../assets/features/osm_topo.jpeg'
 
+// Aperçu SVG embarqué (data URI) pour les fonds de carte sans vignette PNG locale.
+// Ratio 4:3 identique aux vignettes PNG (aspect-ratio de .geo-popup-basemap-img).
+const svgThumb = (body: string): string => {
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="180" viewBox="0 0 240 180" preserveAspectRatio="xMidYMid slice">${body}</svg>`
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+}
+
+const darkThumb = svgThumb(
+  '<rect width="240" height="180" fill="#1a2230"/>' +
+  '<path d="M0 45h240M0 90h240M0 135h240M60 0v180M120 0v180M180 0v180" stroke="#242e3f" stroke-width="2"/>' +
+  '<rect x="10" y="55" width="40" height="26" rx="4" fill="#173a5e" opacity="0.85"/>' +
+  '<rect x="180" y="20" width="46" height="30" rx="4" fill="#23405f" opacity="0.9"/>' +
+  '<rect x="180" y="110" width="50" height="32" rx="4" fill="#173a5e" opacity="0.85"/>' +
+  '<rect x="70" y="120" width="36" height="24" rx="4" fill="#23405f" opacity="0.9"/>'
+)
+
+const lightThumb = svgThumb(
+  '<rect width="240" height="180" fill="#eef2f6"/>' +
+  '<path d="M0 45h240M0 90h240M0 135h240M60 0v180M120 0v180M180 0v180" stroke="#d9e2ec" stroke-width="2"/>' +
+  '<rect x="10" y="55" width="40" height="26" rx="4" fill="#bfdbfe" opacity="0.9"/>' +
+  '<rect x="180" y="20" width="46" height="30" rx="4" fill="#dbe3ec" stroke="#c3cfdb" stroke-width="1.5"/>' +
+  '<rect x="180" y="110" width="50" height="32" rx="4" fill="#bfdbfe" opacity="0.9"/>' +
+  '<rect x="70" y="120" width="36" height="24" rx="4" fill="#dbe3ec" stroke="#c3cfdb" stroke-width="1.5"/>'
+)
+
 const BASEMAPS: { id: string; name: string; url: string; attribution: string; img: string }[] = [
   { id: 'osm', name: 'OpenStreetMap', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap', img: osmImg },
   { id: 'satellite', name: 'Satellite', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: '&copy; Esri', img: satImg },
   { id: 'topo', name: 'Topographique', url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenTopoMap', img: topoImg },
+  { id: 'dark', name: 'Sombre', url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attribution: '&copy; CARTO', img: darkThumb },
+  { id: 'light', name: 'Clair', url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', attribution: '&copy; CARTO', img: lightThumb },
 ]
 
 const OVERLAY_LAYERS: { id: string; name: string; url: string; attribution: string; opacity: number }[] = [
   { id: 'transport', name: 'Transport', url: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', attribution: '&copy; OSM FR', opacity: 0.6 },
-  { id: 'dark', name: 'Sombre', url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attribution: '&copy; CARTO', opacity: 0.5 },
 ]
 
 interface CoucheType {
@@ -43,6 +70,9 @@ const TEMARA_BOUNDS: [[number, number], [number, number]] = [
   [33.7, -7.1],
   [34.05, -6.75],
 ]
+
+// Doit rester synchronisé avec `transition: width 0.28s` de `.geo-sidebar` (geoportal.css)
+const SIDEBAR_TRANSITION_MS = 280
 
 const CADASTRE_STYLE = { color: '#b45309', weight: 1.4, opacity: 0.9, fillColor: '#f59e0b', fillOpacity: 0.18 }
 const CADASTRE_SEARCH_STYLE = { color: '#dc2626', weight: 4, opacity: 1, fillColor: '#ef4444', fillOpacity: 0.45 }
@@ -181,6 +211,17 @@ function attributeLabel(key: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
+function isValidGeoJSONFeature(f: CoucheFeature): boolean {
+  const g = f?.geometry
+  if (!g || typeof g !== 'object' || Array.isArray(g)) return false
+  const geom = g as { type?: unknown; coordinates?: unknown }
+  return typeof geom.type === 'string' && Array.isArray(geom.coordinates)
+}
+
+function validFeatures(fc: CoucheFeatureCollection): CoucheFeatureCollection {
+  return { type: 'FeatureCollection', features: fc.features.filter(isValidGeoJSONFeature) }
+}
+
 function propsToHtml(props: Record<string, unknown>): string {
   return Object.entries(props)
     .filter(([, v]) => v !== null && v !== undefined && v !== '')
@@ -280,7 +321,7 @@ function setupCustomDistances(): void {
   })
 }
 
-function handleResetFilters(): void {
+function resetFilterDom(): void {
   document.querySelectorAll<HTMLInputElement>('#filter-accordion input[type="checkbox"]').forEach((cb) => { cb.checked = false })
   document.querySelectorAll<HTMLSelectElement>('#filter-accordion select').forEach((sel) => { sel.selectedIndex = 0 })
   document.querySelectorAll<HTMLInputElement>('#filter-accordion input.geo-distance-input').forEach((inp) => { inp.hidden = true; inp.value = '' })
@@ -548,6 +589,7 @@ export function GeoportalPage(): React.JSX.Element {
   const [cardError, setCardError] = useState<string | null>(null)
   const [coord, setCoord] = useState('Lat: — , Lng: —')
   const [layersPopupOpen, setLayersPopupOpen] = useState(false)
+  const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
   const [basemapId, setBasemapId] = useState<string>(BASEMAPS[0].id)
   const [overlays, setOverlays] = useState<Record<string, boolean>>({})
   const [openSections, setOpenSections] = useState<string[]>(['accessibilite'])
@@ -580,6 +622,7 @@ export function GeoportalPage(): React.JSX.Element {
   const typeLayersRef = useRef<Record<string, any>>({})
   const cadastreLayerRef = useRef<any>(null)
   const layersBarRef = useRef<HTMLDivElement>(null)
+  const basemapMenuRef = useRef<HTMLDivElement>(null)
   const accordionContentRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const pendingSearchRef = useRef<string | null>(null)
   const searchParcelleRef = useRef<string | null>(null)
@@ -718,13 +761,13 @@ export function GeoportalPage(): React.JSX.Element {
     const couche = couchesDispo.find((c) => c.id === id)
     if (couche?.nom === 'reseau_routier') {
       const style = ROUTE_STYLES[type] ?? { color: '#6b7280', weight: 2 }
-      return L.geoJSON(fc, {
+      return L.geoJSON(validFeatures(fc), {
         style: { color: style.color, weight: style.weight, opacity: 0.9, dashArray: style.dashArray },
       }).addTo(map)
     }
     const label = TYPE_LABELS[type] ?? type
     const symbol = EQUIP_SYMBOLS[type] ?? EQUIP_FALLBACK_SYMBOL
-    return L.geoJSON(fc, {
+    return L.geoJSON(validFeatures(fc), {
       pointToLayer: (_feature: any, latlng: any) =>
         L.marker(latlng, {
           icon: L.divIcon({
@@ -746,7 +789,7 @@ export function GeoportalPage(): React.JSX.Element {
   }
 
   const buildCadastreLayer = (map: any, fc: CoucheFeatureCollection): any =>
-    L.geoJSON(fc, {
+    L.geoJSON(validFeatures(fc), {
       style: CADASTRE_STYLE,
       onEachFeature: (feature: any, layerItem: any) => {
         layerItem.on('click', () => {
@@ -1027,6 +1070,17 @@ export function GeoportalPage(): React.JSX.Element {
     return () => document.removeEventListener('click', onDocClick)
   }, [layersPopupOpen])
 
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent): void => {
+      const menu = basemapMenuRef.current
+      if (basemapMenuOpen && menu && !menu.contains(e.target as Node)) {
+        setBasemapMenuOpen(false)
+      }
+    }
+    document.addEventListener('click', onDocClick)
+    return () => document.removeEventListener('click', onDocClick)
+  }, [basemapMenuOpen])
+
   const toggleAccordion = (section: string): void => {
     setOpenSections((prev) => (prev.includes(section) ? prev.filter((s) => s !== section) : [...prev, section]))
   }
@@ -1094,6 +1148,57 @@ export function GeoportalPage(): React.JSX.Element {
   const handleModifyCriteria = (): void => {
     setCardMode('search')
     setCardError(null)
+  }
+
+  const handleResetFilters = (): void => {
+    resetFilterDom()
+    setOpenSections(['accessibilite'])
+    setTypeToggles({})
+    setCoucheSectionsOpen({ routes: true, equipements: true })
+    setCadastreEnabled(false)
+    setCadastreQuery('')
+    setCadastreSearchResults([])
+    setCadastreSearchMsg(null)
+    setCadastreSearchFocused(null)
+    setSelectedTerrain(null)
+    setCardMode('search')
+    setCardHidden(false)
+    setCardError(null)
+    setCoord('Lat: — , Lng: —')
+    setSavedAnalyse(null)
+    setSaveError(null)
+    setShowSavedBanner(false)
+    setSaving(false)
+    analyseResultatsRef.current = []
+    selectedTerrainIdRef.current = null
+    focusParcelleRef.current = null
+    pendingSearchRef.current = null
+    searchParcelleRef.current = null
+  }
+
+  // Force Leaflet à recalculer sa taille après la fin de la transition CSS du panneau,
+  // sinon les tuiles restent dimensionnées à l'ancienne largeur (vide gris à côté de la carte).
+  const refreshMapSize = (): void => {
+    const map = mapRef.current
+    if (!map) return
+    window.setTimeout(() => {
+      map.invalidateSize()
+    }, SIDEBAR_TRANSITION_MS)
+  }
+
+  const toggleSidebar = (): void => {
+    setSidebarCollapsed((v) => !v)
+    refreshMapSize()
+  }
+
+  const closeTerrainCard = (): void => {
+    setCardHidden(true)
+    refreshMapSize()
+  }
+
+  const reopenTerrainCard = (): void => {
+    setCardHidden(false)
+    refreshMapSize()
   }
 
   if (projetError) {
@@ -1461,59 +1566,18 @@ export function GeoportalPage(): React.JSX.Element {
                   <div className="geo-layers-trigger" id="layers-trigger">
                     <button
                       type="button"
-                      className="geo-basemap-btn geo-basemap-btn--active"
-                      data-basemap={currentBasemap.id}
+                      className="geo-couches-btn"
                       onClick={(e) => {
                         e.stopPropagation()
+                        setBasemapMenuOpen(false)
                         setLayersPopupOpen((v) => !v)
                       }}
                     >
-                      <img className="geo-basemap-btn-img" src={currentBasemap.img} alt={currentBasemap.name} />
-                      <span className="geo-basemap-btn-label">{currentBasemap.name}</span>
-                      <span className="geo-basemap-chevron">{icons.chevron}</span>
+                      <span className="geo-couches-btn-icon">{icons.database}</span>
+                      <span className="geo-couches-btn-label">{t('ranking.couches')}</span>
                     </button>
                   </div>
                   <div className={`geo-layers-popup${layersPopupOpen ? ' geo-layers-popup--open' : ''}`} id="layers-popup">
-                    <div className="geo-layers-popup-section">
-                      <span className="geo-layers-popup-label">{t('ranking.basemap')}</span>
-                      <div className="geo-layers-popup-basemaps" id="basemap-selector">
-                        {BASEMAPS.map((bm) => (
-                          <button
-                            type="button"
-                            className={`geo-popup-basemap-btn${bm.id === basemapId ? ' geo-popup-basemap-btn--active' : ''}`}
-                            data-basemap={bm.id}
-                            key={bm.id}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setBasemapId(bm.id)
-                              setLayersPopupOpen(false)
-                            }}
-                          >
-                            <img className="geo-popup-basemap-img" src={bm.img} alt={bm.name} />
-                            <span className="geo-popup-basemap-label">{bm.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="geo-layers-popup-divider"></div>
-                    <div className="geo-layers-popup-section">
-                      <span className="geo-layers-popup-label">{t('ranking.overlays')}</span>
-                      <div className="geo-layers-popup-overlays" id="overlay-layers">
-                        {OVERLAY_LAYERS.map((ol) => (
-                          <label className="geo-popup-overlay-item" key={ol.id}>
-                            <input
-                              type="checkbox"
-                              data-overlay-toggle={ol.id}
-                              checked={!!overlays[ol.id]}
-                              onChange={() => setOverlays((prev) => ({ ...prev, [ol.id]: !prev[ol.id] }))}
-                            />
-                            <span className="geo-popup-overlay-dot"></span>
-                            <span>{ol.name}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="geo-layers-popup-divider"></div>
                     <div className="geo-layers-popup-section">
                       <span className="geo-layers-popup-label">{t('ranking.cadastre')}</span>
                       <div className="geo-layers-popup-overlays">
@@ -1598,12 +1662,70 @@ export function GeoportalPage(): React.JSX.Element {
                   </div>
                 </div>
 
+                <div className="geo-basemap-control" ref={basemapMenuRef}>
+                  <button
+                    type="button"
+                    className={`geo-basemap-fab${basemapMenuOpen ? ' geo-basemap-fab--active' : ''}`}
+                    id="basemap-fab"
+                    title={`${t('ranking.basemap')} — ${currentBasemap.name}`}
+                    aria-expanded={basemapMenuOpen}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setLayersPopupOpen(false)
+                      setBasemapMenuOpen((v) => !v)
+                    }}
+                  >
+                    {icons.layers}
+                  </button>
+                  <div className={`geo-basemap-popup${basemapMenuOpen ? ' geo-basemap-popup--open' : ''}`} id="basemap-popup">
+                    <div className="geo-layers-popup-section">
+                      <span className="geo-layers-popup-label">{t('ranking.basemap')}</span>
+                      <div className="geo-layers-popup-basemaps" id="basemap-selector">
+                        {BASEMAPS.map((bm) => (
+                          <button
+                            type="button"
+                            className={`geo-popup-basemap-btn${bm.id === basemapId ? ' geo-popup-basemap-btn--active' : ''}`}
+                            data-basemap={bm.id}
+                            key={bm.id}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setBasemapId(bm.id)
+                              setBasemapMenuOpen(false)
+                            }}
+                          >
+                            <img className="geo-popup-basemap-img" src={bm.img} alt={bm.name} />
+                            <span className="geo-popup-basemap-label">{bm.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="geo-layers-popup-divider"></div>
+                    <div className="geo-layers-popup-section">
+                      <span className="geo-layers-popup-label">{t('ranking.overlays')}</span>
+                      <div className="geo-layers-popup-overlays" id="overlay-layers">
+                        {OVERLAY_LAYERS.map((ol) => (
+                          <label className="geo-popup-overlay-item" key={ol.id}>
+                            <input
+                              type="checkbox"
+                              data-overlay-toggle={ol.id}
+                              checked={!!overlays[ol.id]}
+                              onChange={() => setOverlays((prev) => ({ ...prev, [ol.id]: !prev[ol.id] }))}
+                            />
+                            <span className="geo-popup-overlay-dot"></span>
+                            <span>{ol.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <button
                   type="button"
                   className={`geo-fab geo-fab-sidebar${sidebarCollapsed ? '' : ' geo-fab--active'}`}
                   id="sidebar-toggle"
                   title={t('ranking.filter_title')}
-                  onClick={() => setSidebarCollapsed((v) => !v)}
+                  onClick={() => toggleSidebar()}
                 >
                   {icons.menu}
                 </button>
@@ -1613,7 +1735,7 @@ export function GeoportalPage(): React.JSX.Element {
                     <h3 id="card-title">{cardTitle}</h3>
                     <div className="geo-card-header-actions">
                       <button type="button" className="geo-card-back" id="card-back-btn" hidden={cardMode === 'search'} onClick={() => setCardMode('search')}>{icons.chevronLeft}</button>
-                      <button type="button" className="geo-terrain-card-close" id="terrain-card-toggle" onClick={() => setCardHidden(true)}>
+                      <button type="button" className="geo-terrain-card-close" id="terrain-card-toggle" onClick={closeTerrainCard}>
                         {icons.close}
                       </button>
                     </div>
@@ -1711,7 +1833,7 @@ export function GeoportalPage(): React.JSX.Element {
                   className={`geo-fab geo-fab-terrain${cardHidden ? ' geo-fab--visible' : ''}`}
                   id="terrain-card-reopen"
                   title={t('ranking.terrain_info')}
-                  onClick={() => setCardHidden(false)}
+                  onClick={reopenTerrainCard}
                 >
                   {icons.building}
                 </button>

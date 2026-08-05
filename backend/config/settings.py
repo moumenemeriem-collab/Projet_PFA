@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'messagerie',
     'projets',
     'chatbot',
+    'dashboard',
 ]
 
 MEDIA_URL = '/media/'

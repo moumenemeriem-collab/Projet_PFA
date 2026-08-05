@@ -20,6 +20,11 @@ from .serializers import (
 from .tokens import get_tokens_for_user
 
 
+def _log(utilisateur, action, entite, description):
+    from dashboard.models import Activite
+    Activite.log(utilisateur, action, entite, description)
+
+
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
@@ -27,6 +32,7 @@ class RegisterView(APIView):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         utilisateur = serializer.save()
+        _log(utilisateur, 'ajout', 'utilisateur', f'Nouveau compte : {utilisateur.prenom} {utilisateur.nom} ({utilisateur.email})')
         tokens = get_tokens_for_user(utilisateur)
         return Response(
             {
@@ -146,6 +152,7 @@ class UserListView(APIView):
         serializer = AdminUserCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         utilisateur = serializer.save()
+        _log(request.user, 'ajout', 'utilisateur', f'Création du compte {utilisateur.prenom} {utilisateur.nom} ({utilisateur.email})')
         return Response(
             {
                 'message': 'Utilisateur créé avec succès.',
@@ -172,6 +179,7 @@ class UserDetailView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         utilisateur = serializer.update(utilisateur, serializer.validated_data)
+        _log(request.user, 'modification', 'utilisateur', f'Modification du compte {utilisateur.prenom} {utilisateur.nom} ({utilisateur.email})')
         return Response(
             {
                 'message': 'Utilisateur modifié avec succès.',
@@ -191,5 +199,8 @@ class UserDetailView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        nom = f'{utilisateur.prenom} {utilisateur.nom}'
+        email = utilisateur.email
         utilisateur.delete()
+        _log(request.user, 'suppression', 'utilisateur', f'Suppression du compte {nom} ({email})')
         return Response({'message': 'Utilisateur supprimé avec succès.'}, status=status.HTTP_200_OK)

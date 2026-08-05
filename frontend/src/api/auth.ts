@@ -209,7 +209,7 @@ export function isAuthenticated(): boolean {
 
 export function getPostAuthRedirect(role: Utilisateur['role']): string {
   if (role === 'investisseur') return '/projets'
-  if (role === 'admin') return '/admin/utilisateurs'
+  if (role === 'admin') return '/admin/tableau-de-bord'
   return '/'
 }
 
