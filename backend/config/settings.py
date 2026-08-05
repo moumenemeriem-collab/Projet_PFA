@@ -6,6 +6,7 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+import dj_database_url
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -19,7 +20,8 @@ SECRET_KEY = os.getenv(
 
 DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = [h for h in os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h]
+ALLOWED_HOSTS += [d for d in (os.getenv('RAILWAY_PUBLIC_DOMAIN'), os.getenv('RAILWAY_PRIVATE_DOMAIN')) if d]
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -39,10 +41,11 @@ INSTALLED_APPS = [
 ]
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = Path(os.getenv('DJANGO_MEDIA_ROOT', str(BASE_DIR / 'media')))
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -80,6 +83,10 @@ if USE_SQLITE:
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
+elif os.getenv('DATABASE_URL'):
+    DATABASES = {
+        'default': dj_database_url.parse(os.getenv('DATABASE_URL'), conn_max_age=600),
+    }
 else:
     DATABASES = {
         'default': {
@@ -114,6 +121,11 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = 'static/'
+STATIC_ROOT = Path(os.getenv('DJANGO_STATIC_ROOT', str(BASE_DIR / 'staticfiles')))
+
+FRONTEND_DIST_DIR = Path(os.getenv('FRONTEND_DIST_DIR', str(BASE_DIR / 'frontend_dist')))
+if (FRONTEND_DIST_DIR / 'index.html').exists():
+    STATICFILES_DIRS = [str(FRONTEND_DIST_DIR)]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
