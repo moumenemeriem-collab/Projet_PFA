@@ -256,14 +256,14 @@ export function AdminDashboardPage(): React.JSX.Element {
 
           <div className="dash-card">
             <div className="dash-card-header">
-              <h3 className="dash-card-title">{t('dash.layers_evolution')}</h3>
-              <span className="dash-card-badge" style={{ background: '#f5f3ff', color: PASTEL.lavandeDeep }}>{c.total}</span>
+              <h3 className="dash-card-title">{t('dash.analyses_evolution')}</h3>
+              <span className="dash-card-badge" style={{ background: '#fff7ed', color: PASTEL.pecheDeep }}>{a.total}</span>
             </div>
             <div className="dash-chart-wrap">
-              <AreaChart data={c.evolution} color={PASTEL.lavandeDeep} />
+              <AreaChart data={a.evolution} color={PASTEL.pecheDeep} />
             </div>
             <div className="dash-chart-labels">
-              {c.evolution.filter((_, i) => i % 3 === 0 || i === c.evolution.length - 1).map((d) => (
+              {a.evolution.filter((_, i) => i % 3 === 0 || i === a.evolution.length - 1).map((d) => (
                 <span key={d.mois}>{monthLabel(d.mois)}</span>
               ))}
             </div>
@@ -373,35 +373,18 @@ export function AdminDashboardPage(): React.JSX.Element {
           </div>
         </div>
 
-        <div className="dash-grid dash-grid--2">
-          <div className="dash-card">
-            <div className="dash-card-header">
-              <h3 className="dash-card-title">{t('dash.analyses_evolution')}</h3>
-              <span className="dash-card-badge" style={{ background: '#fff7ed', color: PASTEL.pecheDeep }}>{a.total}</span>
-            </div>
-            <div className="dash-chart-wrap">
-              <AreaChart data={a.evolution} color={PASTEL.pecheDeep} />
-            </div>
-            <div className="dash-chart-labels">
-              {a.evolution.filter((_, i) => i % 3 === 0 || i === a.evolution.length - 1).map((d) => (
-                <span key={d.mois}>{monthLabel(d.mois)}</span>
-              ))}
-            </div>
+        <div className="dash-card">
+          <div className="dash-card-header">
+            <h3 className="dash-card-title">{t('dash.activity_evolution')}</h3>
+            <span className="dash-card-badge" style={{ background: '#fdf2f8', color: PASTEL.roseDeep }}>{act.total}</span>
           </div>
-
-          <div className="dash-card">
-            <div className="dash-card-header">
-              <h3 className="dash-card-title">{t('dash.activity_evolution')}</h3>
-              <span className="dash-card-badge" style={{ background: '#fdf2f8', color: PASTEL.roseDeep }}>{act.total}</span>
-            </div>
-            <div className="dash-chart-wrap">
-              <BarChart data={act.evolution} color={PASTEL.rose} />
-            </div>
-            <div className="dash-chart-labels">
-              {act.evolution.filter((_, i) => i % 3 === 0 || i === act.evolution.length - 1).map((d) => (
-                <span key={d.mois}>{monthLabel(d.mois)}</span>
-              ))}
-            </div>
+          <div className="dash-chart-wrap">
+            <BarChart data={act.evolution} color={PASTEL.rose} />
+          </div>
+          <div className="dash-chart-labels">
+            {act.evolution.filter((_, i) => i % 3 === 0 || i === act.evolution.length - 1).map((d) => (
+              <span key={d.mois}>{monthLabel(d.mois)}</span>
+            ))}
           </div>
         </div>
 
