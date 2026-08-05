@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { icons } from '../components/icons'
+import { icons, Icon } from '../components/icons'
 import { DashboardLayout } from '../components/DashboardLayout'
 import { formatApiErrors } from '../api/auth'
 import { fetchProjet, type Projet } from '../api/projets'
@@ -71,6 +71,34 @@ const TEMARA_BOUNDS: [[number, number], [number, number]] = [
   [33.7, -7.1],
   [34.05, -6.75],
 ]
+
+// Correspondance entre les valeurs des filtres de l'analyse AMC et les types
+// OSM utilisés par les couches `reseau_routier` / `equipements_publics`.
+const FILTRE_ROUTE_OSM: Record<string, string[]> = {
+  route_nationale: ['motorway', 'trunk'],
+  route_regionale: ['primary'],
+  route_provinciale: ['secondary'],
+  route_locale: ['tertiary'],
+  peu_importe: ['motorway', 'trunk', 'primary', 'secondary', 'tertiary'],
+}
+
+const FILTRE_AMENITY_OSM: Record<string, Record<string, string[]>> = {
+  health: { hopital: ['hospital'], clinique: ['clinic', 'doctors'] },
+  education: { ecole: ['school', 'prep_school'], lycee: ['school'], universite: ['university'] },
+  commerce: { centre_commercial: ['mall'], marche: ['marketplace'] },
+  transport: { gare_routiere: ['bus_station'], arret_bus: ['bus_station'] },
+  admin: { commune: ['townhall'], poste: ['post_office'], police: ['police'] },
+}
+
+const BUFFER_COLORS: Record<string, string> = {
+  distance_route: '#2563eb',
+  distance_health: '#dc2626',
+  distance_education: '#ea580c',
+  distance_commerce: '#7c3aed',
+  distance_transport: '#0d9488',
+  distance_admin: '#16a34a',
+  distance_poles: '#db2777',
+}
 
 // Doit rester synchronisé avec `transition: width 0.28s` de `.geo-sidebar` (geoportal.css)
 const SIDEBAR_TRANSITION_MS = 280
@@ -557,6 +585,7 @@ export function GeoportalPage(): React.JSX.Element {
   const [coord, setCoord] = useState('Lat: — , Lng: —')
   const [layersPopupOpen, setLayersPopupOpen] = useState(false)
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
+  const [legendOpen, setLegendOpen] = useState(false)
   const [basemapId, setBasemapId] = useState<string>(BASEMAPS[0].id)
   const [overlays, setOverlays] = useState<Record<string, boolean>>({})
   const [openSections, setOpenSections] = useState<string[]>(['accessibilite'])
@@ -590,9 +619,107 @@ export function GeoportalPage(): React.JSX.Element {
   const cadastreLayerRef = useRef<any>(null)
   const layersBarRef = useRef<HTMLDivElement>(null)
   const basemapMenuRef = useRef<HTMLDivElement>(null)
+  const legendRef = useRef<HTMLDivElement>(null)
   const accordionContentRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const pendingSearchRef = useRef<string | null>(null)
   const searchParcelleRef = useRef<string | null>(null)
+  const analyseFiltresRef = useRef<AnalyseFiltres | null>(null)
+  const bufferLayerRef = useRef<any>(null)
+
+  const parseDistance = (v: string | undefined): number | null => {
+    if (!v || v === '') return null
+    const n = Number(v)
+    return Number.isFinite(n) && n > 0 ? n : null
+  }
+
+  const filtresDistances = (f: AnalyseFiltres): { key: string; radius: number }[] => {
+    const fields: { key: string; value: string | undefined }[] = [
+      { key: 'distance_route', value: f.distance_route },
+      { key: 'distance_health', value: f.distance_health },
+      { key: 'distance_education', value: f.distance_education },
+      { key: 'distance_commerce', value: f.distance_commerce },
+      { key: 'distance_transport', value: f.distance_transport },
+      { key: 'distance_admin', value: f.distance_admin },
+      { key: 'distance_poles', value: f.distance_poles },
+    ]
+    const result: { key: string; radius: number }[] = []
+    fields.forEach(({ key, value }) => {
+      const radius = parseDistance(value)
+      if (radius != null) result.push({ key, radius })
+    })
+    return result
+  }
+
+  const clearTerrainBuffer = (): void => {
+    const map = mapRef.current
+    if (bufferLayerRef.current) {
+      map?.removeLayer(bufferLayerRef.current)
+      bufferLayerRef.current = null
+    }
+  }
+
+  const layersFromFiltres = (f: AnalyseFiltres): Record<string, boolean> => {
+    const toggles: Record<string, boolean> = {}
+    const routeCouche = couchesDispo.find((c) => c.nom === 'reseau_routier')
+    const equipCouche = couchesDispo.find((c) => c.nom === 'equipements_publics')
+    f.route_type?.forEach((val) => {
+      ;(FILTRE_ROUTE_OSM[val] ?? []).forEach((osm) => {
+        if (routeCouche) toggles[`${routeCouche.id}:${osm}`] = true
+      })
+    })
+    ;(['health', 'education', 'commerce', 'transport', 'admin'] as const).forEach((group) => {
+      const values = f[group]
+      if (!values) return
+      values.forEach((val) => {
+        ;(FILTRE_AMENITY_OSM[group]?.[val] ?? []).forEach((osm) => {
+          if (equipCouche) toggles[`${equipCouche.id}:${osm}`] = true
+        })
+      })
+    })
+    return toggles
+  }
+
+  const showTerrainBuffer = (tr: AnalyseResultat): void => {
+    const map = mapRef.current
+    if (!map) return
+    clearTerrainBuffer()
+    const filtres = analyseFiltresRef.current
+    if (!filtres) return
+    const distances = filtresDistances(filtres)
+    if (distances.length === 0) return
+
+    let center: [number, number] | null = null
+    const ref = tr.infos_generales?.reference_cadastrale
+    const cadastreLayer = cadastreLayerRef.current
+    if (cadastreLayer && ref) {
+      cadastreLayer.eachLayer((l: any) => {
+        const idP = l.feature?.properties?.id_parcelle
+        if (idP != null && String(idP) === String(ref) && typeof l.getBounds === 'function') {
+          const c = l.getBounds().getCenter()
+          if (!center) center = [c.lat, c.lng]
+        }
+      })
+    }
+    if (!center) {
+      if (tr.lat == null || tr.lng == null) return
+      center = [tr.lat, tr.lng]
+    }
+
+    const group = L.layerGroup().addTo(map)
+    bufferLayerRef.current = group
+    distances.forEach(({ key, radius }) => {
+      const color = BUFFER_COLORS[key] ?? '#3b82f6'
+      L.circle(center, {
+        radius,
+        color,
+        weight: 2,
+        opacity: 0.85,
+        fillColor: color,
+        fillOpacity: 0.1,
+        interactive: false,
+      }).addTo(group)
+    })
+  }
 
   useEffect(() => {
     if (!id || !Number.isInteger(projetId) || projetId <= 0) {
@@ -627,6 +754,15 @@ export function GeoportalPage(): React.JSX.Element {
     mapRef.current = map
 
     map.on('click', (e: any) => {
+      const target = e?.originalEvent?.target as HTMLElement | undefined
+      const onFeature = !!target && (
+        target.classList?.contains('leaflet-interactive') ||
+        target.classList?.contains('leaflet-marker-icon')
+      )
+      if (!onFeature && bufferLayerRef.current) {
+        map.removeLayer(bufferLayerRef.current)
+        bufferLayerRef.current = null
+      }
       const { lat, lng } = e.latlng
       if (markerRef.current) {
         markerRef.current.setLatLng([lat, lng])
@@ -873,6 +1009,7 @@ export function GeoportalPage(): React.JSX.Element {
     )
     if (tr) {
       selectedTerrainIdRef.current = tr.id
+      showTerrainBuffer(tr)
       setSelectedTerrain(tr)
       setCardMode('results')
     }
@@ -992,6 +1129,8 @@ export function GeoportalPage(): React.JSX.Element {
           return
         }
         setSavedAnalyse(detail)
+        analyseFiltresRef.current = detail.filtres
+        setTypeToggles(detail.filtres ? layersFromFiltres(detail.filtres) : {})
         const target = parcelle
           ? mapped.find((m) => m.infos_generales.reference_cadastrale === parcelle)
           : mapped[0]
@@ -999,6 +1138,7 @@ export function GeoportalPage(): React.JSX.Element {
         selectedTerrainIdRef.current = selected.id
         focusParcelleRef.current = selected.id
         setSelectedTerrain(selected)
+        showTerrainBuffer(selected)
         setCardMode('results')
         if (cadastreLayerRef.current) {
           colorCadastreParcels(selected.id)
@@ -1031,6 +1171,7 @@ export function GeoportalPage(): React.JSX.Element {
       const bar = layersBarRef.current
       if (layersPopupOpen && bar && !bar.contains(e.target as Node)) {
         setLayersPopupOpen(false)
+        setLegendOpen(false)
       }
     }
     document.addEventListener('click', onDocClick)
@@ -1048,6 +1189,17 @@ export function GeoportalPage(): React.JSX.Element {
     return () => document.removeEventListener('click', onDocClick)
   }, [basemapMenuOpen])
 
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent): void => {
+      const legend = legendRef.current
+      if (legendOpen && legend && !legend.contains(e.target as Node)) {
+        setLegendOpen(false)
+      }
+    }
+    document.addEventListener('click', onDocClick)
+    return () => document.removeEventListener('click', onDocClick)
+  }, [legendOpen])
+
   const toggleAccordion = (section: string): void => {
     setOpenSections((prev) => (prev.includes(section) ? prev.filter((s) => s !== section) : [...prev, section]))
   }
@@ -1061,6 +1213,7 @@ export function GeoportalPage(): React.JSX.Element {
     if (!terrain) return
     selectedTerrainIdRef.current = terrainId
     colorCadastreParcels(terrainId)
+    showTerrainBuffer(terrain)
     setSelectedTerrain(terrain)
     setCardMode('results')
   }
@@ -1077,6 +1230,8 @@ export function GeoportalPage(): React.JSX.Element {
     try {
       const response = await fetchAnalyse(projetId, filtres)
       analyseResultatsRef.current = response.resultats
+      analyseFiltresRef.current = filtres
+      setTypeToggles(layersFromFiltres(filtres))
 
       if (analyseResultatsRef.current.length === 0) {
         setCardMode('empty')
@@ -1137,6 +1292,8 @@ export function GeoportalPage(): React.JSX.Element {
     setShowSavedBanner(false)
     setSaving(false)
     analyseResultatsRef.current = []
+    analyseFiltresRef.current = null
+    clearTerrainBuffer()
     selectedTerrainIdRef.current = null
     focusParcelleRef.current = null
     pendingSearchRef.current = null
@@ -1192,6 +1349,27 @@ export function GeoportalPage(): React.JSX.Element {
 
   const currentBasemap = BASEMAPS.find((b) => b.id === basemapId) ?? BASEMAPS[0]
   const cardTitle = cardMode === 'search' ? t('ranking.terrain_info') : t('ranking.analyse_title')
+
+  const BUFFER_LEGEND: { key: string; label: string }[] = [
+    { key: 'distance_route', label: t('ranking.filter_max_distance_road') },
+    { key: 'distance_health', label: t('ranking.filter_health') },
+    { key: 'distance_education', label: t('ranking.filter_education') },
+    { key: 'distance_commerce', label: t('ranking.filter_commerce') },
+    { key: 'distance_transport', label: t('ranking.filter_transport') },
+    { key: 'distance_admin', label: t('ranking.filter_admin') },
+    { key: 'distance_poles', label: t('ranking.filter_distance_poles') },
+  ]
+
+  const BUFFER_LABELS: Record<string, string> = Object.fromEntries(BUFFER_LEGEND.map((b) => [b.key, b.label]))
+  const activeRouteTypes = routeTypes.filter((rt) => !!typeToggles[rt.key])
+  const activeEquipTypes = equipTypes.filter((et) => !!typeToggles[et.key])
+  const activeOverlays = OVERLAY_LAYERS.filter((ol) => !!overlays[ol.id])
+  const displayedBuffers = selectedTerrain ? filtresDistances(analyseFiltresRef.current ?? {}) : []
+  const hasActiveLayers =
+    cadastreEnabled ||
+    activeRouteTypes.length > 0 ||
+    activeEquipTypes.length > 0 ||
+    activeOverlays.length > 0
 
   return (
     <DashboardLayout role="investisseur" activePage="ranking" hideSidebar topbarTitle={t('ranking.geoportal_title')}>
@@ -1529,22 +1707,25 @@ export function GeoportalPage(): React.JSX.Element {
                 <div id="map" ref={mapContainerRef}></div>
                 <div className="geo-coord-display" id="coord-display">{coord}</div>
 
+                <div className="geo-top-controls" id="top-controls">
                 <div className="geo-map-layers-bar" id="layers-bar" ref={layersBarRef}>
                   <div className="geo-layers-trigger" id="layers-trigger">
                     <button
                       type="button"
-                      className="geo-couches-btn"
+                      className={`geo-top-fab${layersPopupOpen ? ' geo-top-fab--active' : ''}`}
+                      title={t('ranking.couches')}
+                      aria-expanded={layersPopupOpen}
                       onClick={(e) => {
                         e.stopPropagation()
                         setBasemapMenuOpen(false)
+                        setLegendOpen(false)
                         setLayersPopupOpen((v) => !v)
                       }}
                     >
-                      <span className="geo-couches-btn-icon">{icons.database}</span>
-                      <span className="geo-couches-btn-label">{t('ranking.couches')}</span>
+                      {icons.database}
                     </button>
                   </div>
-                  <div className={`geo-layers-popup${layersPopupOpen ? ' geo-layers-popup--open' : ''}`} id="layers-popup">
+                  <div className={`geo-top-popup${layersPopupOpen ? ' geo-top-popup--open' : ''}`} id="layers-popup">
                     <div className="geo-layers-popup-section">
                       <span className="geo-layers-popup-label">{t('ranking.cadastre')}</span>
                       <div className="geo-layers-popup-overlays">
@@ -1632,19 +1813,20 @@ export function GeoportalPage(): React.JSX.Element {
                 <div className="geo-basemap-control" ref={basemapMenuRef}>
                   <button
                     type="button"
-                    className={`geo-basemap-fab${basemapMenuOpen ? ' geo-basemap-fab--active' : ''}`}
+                    className={`geo-top-fab${basemapMenuOpen ? ' geo-top-fab--active' : ''}`}
                     id="basemap-fab"
                     title={`${t('ranking.basemap')} — ${currentBasemap.name}`}
                     aria-expanded={basemapMenuOpen}
                     onClick={(e) => {
                       e.stopPropagation()
                       setLayersPopupOpen(false)
+                      setLegendOpen(false)
                       setBasemapMenuOpen((v) => !v)
                     }}
                   >
                     {icons.layers}
                   </button>
-                  <div className={`geo-basemap-popup${basemapMenuOpen ? ' geo-basemap-popup--open' : ''}`} id="basemap-popup">
+                  <div className={`geo-top-popup${basemapMenuOpen ? ' geo-top-popup--open' : ''}`} id="basemap-popup">
                     <div className="geo-layers-popup-section">
                       <span className="geo-layers-popup-label">{t('ranking.basemap')}</span>
                       <div className="geo-layers-popup-basemaps" id="basemap-selector">
@@ -1685,6 +1867,100 @@ export function GeoportalPage(): React.JSX.Element {
                       </div>
                     </div>
                   </div>
+                </div>
+
+                <div className="geo-legend-control" id="legend-bar" ref={legendRef}>
+                  <div className="geo-layers-trigger">
+                    <button
+                      type="button"
+                      className={`geo-top-fab${legendOpen ? ' geo-top-fab--active' : ''}`}
+                      title={t('ranking.legende')}
+                      aria-expanded={legendOpen}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setBasemapMenuOpen(false)
+                        setLayersPopupOpen(false)
+                        setLegendOpen((v) => !v)
+                      }}
+                    >
+                      <Icon name="map" />
+                    </button>
+                  </div>
+                  <div className={`geo-top-popup${legendOpen ? ' geo-top-popup--open' : ''}`} id="legend-popup">
+                    <div className="geo-layers-popup-section">
+                      <span className="geo-layers-popup-label">{t('ranking.legende_couches')}</span>
+                      <div className="geo-layers-popup-overlays">
+                        {cadastreEnabled ? (
+                          <div className="geo-legend-item">
+                            <span className="geo-legend-swatch" style={{ background: '#f59e0b' }}></span>
+                            <span>{t('ranking.carte_cadastrale')}</span>
+                          </div>
+                        ) : null}
+                        {activeRouteTypes.map((rt) => (
+                          <div className="geo-legend-item" key={rt.key}>
+                            <span className="geo-legend-line" style={{ background: (ROUTE_STYLES[rt.type] ?? { color: '#6b7280' }).color }}></span>
+                            <span>{TYPE_LABELS[rt.type] ?? rt.type}</span>
+                          </div>
+                        ))}
+                        {activeEquipTypes.map((et) => (
+                          <div className="geo-legend-item" key={et.key}>
+                            <span className="geo-couche-type-svg">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: EQUIP_SYMBOLS[et.type] ?? EQUIP_FALLBACK_SYMBOL }} />
+                            </span>
+                            <span>{TYPE_LABELS[et.type] ?? et.type}</span>
+                          </div>
+                        ))}
+                        {activeOverlays.map((ol) => (
+                          <div className="geo-legend-item" key={ol.id}>
+                            <span className="geo-legend-swatch" style={{ background: '#6b7280' }}></span>
+                            <span>{ol.name}</span>
+                          </div>
+                        ))}
+                        {!hasActiveLayers ? (
+                          <div className="geo-legend-empty">{t('ranking.legende_vide')}</div>
+                        ) : null}
+                      </div>
+                    </div>
+                    {selectedTerrain && displayedBuffers.length > 0 ? (
+                      <>
+                        <div className="geo-layers-popup-divider"></div>
+                        <div className="geo-layers-popup-section">
+                          <span className="geo-layers-popup-label">{t('ranking.legende_buffers')}</span>
+                          <div className="geo-layers-popup-overlays">
+                            {displayedBuffers.map(({ key }) => (
+                              <div className="geo-legend-item" key={key}>
+                                <span className="geo-legend-swatch" style={{ background: BUFFER_COLORS[key] ?? '#3b82f6' }}></span>
+                                <span>{BUFFER_LABELS[key] ?? key}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    ) : null}
+                    {selectedTerrain ? (
+                      <>
+                        <div className="geo-layers-popup-divider"></div>
+                        <div className="geo-layers-popup-section">
+                          <span className="geo-layers-popup-label">{t('ranking.legende_scores')}</span>
+                          <div className="geo-layers-popup-overlays">
+                            <div className="geo-legend-item">
+                              <span className="geo-legend-swatch" style={{ background: '#16a34a' }}></span>
+                              <span>{t('ranking.legende_score_tres_bon')}</span>
+                            </div>
+                            <div className="geo-legend-item">
+                              <span className="geo-legend-swatch" style={{ background: '#eab308' }}></span>
+                              <span>{t('ranking.legende_score_bon')}</span>
+                            </div>
+                            <div className="geo-legend-item">
+                              <span className="geo-legend-swatch" style={{ background: '#dc2626' }}></span>
+                              <span>{t('ranking.legende_score_faible')}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
                 </div>
 
                 <button
