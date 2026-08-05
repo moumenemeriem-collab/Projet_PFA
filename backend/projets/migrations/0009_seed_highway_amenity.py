@@ -16,6 +16,7 @@ except ImportError:
 
 def run(apps, schema_editor):
     conn = schema_editor.connection
+    is_postgres = conn.vendor == 'postgresql'
     with conn.cursor() as cur:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS "highway" (
@@ -64,12 +65,13 @@ def run(apps, schema_editor):
         sql = f'INSERT INTO "{table}" ({quoted_cols}) VALUES %s'
 
         with conn.cursor() as cur:
-            if execute_values:
+            if is_postgres and execute_values:
                 for i in range(0, len(rows), 500):
                     execute_values(cur, sql, rows[i:i + 500], page_size=500)
             else:
+                placeholders = ', '.join(['%s'] * len(row))
                 for row in rows:
-                    cur.execute(sql.replace('%s', '(' + ', '.join(['%s'] * len(row)) + ')'), row)
+                    cur.execute(sql.replace('%s', f'({placeholders})'), row)
 
 
 def revert(apps, schema_editor):
