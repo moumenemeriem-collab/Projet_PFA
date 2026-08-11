@@ -9,6 +9,12 @@ import { createAnalyse, fetchAnalyseDetail, type AnalyseDetail, type ResultatAna
 import { fetchCouches, fetchCoucheGeoJSON, type Couche, type CoucheFeature, type CoucheFeatureCollection } from '../api/couches'
 import { attributeLabel, CADASTRE_ATTRIBUTE_LABELS, PLAN_AMENAGEMENT_ATTRIBUTE_LABELS } from '../utils/attributeLabels'
 import { t } from '../i18n/index'
+import {
+  extractRing,
+  openGoogleMaps,
+  ringCenter,
+  showTerrainDims,
+} from '../utils/terrainDims'
 
 import osmImg from '../assets/features/OSM.png'
 import satImg from '../assets/features/osm_sat.jpg'
@@ -72,6 +78,47 @@ const TEMARA_BOUNDS: [[number, number], [number, number]] = [
   [34.05, -6.75],
 ]
 
+// Mesure l'espace occupé par les panneaux qui recouvrent la carte (`.geo-terrain-card`
+// à droite, `.geo-nav` en haut) afin que la zone RÉELLEMENT VISIBLE en tienne compte.
+// Réutilisé par `centerMapOnPoint` (panBy) et par `overlayFlyToBounds` (flyToBounds).
+const getMapOverlayPadding = (map: any): { top: number; right: number } => {
+  let top = 0
+  let right = 0
+  const container = map?.getContainer() as HTMLElement | null
+  if (!container) return { top, right }
+  const holder = container.closest('.geo-map-container') ?? container
+  const card = holder.querySelector<HTMLElement>('.geo-terrain-card')
+  if (card && !card.classList.contains('geo-terrain-card--hidden')) {
+    right = card.offsetWidth + 16
+  }
+  const nav = holder.querySelector<HTMLElement>('.geo-nav')
+  if (nav && nav.offsetHeight > 0) {
+    top = nav.offsetHeight + 20
+  }
+  return { top, right }
+}
+
+const centerMapOnPoint = (map: any, latlng: any): void => {
+  if (!map || !latlng) return
+  const size = map.getSize()
+  const { top, right } = getMapOverlayPadding(map)
+  const cx = (size.x - right) / 2
+  const cy = (size.y + top) / 2
+  const p = map.latLngToContainerPoint(latlng)
+  map.panBy([p.x - cx, p.y - cy], { animate: true, duration: 0.3 })
+}
+
+// Équivalent pour flyToBounds/fitBounds : traduit le padding des panneaux flottants
+// en options paddingTopLeft/paddingBottomRight, comprises nativement par Leaflet.
+const overlayFlyToBounds = (map: any, bounds: any, opts: Record<string, unknown> = {}): void => {
+  if (!map || !bounds) return
+  const { top, right } = getMapOverlayPadding(map)
+  map.flyToBounds(bounds, {
+    paddingTopLeft: [0, top],
+    paddingBottomRight: [right, 0],
+    ...opts,
+  })
+}
 // Correspondance entre les valeurs des filtres de l'analyse AMC et les types
 // OSM utilisés par les couches `reseau_routier` / `equipements_publics`.
 const FILTRE_ROUTE_OSM: Record<string, string[]> = {
@@ -209,6 +256,25 @@ function escapeHtml(value: unknown): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
+}
+
+const GMAP_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>'
+
+const DIMS_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 21 7M7 17 21 11M3 21 5 19"/><path d="M3 17l4-4m6 2 4-4"/></svg>'
+
+// Pied d'action commun aux popups : « Voir sur Google Maps » + « Dimensions du
+// terrain » (réservé aux parcelles cadastrales, qui disposent d'un anneau).
+const buildPopupActions = (lat: number, lng: number, ring?: number[][] | null, title?: string): string => {
+  const gmap = Number.isFinite(lat) && Number.isFinite(lng)
+    ? `<button type="button" class="geo-popup-btn" data-action="gmaps" data-lat="${lat.toFixed(6)}" data-lng="${lng.toFixed(6)}">${GMAP_ICON}<span>Voir sur Google Maps</span></button>`
+    : ''
+  const dims = ring && ring.length >= 3
+    ? `<button type="button" class="geo-popup-btn geo-popup-btn--primary" data-action="dims" data-geom="${escapeHtml(JSON.stringify(ring))}" data-title="${escapeHtml(title ?? '')}">${DIMS_ICON}<span>Dimensions du terrain</span></button>`
+    : ''
+  if (!gmap && !dims) return ''
+  return `<div class="geo-popup-actions">${gmap}${dims}</div>`
 }
 
 function isValidGeoJSONFeature(f: CoucheFeature): boolean {
@@ -772,6 +838,7 @@ export function GeoportalPage(): React.JSX.Element {
         bufferLayerRef.current = null
       }
       const { lat, lng } = e.latlng
+      setCoord(`Lat: ${lat.toFixed(6)} , Lng: ${lng.toFixed(6)}`)
       if (markerRef.current) {
         markerRef.current.setLatLng([lat, lng])
       } else {
@@ -779,13 +846,41 @@ export function GeoportalPage(): React.JSX.Element {
           radius: 8, color: '#1b3a6e', fillColor: '#1b3a6e', fillOpacity: 0.8, weight: 2,
         }).addTo(map)
       }
+      if (onFeature) return
+      map.flyTo([lat, lng], Math.min(map.getZoom() + 1, 19), { duration: 0.8 })
+      map.once('moveend', () => centerMapOnPoint(map, [lat, lng]))
       markerRef.current.bindPopup(
         `<div class="geoportal-popup">
           <div class="geoportal-popup-title">${t('ranking.selected_point')}</div>
           <div class="geoportal-popup-coords">Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}</div>
-        </div>`
+          ${buildPopupActions(lat, lng)}
+        </div>`,
+        { autoPan: false }
       ).openPopup()
-      setCoord(`Lat: ${lat.toFixed(6)} , Lng: ${lng.toFixed(6)}`)
+    })
+
+    map.on('popupopen', (ev: any) => {
+      const el = ev.popup?.getElement?.() as HTMLElement | null | undefined
+      if (!el) return
+      el.querySelectorAll<HTMLElement>('[data-action="gmaps"]').forEach((b) => {
+        b.addEventListener('click', () => {
+          const lat = Number(b.getAttribute('data-lat'))
+          const lng = Number(b.getAttribute('data-lng'))
+          if (Number.isFinite(lat) && Number.isFinite(lng)) openGoogleMaps(lat, lng)
+        })
+      })
+      el.querySelectorAll<HTMLElement>('[data-action="dims"]').forEach((b) => {
+        b.addEventListener('click', () => {
+          const raw = b.getAttribute('data-geom')
+          if (!raw) return
+          try {
+            const ring = JSON.parse(raw) as number[][]
+            showTerrainDims(ring, b.getAttribute('data-title') ?? '')
+          } catch {
+            /* coordonnées invalides */
+          }
+        })
+      })
     })
 
     setupCustomDistances()
@@ -891,9 +986,17 @@ export function GeoportalPage(): React.JSX.Element {
           }),
         }),
       onEachFeature: (feature: any, layerItem: any) => {
+        layerItem.on('click', (ev: any) => {
+          const anchor = layerItem.getLatLng?.() ?? ev?.latlng
+          if (anchor) centerMapOnPoint(map, anchor)
+        })
         if (feature?.properties && Object.keys(feature.properties).length > 0) {
+          const c = Array.isArray((feature.geometry as any)?.coordinates)
+            ? (feature.geometry as any).coordinates
+            : null
           layerItem.bindPopup(
-            `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(label)}</div><div class="geoportal-popup-coords">${propsToHtml(feature.properties)}</div></div>`
+            `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(label)}</div><div class="geoportal-popup-coords">${propsToHtml(feature.properties)}</div>${buildPopupActions(c ? c[1] : NaN, c ? c[0] : NaN)}</div>`,
+            { autoPan: false }
           )
         }
       },
@@ -904,19 +1007,31 @@ export function GeoportalPage(): React.JSX.Element {
     L.geoJSON(validFeatures(fc), {
       style: CADASTRE_STYLE,
       onEachFeature: (feature: any, layerItem: any) => {
-        layerItem.on('click', () => {
+        layerItem.on('click', (ev: any) => {
+          const anchor = layerItem.getCenter?.() ?? layerItem.getLatLng?.() ?? ev?.latlng
           const idP = feature?.properties?.num
-          if (idP == null) return
-          const tr = analyseResultatsRef.current.find(
-            (r) => String(r.infos_generales?.reference_cadastrale) === String(idP)
-          )
-          if (tr) selectTerrain(tr.id)
+          const tr = idP != null
+            ? analyseResultatsRef.current.find(
+                (r) => String(r.infos_generales?.reference_cadastrale) === String(idP)
+              )
+            : undefined
+          if (tr) {
+            selectTerrain(tr.id)
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => centerMapOnPoint(map, anchor))
+            })
+          } else if (anchor) {
+            centerMapOnPoint(map, anchor)
+          }
         })
         if (feature?.properties && Object.keys(feature.properties).length > 0) {
           const p = feature.properties
           const idParcelle = p.num ? `Parcelle ${p.num}` : 'Parcelle cadastrale'
+          const ring = extractRing(feature.geometry)
+          const center = ring ? ringCenter(ring) : { lat: NaN, lng: NaN }
           layerItem.bindPopup(
-            `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(idParcelle)}</div><div class="geoportal-popup-coords">${propsToHtml(feature.properties, CADASTRE_ATTRIBUTE_LABELS)}</div></div>`
+            `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(idParcelle)}</div><div class="geoportal-popup-coords">${propsToHtml(feature.properties, CADASTRE_ATTRIBUTE_LABELS)}</div>${buildPopupActions(center.lat, center.lng, ring, idParcelle)}</div>`,
+            { autoPan: false }
           )
         }
       },
@@ -926,22 +1041,31 @@ export function GeoportalPage(): React.JSX.Element {
     L.geoJSON(validFeatures(fc), {
       style: PLAN_AMENAGEMENT_STYLE,
       onEachFeature: (feature: any, layerItem: any) => {
+        layerItem.on('click', (ev: any) => {
+          const anchor = layerItem.getCenter?.() ?? layerItem.getLatLng?.() ?? ev?.latlng
+          if (anchor) centerMapOnPoint(map, anchor)
+        })
         if (feature?.properties && Object.keys(feature.properties).length > 0) {
           const p = feature.properties
           const designation = p.designation ? String(p.designation) : ''
           const title = designation ? `Zone ${designation}` : "Plan d'aménagement"
+          const ring = extractRing(feature.geometry)
+          const center = ring ? ringCenter(ring) : { lat: NaN, lng: NaN }
           layerItem.bindPopup(
-            `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(title)}</div><div class="geoportal-popup-coords">${propsToHtml(feature.properties, PLAN_AMENAGEMENT_ATTRIBUTE_LABELS)}</div></div>`
+            `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(title)}</div><div class="geoportal-popup-coords">${propsToHtml(feature.properties, PLAN_AMENAGEMENT_ATTRIBUTE_LABELS)}</div>${buildPopupActions(center.lat, center.lng)}</div>`,
+            { autoPan: false }
           )
         }
       },
     }).addTo(map)
 
-  const buildParcellePopup = (tr: AnalyseResultat, p: Record<string, unknown>): string => {
+  const buildParcellePopup = (tr: AnalyseResultat, p: Record<string, unknown>, ring?: number[][] | null): string => {
     const color = getScoreColor(tr.score_final)
     const rentaRow = tr.score_rentabilite != null
       ? `<div class="geoportal-popup-row"><span>${t('ranking.rentabilite')}</span><strong>${tr.score_rentabilite.toFixed(1)}/100</strong></div>`
       : ''
+    const center = ring ? ringCenter(ring) : { lat: NaN, lng: NaN }
+    const title = p.num != null ? `Parcelle ${p.num}` : tr.nom
     return `<div class="geoportal-popup">
         <div class="geoportal-popup-title">${escapeHtml(tr.nom)}</div>
         <div class="geoportal-popup-classement">
@@ -953,6 +1077,7 @@ export function GeoportalPage(): React.JSX.Element {
           ${rentaRow}
         </div>
         <div class="geoportal-popup-coords">${propsToHtml(p, CADASTRE_ATTRIBUTE_LABELS)}</div>
+        ${buildPopupActions(center.lat, center.lng, ring, title)}
       </div>`
   }
 
@@ -980,7 +1105,7 @@ export function GeoportalPage(): React.JSX.Element {
         fillColor: color,
         fillOpacity: isSel ? 0.6 : 0.4,
       })
-      l.bindPopup(buildParcellePopup(tr, props))
+      l.bindPopup(buildParcellePopup(tr, props, extractRing(l.feature?.geometry)), { autoPan: false })
     })
   }
 
@@ -992,14 +1117,15 @@ export function GeoportalPage(): React.JSX.Element {
     layer.eachLayer((l: any) => {
       const idP = l.feature?.properties?.num
       if (idP != null && String(idP) === String(ref)) {
-        map.flyToBounds(l.getBounds().pad(0.4), { duration: 1.2, easeLinearity: 0.25 })
+        overlayFlyToBounds(map, l.getBounds().pad(0.4), { duration: 1.2, easeLinearity: 0.25 })
       }
     })
   }
 
-  const cadastreParcelPopup = (props: Record<string, unknown>): string => {
+  const cadastreParcelPopup = (props: Record<string, unknown>, ring?: number[][] | null): string => {
     const idParcelle = props.num ? `Parcelle ${props.num}` : 'Parcelle cadastrale'
-    return `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(idParcelle)}</div><div class="geoportal-popup-coords">${propsToHtml(props, CADASTRE_ATTRIBUTE_LABELS)}</div></div>`
+    const center = ring ? ringCenter(ring) : { lat: NaN, lng: NaN }
+    return `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(idParcelle)}</div><div class="geoportal-popup-coords">${propsToHtml(props, CADASTRE_ATTRIBUTE_LABELS)}</div>${buildPopupActions(center.lat, center.lng, ring, idParcelle)}</div>`
   }
 
   const focusCadastreParcelle = (idParcelle: string): void => {
@@ -1012,7 +1138,7 @@ export function GeoportalPage(): React.JSX.Element {
       const props = l.feature?.properties as Record<string, unknown> | undefined
       if (!props || props.num == null) return
       l.setStyle(CADASTRE_STYLE)
-      l.bindPopup(cadastreParcelPopup(props))
+      l.bindPopup(cadastreParcelPopup(props, extractRing(l.feature?.geometry)), { autoPan: false })
     })
     colorCadastreParcels(selectedTerrainIdRef.current ?? undefined)
     layer.eachLayer((l: any) => {
@@ -1021,8 +1147,8 @@ export function GeoportalPage(): React.JSX.Element {
       if (String(props.num) === idParcelle) {
         l.setStyle(CADASTRE_SEARCH_STYLE)
         l.bringToFront()
-        map.flyToBounds(l.getBounds().pad(0.4), { duration: 1, easeLinearity: 0.25 })
-        l.bindPopup(cadastreParcelPopup(props)).openPopup()
+        overlayFlyToBounds(map, l.getBounds().pad(0.4), { duration: 1, easeLinearity: 0.25 })
+        l.bindPopup(cadastreParcelPopup(props, extractRing(l.feature?.geometry)), { autoPan: false }).openPopup()
       }
     })
   }
@@ -1095,7 +1221,11 @@ export function GeoportalPage(): React.JSX.Element {
         const couche = couchesDispo.find((c) => c.id === id)
         const attrKey = couche?.nom === 'reseau_routier' ? 'highway' : 'amenity'
         const features = fc.features.filter((f) => String(f.properties?.[attrKey] ?? 'autre') === type)
-        typeLayersRef.current[key] = buildTypeLayer(map, id, type, { type: 'FeatureCollection', features })
+        const layer = buildTypeLayer(map, id, type, { type: 'FeatureCollection', features })
+        typeLayersRef.current[key] = layer
+        if (features.length > 0) {
+          overlayFlyToBounds(map, layer.getBounds(), { duration: 0.8, maxZoom: 18 })
+        }
       } else if (!checked && existing) {
         map.removeLayer(existing)
         delete typeLayersRef.current[key]
@@ -1112,23 +1242,32 @@ export function GeoportalPage(): React.JSX.Element {
       const fc = coucheDataRef.current[id]
       if (!fc) return
       cadastreLayerRef.current = buildCadastreLayer(map, fc)
+      let zoomed = false
       if (analyseResultatsRef.current.length > 0) {
         colorCadastreParcels(selectedTerrainIdRef.current ?? analyseResultatsRef.current[0]?.id)
         const focusId = focusParcelleRef.current
         if (focusId != null) {
           const focus = analyseResultatsRef.current.find((tr) => tr.id === focusId)
-          if (focus) fitToParcelle(focus)
           focusParcelleRef.current = null
+          if (focus) {
+            fitToParcelle(focus)
+            zoomed = true
+          }
         }
         if (analyzePendingRef.current) {
           analyzePendingRef.current = false
-          map.fitBounds(cadastreLayerRef.current.getBounds().pad(0.08))
+          overlayFlyToBounds(map, cadastreLayerRef.current.getBounds(), { duration: 0.8 })
+          zoomed = true
         }
       }
       const pendingSearch = pendingSearchRef.current
       if (pendingSearch != null) {
         pendingSearchRef.current = null
         focusCadastreParcelle(pendingSearch)
+        zoomed = true
+      }
+      if (!zoomed) {
+        overlayFlyToBounds(map, cadastreLayerRef.current.getBounds(), { duration: 0.8 })
       }
     } else if (!cadastreEnabled && cadastreLayerRef.current) {
       map.removeLayer(cadastreLayerRef.current)
@@ -1145,6 +1284,7 @@ export function GeoportalPage(): React.JSX.Element {
       const fc = coucheDataRef.current[id]
       if (!fc) return
       paLayerRef.current = buildPALayer(map, fc)
+      overlayFlyToBounds(map, paLayerRef.current.getBounds(), { duration: 0.8, maxZoom: 18 })
     } else if (!paEnabled && paLayerRef.current) {
       map.removeLayer(paLayerRef.current)
       paLayerRef.current = null
