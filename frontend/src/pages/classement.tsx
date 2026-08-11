@@ -13,7 +13,7 @@ import {
   type ResultatAnalyse,
 } from '../api/analyses'
 import { fetchCouches, fetchCoucheGeoJSON } from '../api/couches'
-import { attributeLabel } from '../utils/attributeLabels'
+import { attributeLabel, CADASTRE_ATTRIBUTE_LABELS } from '../utils/attributeLabels'
 import { t } from '../i18n/index'
 
 const PAGE_SIZE = 10
@@ -141,7 +141,7 @@ function DetailModal({ resultat, cadastre, onClose }: { resultat: ResultatAnalys
                   .filter(([, v]) => v !== null && v !== undefined && v !== '')
                   .map(([k, v]) => (
                     <div className="classement-detail-item" key={k}>
-                      <span className="classement-detail-label">{attributeLabel(k)}</span>
+                      <span className="classement-detail-label">{attributeLabel(k, CADASTRE_ATTRIBUTE_LABELS)}</span>
                       <span className="classement-detail-value">{String(v)}</span>
                     </div>
                   ))}
@@ -308,7 +308,7 @@ export function ClassementPage(): React.JSX.Element {
         if (cancelled) return
         const map: Record<string, Record<string, unknown>> = {}
         fc.features.forEach((f) => {
-          const id = f.properties?.id_parcelle
+          const id = f.properties?.num
           if (id != null) map[String(id)] = f.properties as Record<string, unknown>
         })
         setCadastreAttrs(map)

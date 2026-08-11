@@ -7,7 +7,7 @@ import { fetchProjet, type Projet } from '../api/projets'
 import { fetchAnalyse, type AnalyseFiltres, type AnalyseResultat } from '../api/terrains'
 import { createAnalyse, fetchAnalyseDetail, type AnalyseDetail, type ResultatAnalyse } from '../api/analyses'
 import { fetchCouches, fetchCoucheGeoJSON, type Couche, type CoucheFeature, type CoucheFeatureCollection } from '../api/couches'
-import { attributeLabel } from '../utils/attributeLabels'
+import { attributeLabel, CADASTRE_ATTRIBUTE_LABELS, PLAN_AMENAGEMENT_ATTRIBUTE_LABELS } from '../utils/attributeLabels'
 import { t } from '../i18n/index'
 
 import osmImg from '../assets/features/OSM.png'
@@ -62,7 +62,7 @@ interface CoucheType {
 const ROUTE_STYLES: Record<string, { color: string; weight: number; dashArray?: string }> = {
   motorway: { color: '#f97316', weight: 5 },
   trunk: { color: '#e11d48', weight: 4 },
-  primary: { color: '#2563eb', weight: 3 },
+  primary: { color: '#1b3a6e', weight: 3 },
   secondary: { color: '#16a34a', weight: 2.5 },
   tertiary: { color: '#a16207', weight: 2 },
 }
@@ -91,7 +91,7 @@ const FILTRE_AMENITY_OSM: Record<string, Record<string, string[]>> = {
 }
 
 const BUFFER_COLORS: Record<string, string> = {
-  distance_route: '#2563eb',
+  distance_route: '#1b3a6e',
   distance_health: '#dc2626',
   distance_education: '#ea580c',
   distance_commerce: '#7c3aed',
@@ -105,6 +105,11 @@ const SIDEBAR_TRANSITION_MS = 280
 
 const CADASTRE_STYLE = { color: '#b45309', weight: 1.4, opacity: 0.9, fillColor: '#f59e0b', fillOpacity: 0.18 }
 const CADASTRE_SEARCH_STYLE = { color: '#dc2626', weight: 4, opacity: 1, fillColor: '#ef4444', fillOpacity: 0.45 }
+const PLAN_AMENAGEMENT_STYLE = { color: '#7c3aed', weight: 1.2, opacity: 0.85, fillColor: '#a855f7', fillOpacity: 0.16 }
+
+// Règlement du plan d'aménagement, servi depuis le dossier public (Vite dev et build).
+// Le fichier PDF définitif sera fourni par le client et placé à cet emplacement.
+const REGLEMENT_PDF_URL = '/reglements/reglement-plan-amenagement.pdf'
 
 const TYPE_LABELS: Record<string, string> = {
   motorway: 'Autoroute',
@@ -217,10 +222,10 @@ function validFeatures(fc: CoucheFeatureCollection): CoucheFeatureCollection {
   return { type: 'FeatureCollection', features: fc.features.filter(isValidGeoJSONFeature) }
 }
 
-function propsToHtml(props: Record<string, unknown>): string {
+function propsToHtml(props: Record<string, unknown>, labels?: Record<string, string>): string {
   return Object.entries(props)
     .filter(([, v]) => v !== null && v !== undefined && v !== '')
-    .map(([k, v]) => `<div><strong>${escapeHtml(attributeLabel(k))}</strong> : ${escapeHtml(v)}</div>`)
+    .map(([k, v]) => `<div><strong>${escapeHtml(attributeLabel(k, labels))}</strong> : ${escapeHtml(v)}</div>`)
     .join('')
 }
 
@@ -486,7 +491,7 @@ function renderScores(tr: AnalyseResultat, total: number): React.JSX.Element {
       </div>
       <div className="geo-sr-card-body">
         <div className="geo-sr-scores">
-          {scoreRow(t('ranking.score_accessibilite'), tr.score_accessibilite, '#3b82f6')}
+          {scoreRow(t('ranking.score_accessibilite'), tr.score_accessibilite, '#1b3a6e')}
           {scoreRow(t('ranking.score_positionnement'), tr.score_positionnement, '#22c55e')}
           {scoreRow(t('ranking.score_topographie'), tr.score_topographie, '#eab308')}
           {tr.score_superficie != null ? scoreRow(t('ranking.score_superficie'), tr.score_superficie, '#14b8a6') : null}
@@ -596,6 +601,7 @@ export function GeoportalPage(): React.JSX.Element {
   const [coucheSectionsOpen, setCoucheSectionsOpen] = useState<Record<string, boolean>>({ routes: true, equipements: true })
   const [cadastreEnabled, setCadastreEnabled] = useState(false)
   const [cadastreReady, setCadastreReady] = useState(false)
+  const [paEnabled, setPaEnabled] = useState(false)
   const [savedAnalyse, setSavedAnalyse] = useState<AnalyseDetail | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -604,6 +610,7 @@ export function GeoportalPage(): React.JSX.Element {
   const [cadastreSearchResults, setCadastreSearchResults] = useState<CoucheFeature[]>([])
   const [cadastreSearchMsg, setCadastreSearchMsg] = useState<{ type: 'ok' | 'error'; text: string } | null>(null)
   const [cadastreSearchFocused, setCadastreSearchFocused] = useState<string | null>(null)
+  const [coucheCounts, setCoucheCounts] = useState<Record<string, number>>({})
 
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
@@ -617,6 +624,7 @@ export function GeoportalPage(): React.JSX.Element {
   const coucheDataRef = useRef<Record<number, CoucheFeatureCollection>>({})
   const typeLayersRef = useRef<Record<string, any>>({})
   const cadastreLayerRef = useRef<any>(null)
+  const paLayerRef = useRef<any>(null)
   const layersBarRef = useRef<HTMLDivElement>(null)
   const basemapMenuRef = useRef<HTMLDivElement>(null)
   const legendRef = useRef<HTMLDivElement>(null)
@@ -693,7 +701,7 @@ export function GeoportalPage(): React.JSX.Element {
     const cadastreLayer = cadastreLayerRef.current
     if (cadastreLayer && ref) {
       cadastreLayer.eachLayer((l: any) => {
-        const idP = l.feature?.properties?.id_parcelle
+        const idP = l.feature?.properties?.num
         if (idP != null && String(idP) === String(ref) && typeof l.getBounds === 'function') {
           const c = l.getBounds().getCenter()
           if (!center) center = [c.lat, c.lng]
@@ -708,7 +716,7 @@ export function GeoportalPage(): React.JSX.Element {
     const group = L.layerGroup().addTo(map)
     bufferLayerRef.current = group
     distances.forEach(({ key, radius }) => {
-      const color = BUFFER_COLORS[key] ?? '#3b82f6'
+      const color = BUFFER_COLORS[key] ?? '#1b3a6e'
       L.circle(center, {
         radius,
         color,
@@ -750,7 +758,7 @@ export function GeoportalPage(): React.JSX.Element {
     if (!mapEl) return
     const map = L.map(mapEl, { center: [33.88, -6.98], zoom: 12, zoomControl: false })
     map.fitBounds(TEMARA_BOUNDS)
-    L.control.zoom({ position: 'bottomright' }).addTo(map)
+    L.control.zoom({ position: 'bottomleft' }).addTo(map)
     mapRef.current = map
 
     map.on('click', (e: any) => {
@@ -768,7 +776,7 @@ export function GeoportalPage(): React.JSX.Element {
         markerRef.current.setLatLng([lat, lng])
       } else {
         markerRef.current = L.circleMarker([lat, lng], {
-          radius: 8, color: '#2563eb', fillColor: '#3b82f6', fillOpacity: 0.8, weight: 2,
+          radius: 8, color: '#1b3a6e', fillColor: '#1b3a6e', fillOpacity: 0.8, weight: 2,
         }).addTo(map)
       }
       markerRef.current.bindPopup(
@@ -795,7 +803,7 @@ export function GeoportalPage(): React.JSX.Element {
     fetchCouches()
       .then((list) => {
         if (cancelled) return
-        setCouchesDispo(list.filter((c) => c.nom === 'cadastre' || c.nom === 'reseau_routier' || c.nom === 'equipements_publics'))
+        setCouchesDispo(list.filter((c) => c.nom === 'cadastre' || c.nom === 'reseau_routier' || c.nom === 'equipements_publics' || c.nom === 'plan_amenagement'))
       })
       .catch(() => {})
     return () => {
@@ -813,6 +821,7 @@ export function GeoportalPage(): React.JSX.Element {
         const equips: CoucheType[] = []
         couchesDispo.forEach((c, i) => {
           coucheDataRef.current[c.id] = collections[i]
+          setCoucheCounts((prev) => ({ ...prev, [c.nom]: collections[i].features.length }))
           if (c.nom === 'cadastre') setCadastreReady(true)
           if (c.nom !== 'reseau_routier' && c.nom !== 'equipements_publics') return
           const attrKey = c.nom === 'reseau_routier' ? 'highway' : 'amenity'
@@ -896,7 +905,7 @@ export function GeoportalPage(): React.JSX.Element {
       style: CADASTRE_STYLE,
       onEachFeature: (feature: any, layerItem: any) => {
         layerItem.on('click', () => {
-          const idP = feature?.properties?.id_parcelle
+          const idP = feature?.properties?.num
           if (idP == null) return
           const tr = analyseResultatsRef.current.find(
             (r) => String(r.infos_generales?.reference_cadastrale) === String(idP)
@@ -905,9 +914,24 @@ export function GeoportalPage(): React.JSX.Element {
         })
         if (feature?.properties && Object.keys(feature.properties).length > 0) {
           const p = feature.properties
-          const idParcelle = p.id_parcelle ? `Parcelle ${p.id_parcelle}` : 'Parcelle cadastrale'
+          const idParcelle = p.num ? `Parcelle ${p.num}` : 'Parcelle cadastrale'
           layerItem.bindPopup(
-            `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(idParcelle)}</div><div class="geoportal-popup-coords">${propsToHtml(feature.properties)}</div></div>`
+            `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(idParcelle)}</div><div class="geoportal-popup-coords">${propsToHtml(feature.properties, CADASTRE_ATTRIBUTE_LABELS)}</div></div>`
+          )
+        }
+      },
+    }).addTo(map)
+
+  const buildPALayer = (map: any, fc: CoucheFeatureCollection): any =>
+    L.geoJSON(validFeatures(fc), {
+      style: PLAN_AMENAGEMENT_STYLE,
+      onEachFeature: (feature: any, layerItem: any) => {
+        if (feature?.properties && Object.keys(feature.properties).length > 0) {
+          const p = feature.properties
+          const designation = p.designation ? String(p.designation) : ''
+          const title = designation ? `Zone ${designation}` : "Plan d'aménagement"
+          layerItem.bindPopup(
+            `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(title)}</div><div class="geoportal-popup-coords">${propsToHtml(feature.properties, PLAN_AMENAGEMENT_ATTRIBUTE_LABELS)}</div></div>`
           )
         }
       },
@@ -928,7 +952,7 @@ export function GeoportalPage(): React.JSX.Element {
           <div class="geoportal-popup-row"><span>${t('ranking.score_amc')}</span><strong>${tr.score_amc.toFixed(1)}/100</strong></div>
           ${rentaRow}
         </div>
-        <div class="geoportal-popup-coords">${propsToHtml(p)}</div>
+        <div class="geoportal-popup-coords">${propsToHtml(p, CADASTRE_ATTRIBUTE_LABELS)}</div>
       </div>`
   }
 
@@ -943,7 +967,7 @@ export function GeoportalPage(): React.JSX.Element {
     layer.eachLayer((l: any) => {
       const props = l.feature?.properties as Record<string, unknown> | undefined
       if (!props) return
-      const idP = props.id_parcelle
+      const idP = props.num
       if (idP == null) return
       const tr = byId.get(String(idP))
       if (!tr) return
@@ -966,7 +990,7 @@ export function GeoportalPage(): React.JSX.Element {
     if (!layer || !map) return
     const ref = tr.infos_generales?.reference_cadastrale
     layer.eachLayer((l: any) => {
-      const idP = l.feature?.properties?.id_parcelle
+      const idP = l.feature?.properties?.num
       if (idP != null && String(idP) === String(ref)) {
         map.flyToBounds(l.getBounds().pad(0.4), { duration: 1.2, easeLinearity: 0.25 })
       }
@@ -974,8 +998,8 @@ export function GeoportalPage(): React.JSX.Element {
   }
 
   const cadastreParcelPopup = (props: Record<string, unknown>): string => {
-    const idParcelle = props.id_parcelle ? `Parcelle ${props.id_parcelle}` : 'Parcelle cadastrale'
-    return `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(idParcelle)}</div><div class="geoportal-popup-coords">${propsToHtml(props)}</div></div>`
+    const idParcelle = props.num ? `Parcelle ${props.num}` : 'Parcelle cadastrale'
+    return `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(idParcelle)}</div><div class="geoportal-popup-coords">${propsToHtml(props, CADASTRE_ATTRIBUTE_LABELS)}</div></div>`
   }
 
   const focusCadastreParcelle = (idParcelle: string): void => {
@@ -986,15 +1010,15 @@ export function GeoportalPage(): React.JSX.Element {
     setCadastreSearchFocused(idParcelle)
     layer.eachLayer((l: any) => {
       const props = l.feature?.properties as Record<string, unknown> | undefined
-      if (!props || props.id_parcelle == null) return
+      if (!props || props.num == null) return
       l.setStyle(CADASTRE_STYLE)
       l.bindPopup(cadastreParcelPopup(props))
     })
     colorCadastreParcels(selectedTerrainIdRef.current ?? undefined)
     layer.eachLayer((l: any) => {
       const props = l.feature?.properties as Record<string, unknown> | undefined
-      if (!props || props.id_parcelle == null) return
-      if (String(props.id_parcelle) === idParcelle) {
+      if (!props || props.num == null) return
+      if (String(props.num) === idParcelle) {
         l.setStyle(CADASTRE_SEARCH_STYLE)
         l.bringToFront()
         map.flyToBounds(l.getBounds().pad(0.4), { duration: 1, easeLinearity: 0.25 })
@@ -1037,10 +1061,10 @@ export function GeoportalPage(): React.JSX.Element {
     }
     const needle = raw.toUpperCase()
     const exact = fc.features.filter(
-      (f) => String(f.properties?.id_parcelle ?? '').toUpperCase() === needle
+      (f) => String(f.properties?.num ?? '').toUpperCase() === needle
     )
     const partial = fc.features.filter(
-      (f) => String(f.properties?.id_parcelle ?? '').toUpperCase().includes(needle)
+      (f) => String(f.properties?.num ?? '').toUpperCase().includes(needle)
     )
     const matches = exact.length > 0 ? exact : partial
     if (matches.length === 0) {
@@ -1050,7 +1074,7 @@ export function GeoportalPage(): React.JSX.Element {
     }
     setCadastreSearchResults(matches)
     setCadastreSearchMsg(null)
-    const targetId = String(matches[0].properties?.id_parcelle)
+    const targetId = String(matches[0].properties?.num)
     focusSearchParcelle(targetId)
   }
 
@@ -1111,6 +1135,21 @@ export function GeoportalPage(): React.JSX.Element {
       cadastreLayerRef.current = null
     }
   }, [cadastreEnabled, cadastreReady, couchesDispo, projet])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const id = couchesDispo.find((c) => c.nom === 'plan_amenagement')?.id
+    if (!id) return
+    if (paEnabled && !paLayerRef.current) {
+      const fc = coucheDataRef.current[id]
+      if (!fc) return
+      paLayerRef.current = buildPALayer(map, fc)
+    } else if (!paEnabled && paLayerRef.current) {
+      map.removeLayer(paLayerRef.current)
+      paLayerRef.current = null
+    }
+  }, [paEnabled, couchesDispo, projet])
 
   useEffect(() => {
     if (!projet) return
@@ -1278,6 +1317,7 @@ export function GeoportalPage(): React.JSX.Element {
     setTypeToggles({})
     setCoucheSectionsOpen({ routes: true, equipements: true })
     setCadastreEnabled(false)
+    setPaEnabled(false)
     setCadastreQuery('')
     setCadastreSearchResults([])
     setCadastreSearchMsg(null)
@@ -1365,8 +1405,10 @@ export function GeoportalPage(): React.JSX.Element {
   const activeEquipTypes = equipTypes.filter((et) => !!typeToggles[et.key])
   const activeOverlays = OVERLAY_LAYERS.filter((ol) => !!overlays[ol.id])
   const displayedBuffers = selectedTerrain ? filtresDistances(analyseFiltresRef.current ?? {}) : []
+  const cadastreCount = coucheCounts.cadastre ?? 0
   const hasActiveLayers =
     cadastreEnabled ||
+    paEnabled ||
     activeRouteTypes.length > 0 ||
     activeEquipTypes.length > 0 ||
     activeOverlays.length > 0
@@ -1705,6 +1747,54 @@ export function GeoportalPage(): React.JSX.Element {
             <div className="geo-main-body">
               <div className="geo-map-container">
                 <div id="map" ref={mapContainerRef}></div>
+
+                <nav className="geo-nav" aria-label={t('ranking.nav_label')}>
+                  <div className="geo-nav-search">
+                    <span className="geo-nav-search-icon">{icons.search}</span>
+                    <input
+                      type="search"
+                      className="geo-nav-search-input"
+                      placeholder={t('ranking.nav_search_placeholder')}
+                      value={cadastreQuery}
+                      onChange={(e) => setCadastreQuery(e.target.value)}
+                      onKeyDown={handleCadastreSearchEnter}
+                      aria-label={t('ranking.search_terrain')}
+                    />
+                  </div>
+                  <div className="geo-nav-sep" aria-hidden="true"></div>
+                  <button
+                    type="button"
+                    className={`geo-nav-tab${cadastreEnabled ? ' geo-nav-tab--active' : ''}`}
+                    title={t('ranking.carte_cadastrale')}
+                    aria-pressed={cadastreEnabled}
+                    onClick={() => setCadastreEnabled((v) => !v)}
+                  >
+                    <span className="geo-nav-tab-icon">{icons.mapPin}</span>
+                    <span className="geo-nav-tab-label">{t('ranking.nav_terrains')}</span>
+                    {cadastreCount > 0 ? <em className="geo-nav-tab-count">({cadastreCount})</em> : null}
+                  </button>
+                  <button
+                    type="button"
+                    className={`geo-nav-tab${paEnabled ? ' geo-nav-tab--active' : ''}`}
+                    title={t('ranking.plan_amenagement')}
+                    aria-pressed={paEnabled}
+                    onClick={() => setPaEnabled((v) => !v)}
+                  >
+                    <span className="geo-nav-tab-icon">{icons.layers}</span>
+                    <span className="geo-nav-tab-label">{t('ranking.plan_amenagement')}</span>
+                  </button>
+                  <div className="geo-nav-sep" aria-hidden="true"></div>
+                  <a
+                    className="geo-nav-tab geo-nav-tab--link"
+                    href={REGLEMENT_PDF_URL}
+                    download
+                    title={t('ranking.nav_reglement')}
+                  >
+                    <span className="geo-nav-tab-icon"><Icon name="document" /></span>
+                    <span className="geo-nav-tab-label">{t('ranking.nav_reglement')}</span>
+                  </a>
+                </nav>
+
                 <div className="geo-coord-display" id="coord-display">{coord}</div>
 
                 <div className="geo-top-controls" id="top-controls">
@@ -1737,6 +1827,21 @@ export function GeoportalPage(): React.JSX.Element {
                           />
                           <span className="geo-popup-overlay-dot geo-popup-overlay-dot--cadastre"></span>
                           <span>{t('ranking.carte_cadastrale')}</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div className="geo-layers-popup-divider"></div>
+                    <div className="geo-layers-popup-section">
+                      <span className="geo-layers-popup-label">{t('ranking.plan_amenagement')}</span>
+                      <div className="geo-layers-popup-overlays">
+                        <label className="geo-popup-overlay-item">
+                          <input
+                            type="checkbox"
+                            checked={paEnabled}
+                            onChange={() => setPaEnabled((v) => !v)}
+                          />
+                          <span className="geo-popup-overlay-dot geo-popup-overlay-dot--pa"></span>
+                          <span>{t('ranking.plan_amenagement')}</span>
                         </label>
                       </div>
                     </div>
@@ -1896,6 +2001,12 @@ export function GeoportalPage(): React.JSX.Element {
                             <span>{t('ranking.carte_cadastrale')}</span>
                           </div>
                         ) : null}
+                        {paEnabled ? (
+                          <div className="geo-legend-item">
+                            <span className="geo-legend-swatch" style={{ background: '#a855f7' }}></span>
+                            <span>{t('ranking.plan_amenagement')}</span>
+                          </div>
+                        ) : null}
                         {activeRouteTypes.map((rt) => (
                           <div className="geo-legend-item" key={rt.key}>
                             <span className="geo-legend-line" style={{ background: (ROUTE_STYLES[rt.type] ?? { color: '#6b7280' }).color }}></span>
@@ -1929,7 +2040,7 @@ export function GeoportalPage(): React.JSX.Element {
                           <div className="geo-layers-popup-overlays">
                             {displayedBuffers.map(({ key }) => (
                               <div className="geo-legend-item" key={key}>
-                                <span className="geo-legend-swatch" style={{ background: BUFFER_COLORS[key] ?? '#3b82f6' }}></span>
+                                <span className="geo-legend-swatch" style={{ background: BUFFER_COLORS[key] ?? '#1b3a6e' }}></span>
                                 <span>{BUFFER_LABELS[key] ?? key}</span>
                               </div>
                             ))}
@@ -2015,9 +2126,9 @@ export function GeoportalPage(): React.JSX.Element {
                           <ul className="geo-cadastre-search-list">
                             {cadastreSearchResults.map((f) => {
                               const p = f.properties
-                              const idP = String(p?.id_parcelle ?? '')
-                              const commune = String(p?.commune ?? '—')
-                              const surface = p?.superficie_m2 != null ? `${Number(p.superficie_m2).toLocaleString()} m²` : '—'
+                              const idP = String(p?.num ?? '')
+                              const consistance = String(p?.Consistance ?? '—')
+                              const surface = p?.surface != null ? `${Number(p.surface).toLocaleString()} m²` : '—'
                               const isFocused = cadastreSearchFocused === idP
                               return (
                                 <li key={idP}>
@@ -2027,7 +2138,7 @@ export function GeoportalPage(): React.JSX.Element {
                                     onClick={() => focusSearchParcelle(idP)}
                                   >
                                     <span className="geo-cadastre-search-item-ref">{idP || '—'}</span>
-                                    <span className="geo-cadastre-search-item-meta">{commune} · {surface}</span>
+                                    <span className="geo-cadastre-search-item-meta">{consistance} · {surface}</span>
                                   </button>
                                 </li>
                               )

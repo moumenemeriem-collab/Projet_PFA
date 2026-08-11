@@ -281,18 +281,11 @@ def _decode_geotiff_float32(data: bytes) -> np.ndarray:
 
 def _load_parcels() -> list:
     cols = [
-        'id', 'geometry', 'id_parcelle', 'num_titre_foncier', 'type_immatriculation',
-        'nature_juridique', 'superficie_m2', 'commune', 'cercle', 'province',
-        'nature_occupation_code', 'nature_occupation_libelle', 'zone_amenagement',
-        'statut_foncier', 'origine', 'reference_plan', 'echelle_leve',
-        'date_creation', 'date_derniere_maj',
+        'id', 'geometry', 'fid', 'indice', 'complement', 'Consistance', 'num', 'surface',
     ]
     query = (
-        'SELECT id, geometry, id_parcelle, num_titre_foncier, type_immatriculation, '
-        'nature_juridique, superficie_m2, commune, cercle, province, '
-        'nature_occupation_code, nature_occupation_libelle, zone_amenagement, '
-        'statut_foncier, origine, reference_plan, echelle_leve, '
-        'date_creation, date_derniere_maj FROM couche_cadastre ORDER BY id'
+        'SELECT id, geometry, fid, indice, complement, "Consistance", num, surface '
+        'FROM couche_cadastre ORDER BY id'
     )
     parcels = []
     with connection.cursor() as cur:
@@ -682,14 +675,14 @@ def analyser_parcelles(projet_pk: int, filtres: dict) -> dict:
                 pente = math.sqrt(gx * gx + gy * gy) * 100.0
         score_topo = _pente_score(pente if pente is not None else None)
 
-        score_superf = _score_superficie(parcelle.get('superficie_m2'), surface_souhaitee)
+        score_superf = _score_superficie(parcelle.get('surface'), surface_souhaitee)
         if score_superf is not None:
             score_amc = round(
                 0.30 * score_access + 0.30 * score_pos + 0.25 * score_topo + 0.15 * score_superf, 1)
         else:
             score_amc = round(0.35 * score_access + 0.35 * score_pos + 0.30 * score_topo, 1)
 
-        ref_rentabilite = rentabilite_refs.get(parcelle.get('id_parcelle'))
+        ref_rentabilite = rentabilite_refs.get(parcelle.get('num'))
         prix_terrain = ref_rentabilite['prix_terrain'] if ref_rentabilite else None
         roi, marge, benefice_net, score_rentabilite, type_rentabilite = _rentabilite_parcelle(
             projet, prix_terrain, ref_rentabilite)
@@ -701,19 +694,19 @@ def analyser_parcelles(projet_pk: int, filtres: dict) -> dict:
             score_final = score_amc
 
         infos = {
-            'reference_cadastrale': parcelle.get('id_parcelle') or f"P-{parcelle['id']}",
-            'commune': parcelle.get('commune') or '—',
-            'province': parcelle.get('province') or '—',
+            'reference_cadastrale': parcelle.get('num') or f"P-{parcelle['id']}",
+            'commune': '—',
+            'province': '—',
             'region': 'Rabat-Salé-Kénitra',
-            'superficie': f"{float(parcelle.get('superficie_m2') or 0):.2f} m²",
+            'superficie': f"{float(parcelle.get('surface') or 0):.2f} m²",
             'perimetre': f"{parcelle['perimetre']:.2f} m",
             'latitude': plat,
             'longitude': plon,
-            'zone_amenagement': parcelle.get('zone_amenagement') or '—',
-            'statut_foncier': parcelle.get('statut_foncier') or '—',
-            'nature_juridique': parcelle.get('nature_juridique') or '—',
-            'type_immatriculation': parcelle.get('type_immatriculation') or '—',
-            'num_titre_foncier': parcelle.get('num_titre_foncier') or '—',
+            'zone_amenagement': '—',
+            'statut_foncier': '—',
+            'nature_juridique': '—',
+            'type_immatriculation': '—',
+            'num_titre_foncier': '—',
         }
 
         criteres = _construire_criteres(
@@ -726,7 +719,7 @@ def analyser_parcelles(projet_pk: int, filtres: dict) -> dict:
         resultats.append({
             'id': parcelle['id'],
             'nom': f"Parcelle {infos['reference_cadastrale']}",
-            'superficie': float(parcelle.get('superficie_m2') or 0),
+            'superficie': float(parcelle.get('surface') or 0),
             'lat': plat,
             'lng': plon,
             'score_global': score_final,
@@ -768,7 +761,7 @@ def _construire_criteres(parcelle, filtres, dist_routes, nearest_name, class_nea
     # --- critères du projet ---------------------------------------------------
     surface_souhaitee = projet.get('surface_souhaitee') or 0
     surface_construite = projet.get('surface_construite') or 0
-    superficie_m2 = float(parcelle.get('superficie_m2') or 0)
+    superficie_m2 = float(parcelle.get('surface') or 0)
     if surface_souhaitee:
         ratio = superficie_m2 / surface_souhaitee
         criteres.append({
