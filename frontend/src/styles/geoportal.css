@@ -2290,6 +2290,20 @@
 
 /* ── Leaflet popup overrides (all map popups) ── */
 
+/* Le panneau popup est déplacé hors du .leaflet-map-pane (qui porte un
+   transform inline créant un contexte d'empilement) vers cette couche
+   au-dessus de tous les blocs du géoportail. */
+.geo-map-container .geo-popup-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1500;
+  pointer-events: none;
+}
+
+.geo-popup-layer .leaflet-popup {
+  pointer-events: auto;
+}
+
 .leaflet-popup-content-wrapper,
 .leaflet-popup-tip {
   box-shadow: 0 12px 32px rgba(2, 32, 71, 0.18);
@@ -2432,6 +2446,12 @@
   text-shadow: 0 1px 10px rgba(2, 32, 71, 0.35);
 }
 
+.geo-dims-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .geo-dims-close {
   width: 34px;
   height: 34px;
@@ -2455,25 +2475,138 @@
   transform: rotate(90deg) scale(1.06);
 }
 
+.geo-dims-download {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.92);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.geo-dims-download:hover {
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(1.08);
+}
+
 .geo-dims-body {
   display: flex;
-  gap: 18px;
+  flex-direction: column;
+  gap: 16px;
   padding: 20px 24px 24px;
 }
 
+.geo-dims-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #0f3d6e;
+}
+
 .geo-dims-plot {
-  flex: 1.2;
-  min-width: 0;
+  position: relative;
+  width: 100%;
+  height: 300px;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   overflow: hidden;
   background: #fbfdff;
 }
 
-.geo-dims-plot svg {
+.geo-dims-plot svg.geo-dims-svg {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
+  transform-origin: center center;
+  transition: transform 0.18s ease;
+}
+
+.geo-dims-zoom {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #dbe3ef;
+  border-radius: 999px;
+  padding: 4px;
+  box-shadow: 0 4px 14px rgba(2, 32, 71, 0.16);
+}
+
+.geo-dims-zoom-btn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #eef3fb;
+  color: #0f3d6e;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.geo-dims-zoom-btn:hover {
+  background: #dbe7f7;
+  transform: scale(1.08);
+}
+
+.geo-dims-zoom-value {
+  min-width: 44px;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0f3d6e;
+}
+
+.geo-dims-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.geo-dims-table th,
+.geo-dims-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.geo-dims-table thead th {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.geo-dims-table td:last-child {
+  text-align: right;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+}
+
+.geo-dims-table tr.geo-dims-total td {
+  background: #eef3fb;
+  border-top: 2px solid #dbe3ef;
+  color: #0f3d6e;
+  font-weight: 700;
 }
 
 .geo-dims-grid line {
@@ -2510,54 +2643,16 @@
   stroke-linejoin: round;
 }
 
-.geo-dims-list {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.geo-dims-list-title {
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: #0f3d6e;
-  margin-bottom: 4px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #e2e8f0;
-}
-
-.geo-dims-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 6px 10px;
-  font-size: 0.8125rem;
-  color: #475569;
-  background: #f8fafc;
-  border: 1px solid #eef2f7;
-  border-radius: 8px;
-}
-
-.geo-dims-row strong {
-  color: #1e293b;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.geo-dims-row--total {
-  background: #eef3fb;
-  border-color: #dbe3ef;
-}
-
-.geo-dims-row--total strong {
-  color: #0f3d6e;
+.geo-dims-pdf-icon {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  fill: currentColor;
 }
 
 @media (max-width: 640px) {
-  .geo-dims-body {
-    flex-direction: column;
+  .geo-dims-plot {
+    height: 240px;
   }
 }
 

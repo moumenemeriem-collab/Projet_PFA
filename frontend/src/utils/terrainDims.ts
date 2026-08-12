@@ -1,5 +1,7 @@
 // Dimensions d'une parcelle cadastrale (plan topographique) + ouverture Google Maps.
 
+import { downloadTerrainPdf } from './pdfPlan'
+
 const EARTH_R = 6371008.8
 
 export interface DimsSide {
@@ -77,15 +79,27 @@ function formatArea(m2: number): string {
 }
 
 // Extrait l'anneau externe d'une géométrie GeoJSON (Polygon / MultiPolygon).
+// Supprime le sommet de fermeture (dernier point identique au premier) et les
+// sommets consécutifs dupliqués, sinon la longueur d'un côté vaut 0 m.
 export function extractRing(geometry: unknown): number[][] | null {
   if (!geometry || typeof geometry !== 'object') return null
   const g = geometry as { type?: string; coordinates?: unknown }
   const c = g.coordinates as unknown
   const coerce = (raw: unknown): number[][] | null => {
     if (!Array.isArray(raw) || !Array.isArray(raw[0])) return null
-    const ring = raw as number[][]
-    if (ring.length < 3 || !ring.every((p) => Array.isArray(p) && p.length >= 2)) return null
-    return ring.map((p) => [p[0], p[1]] as [number, number])
+    const ring = (raw as number[][]).map((p) => [p[0], p[1]] as [number, number])
+    const cleaned: number[][] = []
+    for (const pt of ring) {
+      const last = cleaned[cleaned.length - 1]
+      if (!last || last[0] !== pt[0] || last[1] !== pt[1]) cleaned.push(pt)
+    }
+    if (cleaned.length > 1) {
+      const first = cleaned[0]
+      const last = cleaned[cleaned.length - 1]
+      if (first[0] === last[0] && first[1] === last[1]) cleaned.pop()
+    }
+    if (cleaned.length < 3) return null
+    return cleaned
   }
   if (g.type === 'Polygon') return coerce(Array.isArray(c) ? c[0] : null)
   if (g.type === 'MultiPolygon' && Array.isArray(c) && Array.isArray(c[0])) {
@@ -116,9 +130,16 @@ const GRID_LINES =
   '<line x1="0" y1="50" x2="380" y2="50"/><line x1="0" y1="100" x2="380" y2="100"/><line x1="0" y1="150" x2="380" y2="150"/><line x1="0" y1="200" x2="380" y2="200"/>' +
   '<line x1="76" y1="0" x2="76" y2="250"/><line x1="152" y1="0" x2="152" y2="250"/><line x1="228" y1="0" x2="228" y2="250"/><line x1="304" y1="0" x2="304" y2="250"/>'
 
+const DIMS_SVG_W = 380
+const DIMS_SVG_H = 250
+
 export function buildDimsSvg(ring: number[][]): string {
-  const W = 380
-  const H = 250
+  return `<svg viewBox="0 0 ${DIMS_SVG_W} ${DIMS_SVG_H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Plan topographique">${buildDimsSvgInner(ring)}</svg>`
+}
+
+function buildDimsSvgInner(ring: number[][]): string {
+  const W = DIMS_SVG_W
+  const H = DIMS_SVG_H
   const PAD = 42
   const xs = ring.map((p) => p[0])
   const ys = ring.map((p) => p[1])
@@ -143,7 +164,6 @@ export function buildDimsSvg(ring: number[][]): string {
     })
     .join('')
   return (
-    `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Plan topographique">` +
     `<rect width="${W}" height="${H}" fill="#fbfdff"/>` +
     `<g class="geo-dims-grid">${GRID_LINES}</g>` +
     `<polygon class="geo-dims-shape" points="${pts}"/>` +
@@ -151,8 +171,7 @@ export function buildDimsSvg(ring: number[][]): string {
       .map((s) => `<circle cx="${px(s.a[0]).toFixed(1)}" cy="${py(s.a[1]).toFixed(1)}" r="3"/>`)
       .join('')}</g>` +
     `<g class="geo-dims-north" transform="translate(${W - 22},16)"><path d="M0 10 L4 4 L-4 4 Z"/><path d="M0 10 V16" stroke-width="1.4"/></g>` +
-    labels +
-    `</svg>`
+    labels
   )
 }
 
@@ -161,23 +180,38 @@ export function buildDimsModalHtml(ring: number[][], title: string): string {
   const perimeter = sides.reduce((sum, s) => sum + s.d, 0)
   const area = polygonAreaM2(ring)
   const rows = sides
-    .map((s, i) => `<div class="geo-dims-row"><span>Côté ${i + 1}</span><strong>${escapeHtml(formatMeters(s.d))}</strong></div>`)
+    .map((s, i) => `<tr><td>Côté ${i + 1}</td><td>${escapeHtml(formatMeters(s.d))}</td></tr>`)
     .join('')
   return (
     `<div class="geo-dims-overlay" data-dims-overlay>` +
     `<div class="geo-dims-modal">` +
     `<div class="geo-dims-header">` +
     `<h3>Dimensions du terrain</h3>` +
+    `<div class="geo-dims-header-actions">` +
+    `<button type="button" class="geo-dims-download" data-dims-pdf title="Télécharger le plan topographique (PDF)" aria-label="Télécharger le plan topographique (PDF)">` +
+    `<svg class="geo-dims-pdf-icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2 1.5A1.5 1.5 0 0 1 3.5 0H10l4 4v10.5A1.5 1.5 0 0 1 12.5 16h-9A1.5 1.5 0 0 1 2 14.5v-13zM10 0.5V4a1 1 0 0 0 1 1h3.5L10 0.5zM9 7v5.3L7.1 10.4a.6.6 0 1 0-.85.85l2.6 2.6a.6.6 0 0 0 .85 0l2.6-2.6a.6.6 0 1 0-.85-.85L10 12.3V7a.6.6 0 1 0-1 0z"/></svg>` +
+    `</button>` +
     `<button type="button" class="geo-dims-close" data-dims-close aria-label="Fermer">&times;</button>` +
     `</div>` +
-    `<div class="geo-dims-body">` +
-    `<div class="geo-dims-plot">${buildDimsSvg(ring)}</div>` +
-    `<div class="geo-dims-list">` +
-    `<div class="geo-dims-list-title">${escapeHtml(title)}</div>` +
-    rows +
-    `<div class="geo-dims-row geo-dims-row--total"><span>Périmètre</span><strong>${escapeHtml(formatMeters(perimeter))}</strong></div>` +
-    `<div class="geo-dims-row geo-dims-row--total"><span>Surface</span><strong>${escapeHtml(formatArea(area))}</strong></div>` +
     `</div>` +
+    `<div class="geo-dims-body">` +
+    `<div class="geo-dims-title">${escapeHtml(title)}</div>` +
+    `<div class="geo-dims-plot" data-dims-plot>` +
+    `<svg class="geo-dims-svg" data-dims-svg viewBox="0 0 ${DIMS_SVG_W} ${DIMS_SVG_H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Plan topographique">${buildDimsSvgInner(ring)}</svg>` +
+    `<div class="geo-dims-zoom">` +
+    `<button type="button" class="geo-dims-zoom-btn" data-dims-zoom="out" aria-label="Dézoomer">&#8722;</button>` +
+    `<span class="geo-dims-zoom-value" data-dims-hint>100%</span>` +
+    `<button type="button" class="geo-dims-zoom-btn" data-dims-zoom="in" aria-label="Zoomer">+</button>` +
+    `</div>` +
+    `</div>` +
+    `<table class="geo-dims-table">` +
+    `<thead><tr><th>Côté</th><th>Longueur</th></tr></thead>` +
+    `<tbody>` +
+    rows +
+    `<tr class="geo-dims-total"><td>Périmètre</td><td>${escapeHtml(formatMeters(perimeter))}</td></tr>` +
+    `<tr class="geo-dims-total"><td>Surface</td><td>${escapeHtml(formatArea(area))}</td></tr>` +
+    `</tbody>` +
+    `</table>` +
     `</div>` +
     `</div>` +
     `</div>`
@@ -195,6 +229,22 @@ export function showTerrainDims(ring: number[][], title: string): void {
     if (e.target === overlay) close()
   })
   overlay.querySelector<HTMLElement>('[data-dims-close]')?.addEventListener('click', close)
+
+  const svg = overlay.querySelector<SVGSVGElement>('[data-dims-svg]')
+  const hint = overlay.querySelector<HTMLElement>('[data-dims-hint]')
+  let scale = 1
+  const setScale = (s: number): void => {
+    scale = Math.min(4, Math.max(1, s))
+    if (svg) svg.style.transform = `scale(${scale})`
+    if (hint) hint.textContent = `${Math.round(scale * 100)}%`
+  }
+  overlay.querySelector<HTMLElement>('[data-dims-zoom="in"]')?.addEventListener('click', () => setScale(scale + 0.25))
+  overlay.querySelector<HTMLElement>('[data-dims-zoom="out"]')?.addEventListener('click', () => setScale(scale - 0.25))
+
+  overlay.querySelector<HTMLElement>('[data-dims-pdf]')?.addEventListener('click', () => {
+    downloadTerrainPdf(ring, title)
+  })
+
   const onKey = (e: KeyboardEvent): void => {
     if (e.key === 'Escape') {
       close()
