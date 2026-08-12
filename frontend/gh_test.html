@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>GH AFFECTATIONS TEST</title>
+</head>
+<body>
+<div id="out">chargement…</div>
+<script type="module">
+  import { computeParcelAffectations, preparePAZones } from '/src/utils/affectations.ts'
+
+  const out = document.getElementById('out')
+  const log = (s) => { out.textContent = (out.textContent === 'chargement…' ? '' : out.textContent) + s + '\n' }
+  const TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzg2NTM2MDAwLCJpYXQiOjE3ODY1MzQyMDAsImp0aSI6ImMxNGRiZDQ4OGZjYzQyZTdhNzc2ZWY1NWE4MzM0NWMyIiwidXNlcl9pZCI6MjksImVtYWlsIjoiZGVidWcuZ2VvQHRlc3QuY29tIiwicm9sZSI6ImludmVzdGlzc2V1ciJ9.vEV2abxWI0HaRy2m8IdVeo1zzTnLA5BdCAzoilvuUtA'
+
+  try {
+    log('L global = ' + (typeof window.L))
+    const [cad, pa] = await Promise.all([
+      fetch('/api/projets/couches/1/download/', { headers: { Authorization: 'Bearer ' + TOKEN } }).then(r => r.json()),
+      fetch('/api/projets/couches/2/download/', { headers: { Authorization: 'Bearer ' + TOKEN } }).then(r => r.json()),
+    ])
+    log('cadastre features = ' + cad.features.length)
+    log('pa features = ' + pa.features.length)
+
+    const t0 = performance.now()
+    const zones = preparePAZones(pa.features)
+    log('preparePAZones ok, zones = ' + zones.length + ' en ' + Math.round(performance.now() - t0) + ' ms')
+
+    const samples = [0, 1, 2, 3, 4, 5, 10, 50, 100, 200, 500, 1000]
+    let total = 0
+    for (const idx of samples) {
+      const f = cad.features[idx]
+      const pieces = computeParcelAffectations(f, zones)
+      total += pieces.length
+      log('parcel[' + idx + '] num=' + f.properties.num + ' pieces=' + pieces.length)
+    }
+    log('TOTAL pieces = ' + total)
+    log('DONE')
+  } catch (e) {
+    log('ERROR: ' + (e && e.stack ? e.stack.split('\n').slice(0, 4).join(' | ') : String(e)))
+    log('DONE')
+  }
+</script>
+</body>
+</html>

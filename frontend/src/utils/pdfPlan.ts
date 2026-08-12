@@ -134,26 +134,87 @@ function niceStep(range: number, targetSegments: number): number {
   return nice * pow
 }
 
-function textW(s: string, size: number): number {
-  let u = 0
-  for (const ch of s) {
-    const c = ch.codePointAt(0) ?? 0
-    if (c === 32) u += 278
-    else if (c >= 48 && c <= 57) u += 556
-    else if (c >= 65 && c <= 90) u += 667
-    else if (c >= 97 && c <= 122) u += 500
-    else u += 556
+// Métriques réelles Helvetica / Helvetica-Bold (unités par 1000 em, valeurs AFM
+// standard). L'ancienne estimation forfaitaire (556 pour tout caractère "large")
+// sous-évaluait fortement des caractères comme le tiret cadratin "—" (≈1000)
+// ou surévaluait des signes de ponctuation étroits, ce qui faisait déborder du
+// texte hors des cadres/encarts sans qu'on s'en rende compte au moment d'écrire
+// le code (l'erreur ne se voit qu'à l'impression du PDF).
+const HELV_W: Record<number, number> = {
+  32: 278, 33: 278, 34: 355, 35: 556, 36: 556, 37: 889, 38: 667, 39: 191,
+  40: 333, 41: 333, 42: 389, 43: 584, 44: 278, 45: 333, 46: 278, 47: 278,
+  48: 556, 49: 556, 50: 556, 51: 556, 52: 556, 53: 556, 54: 556, 55: 556, 56: 556, 57: 556,
+  58: 278, 59: 278, 60: 584, 61: 584, 62: 584, 63: 556, 64: 1015,
+  65: 667, 66: 667, 67: 722, 68: 722, 69: 667, 70: 611, 71: 778, 72: 722, 73: 278,
+  74: 500, 75: 667, 76: 556, 77: 833, 78: 722, 79: 778, 80: 667, 81: 778, 82: 722,
+  83: 667, 84: 611, 85: 722, 86: 667, 87: 944, 88: 667, 89: 667, 90: 611,
+  91: 278, 92: 278, 93: 278, 94: 469, 95: 556, 96: 333,
+  97: 556, 98: 556, 99: 500, 100: 556, 101: 556, 102: 278, 103: 556, 104: 556,
+  105: 222, 106: 222, 107: 500, 108: 222, 109: 833, 110: 556, 111: 556, 112: 556,
+  113: 556, 114: 333, 115: 500, 116: 278, 117: 556, 118: 500, 119: 722, 120: 500,
+  121: 500, 122: 500, 123: 334, 124: 260, 125: 334, 126: 584,
+  0x96: 556, 0x97: 1000, // – —
+  0x91: 222, 0x92: 222, 0x93: 400, 0x94: 400, 0x85: 1000, // ‘ ’ “ ” …
+  0xb2: 333, 0xb0: 400, // ² °
+}
+const HELV_BOLD_W: Record<number, number> = {
+  32: 278, 33: 333, 34: 474, 35: 556, 36: 556, 37: 889, 38: 722, 39: 238,
+  40: 333, 41: 333, 42: 389, 43: 584, 44: 278, 45: 333, 46: 278, 47: 278,
+  48: 556, 49: 556, 50: 556, 51: 556, 52: 556, 53: 556, 54: 556, 55: 556, 56: 556, 57: 556,
+  58: 333, 59: 333, 60: 584, 61: 584, 62: 584, 63: 611, 64: 975,
+  65: 722, 66: 722, 67: 722, 68: 722, 69: 667, 70: 611, 71: 778, 72: 722, 73: 278,
+  74: 556, 75: 722, 76: 611, 77: 833, 78: 722, 79: 778, 80: 667, 81: 778, 82: 722,
+  83: 667, 84: 611, 85: 722, 86: 667, 87: 944, 88: 667, 89: 667, 90: 611,
+  91: 333, 92: 278, 93: 333, 94: 584, 95: 556, 96: 333,
+  97: 556, 98: 611, 99: 556, 100: 611, 101: 556, 102: 333, 103: 611, 104: 611,
+  105: 278, 106: 278, 107: 556, 108: 278, 109: 889, 110: 611, 111: 611, 112: 611,
+  113: 611, 114: 389, 115: 556, 116: 333, 117: 611, 118: 556, 119: 778, 120: 556,
+  121: 556, 122: 500, 123: 389, 124: 280, 125: 389, 126: 584,
+  0x96: 556, 0x97: 1000,
+  0x91: 278, 0x92: 278, 0x93: 500, 0x94: 500, 0x85: 1000,
+  0xb2: 333, 0xb0: 400,
+}
+// Lettres accentuées / cédille : approximées par la largeur de la lettre de
+// base correspondante (l'écart réel est de l'ordre du pour-cent, négligeable
+// pour du texte à cette échelle, et bien plus précis que l'ancien forfait).
+const ACCENT_BASE: Record<string, string> = {
+  À: 'A', Á: 'A', Â: 'A', Ã: 'A', Ä: 'A', Å: 'A',
+  Ç: 'C', È: 'E', É: 'E', Ê: 'E', Ë: 'E',
+  Ì: 'I', Í: 'I', Î: 'I', Ï: 'I',
+  Ñ: 'N', Ò: 'O', Ó: 'O', Ô: 'O', Õ: 'O', Ö: 'O', Ø: 'O',
+  Ù: 'U', Ú: 'U', Û: 'U', Ü: 'U', Ý: 'Y',
+  à: 'a', á: 'a', â: 'a', ã: 'a', ä: 'a', å: 'a',
+  ç: 'c', è: 'e', é: 'e', ê: 'e', ë: 'e',
+  ì: 'i', í: 'i', î: 'i', ï: 'i',
+  ñ: 'n', ò: 'o', ó: 'o', ô: 'o', õ: 'o', ö: 'o', ø: 'o',
+  ù: 'u', ú: 'u', û: 'u', ü: 'u', ý: 'y', ÿ: 'y',
+}
+
+function charWidth(ch: string, bold: boolean): number {
+  const table = bold ? HELV_BOLD_W : HELV_W
+  const code = ch.codePointAt(0) ?? 0
+  if (table[code] != null) return table[code]
+  const base = ACCENT_BASE[ch]
+  if (base) {
+    const baseCode = base.codePointAt(0) ?? 0
+    if (table[baseCode] != null) return table[baseCode]
   }
+  return 556
+}
+
+function textW(s: string, size: number, bold = false): number {
+  let u = 0
+  for (const ch of s) u += charWidth(ch, bold)
   return (u * size) / 1000
 }
 
-function wrap(s: string, size: number, maxW: number): string[] {
+function wrap(s: string, size: number, maxW: number, bold = false): string[] {
   const words = s.split(' ')
   const lines: string[] = []
   let cur = ''
   for (const w of words) {
     const test = cur ? `${cur} ${w}` : w
-    if (textW(test, size) <= maxW) cur = test
+    if (textW(test, size, bold) <= maxW) cur = test
     else {
       if (cur) lines.push(cur)
       cur = w
@@ -203,6 +264,54 @@ function subj(d: PlanData): string {
 }
 
 // ---------------------------------------------------------------------------
+// Anti-collision d'étiquettes (utilisé page 2 : coins + longueurs de côtés)
+// ---------------------------------------------------------------------------
+// Quand deux coins sont proches (petit côté), leurs étiquettes se chevauchent
+// si on se contente d'un simple décalage radial. On calcule d'abord toutes
+// les boîtes, puis on les écarte itérativement (séparation d'AABB), avant de
+// les dessiner. Beaucoup plus robuste qu'un réglage de décalage au cas par cas.
+
+interface LabelBox {
+  x: number // coin bas-gauche du rectangle d'étiquette
+  y: number
+  w: number
+  h: number
+  text: string
+  size: number
+}
+
+function separateLabels(boxes: LabelBox[], iterations = 60, pad = 1.5): void {
+  for (let iter = 0; iter < iterations; iter++) {
+    let moved = false
+    for (let i = 0; i < boxes.length; i++) {
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i]
+        const b = boxes[j]
+        const ax0 = a.x - pad, ax1 = a.x + a.w + pad, ay0 = a.y - pad, ay1 = a.y + a.h + pad
+        const bx0 = b.x - pad, bx1 = b.x + b.w + pad, by0 = b.y - pad, by1 = b.y + b.h + pad
+        const overlapX = Math.min(ax1, bx1) - Math.max(ax0, bx0)
+        const overlapY = Math.min(ay1, by1) - Math.max(ay0, by0)
+        if (overlapX > 0 && overlapY > 0) {
+          moved = true
+          if (overlapX < overlapY) {
+            const shift = overlapX / 2 + 0.2
+            const dir = a.x + a.w / 2 < b.x + b.w / 2 ? -1 : 1
+            a.x += dir * shift
+            b.x -= dir * shift
+          } else {
+            const shift = overlapY / 2 + 0.2
+            const dir = a.y + a.h / 2 < b.y + b.h / 2 ? -1 : 1
+            a.y += dir * shift
+            b.y -= dir * shift
+          }
+        }
+      }
+    }
+    if (!moved) break
+  }
+}
+
+// ---------------------------------------------------------------------------
 // PAGE 1 — Fiche d'identité du terrain (portrait A4)
 // ---------------------------------------------------------------------------
 
@@ -227,20 +336,30 @@ function buildPage1(d: PlanData, dateStr: string): string {
   ]
   const labelX = 82
   const valX = 270
-  const valW = 535.28 - 82 - 30
+  // Largeur disponible pour la VALEUR : mesurée depuis son point de départ
+  // réel (valX), pas depuis celui du libellé — sinon le texte peut déborder
+  // du cadre puisqu'on autorise des lignes plus longues que l'espace restant.
+  const valW = 535.28 - valX - 20
   const lines = rows.map((r) => ({ label: r.label, text: wrap(r.value, 9, valW) }))
-  let y = 678
+
+  // La position du titre est fixée d'abord (cardTop), puis la première ligne
+  // démarre à une distance garantie sous le titre (au lieu d'une valeur fixe
+  // indépendante qui pouvait chevaucher le titre selon sa taille de police).
+  const cardTop = 706
+  const titleY = cardTop - 20
+  const titleRuleY = titleY - 9
+  let y = titleRuleY - 20
   const positions: Array<{ label: string; text: string[]; y: number }> = []
   for (const r of lines) {
     positions.push({ label: r.label, text: r.text, y })
     y -= r.text.length * 13 + 14
   }
   const cardBottom = y + 6
-  const cardTop = 706
 
   out.push(`0.985 0.99 1 rg 60 ${cardBottom.toFixed(2)} 475.28 ${(cardTop - cardBottom).toFixed(2)} re f\n`)
   out.push(`${LINE} RG 0.9 w 60 ${cardBottom.toFixed(2)} 475.28 ${(cardTop - cardBottom).toFixed(2)} re S\n`)
-  txt('INFORMATIONS GÉNÉRALES', labelX, cardTop - 22, 10, 'F2')
+  txt('INFORMATIONS GÉNÉRALES', labelX, titleY, 10, 'F2')
+  out.push(`${LINE} RG 0.7 w ${labelX.toFixed(2)} ${titleRuleY.toFixed(2)} m ${(535.28 - 30).toFixed(2)} ${titleRuleY.toFixed(2)} l S\n`)
   for (const p of positions) {
     txt(p.label, labelX, p.y, 9, 'F2', '0.4 0.45 0.55')
     p.text.forEach((line, i) => txt(line, valX, p.y - i * 13, 9))
@@ -264,7 +383,7 @@ function buildPage2(d: PlanData, dateStr: string): string {
     out.push(`${color} rg BT /${font} ${size} Tf 1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm (${esc(s)}) Tj ET\n`)
   }
   const txtR = (s: string, right: number, y: number, size: number, font = 'F1', color = NAVY): void =>
-    txt(s, right - textW(s, size), y, size, font, color)
+    txt(s, right - textW(s, size, font === 'F2'), y, size, font, color)
 
   const n = d.pts.length
   const xs = d.pts.map((p) => p.x)
@@ -276,8 +395,8 @@ function buildPage2(d: PlanData, dateStr: string): string {
   const eX = maxX - minX
   const eY = maxY - minY
   const step = niceStep(Math.max(eX, eY), 5)
-  const padX = Math.max(eX * 0.08, step * 0.5)
-  const padY = Math.max(eY * 0.08, step * 0.5)
+  const padX = Math.max(eX * 0.1, step * 0.6)
+  const padY = Math.max(eY * 0.1, step * 0.6)
   const bx0 = minX - padX
   const by0 = minY - padY
   const bx1 = maxX + padX
@@ -289,9 +408,15 @@ function buildPage2(d: PlanData, dateStr: string): string {
   const P_Y0 = 50
   const P_Y1 = 545
   const IP = 14
+  // Bande réservée en bas du cadre pour l'échelle graphique : elle ne fait
+  // PAS partie de la zone de tracé, donc un coin proche du bord bas du
+  // polygone ne peut plus jamais chevaucher la barre d'échelle.
+  // Juste assez haute pour la barre + graduations + libellés (~26pt) : pas
+  // plus, pour ne pas laisser un grand vide entre le tracé et le cadre.
+  const SCALE_BAND = 26
   const A_X0 = P_X0 + IP
   const A_X1 = P_X1 - IP
-  const A_Y0 = P_Y0 + IP
+  const A_Y0 = P_Y0 + IP + SCALE_BAND
   const A_Y1 = P_Y1 - IP
 
   // ── Titre du plan ──
@@ -306,17 +431,18 @@ function buildPage2(d: PlanData, dateStr: string): string {
   const pCX = px((bx0 + bx1) / 2)
   const pCY = py((by0 + by1) / 2)
 
-  // ── Grille légère ──
+  // ── Grille légère (limitée à la zone de tracé, hors bande d'échelle) ──
   out.push(`${GRID} RG 0.4 w\n`)
-  for (let x = Math.ceil(bx0 / step) * step; x <= bx1; x += step) {
-    out.push(`${px(x).toFixed(2)} ${A_Y0.toFixed(2)} m ${px(x).toFixed(2)} ${A_Y1.toFixed(2)} l S\n`)
+  for (let gx = Math.ceil(bx0 / step) * step; gx <= bx1; gx += step) {
+    out.push(`${px(gx).toFixed(2)} ${A_Y0.toFixed(2)} m ${px(gx).toFixed(2)} ${A_Y1.toFixed(2)} l S\n`)
   }
-  for (let y = Math.ceil(by0 / step) * step; y <= by1; y += step) {
-    out.push(`${A_X0.toFixed(2)} ${py(y).toFixed(2)} m ${A_X1.toFixed(2)} ${py(y).toFixed(2)} l S\n`)
+  for (let gy = Math.ceil(by0 / step) * step; gy <= by1; gy += step) {
+    out.push(`${A_X0.toFixed(2)} ${py(gy).toFixed(2)} m ${A_X1.toFixed(2)} ${py(gy).toFixed(2)} l S\n`)
   }
 
-  // ── Cadre ──
+  // ── Cadre extérieur + séparation zone de tracé / bande d'échelle ──
   out.push(`${DARK} RG 1.3 w 30 50 510 495 re S\n`)
+  out.push(`${LINE} RG 0.6 w ${A_X0.toFixed(2)} ${A_Y0.toFixed(2)} m ${A_X1.toFixed(2)} ${A_Y0.toFixed(2)} l S\n`)
 
   // ── Polygone (contour seul, sans remplissage) ──
   out.push(`${DARK} RG 1.5 w\n`)
@@ -326,25 +452,32 @@ function buildPage2(d: PlanData, dateStr: string): string {
       .join(' ') + ' h S\n'
   )
 
-  // ── Coins P1..Pn (marque + étiquette décalée vers l'extérieur) ──
+  // ── Marques des coins ──
   out.push(`${DARK} rg\n`)
   for (let i = 0; i < n; i++) {
     const p = d.pts[i]
     const cx = px(p.x)
     const cy = py(p.y)
     out.push(`${(cx - 1.8).toFixed(2)} ${(cy - 1.8).toFixed(2)} 3.6 3.6 re f\n`)
+  }
+
+  // ── Étiquettes : coins (Pn) + longueurs des côtés, avec anti-collision ──
+  const labels: LabelBox[] = []
+
+  for (let i = 0; i < n; i++) {
+    const p = d.pts[i]
+    const cx = px(p.x)
+    const cy = py(p.y)
     const dx = cx - pCX
     const dy = cy - pCY
     const l = Math.hypot(dx, dy) || 1
-    const lx = cx + (dx / l) * 13
-    const ly = cy + (dy / l) * 13
-    const label = `P${i + 1}`
-    const w = textW(label, 7.5) + 5
-    out.push(`1 1 1 rg ${(lx - w / 2).toFixed(2)} ${(ly - 4).toFixed(2)} ${w.toFixed(2)} 8 re f\n`)
-    txt(label, lx - w / 2 + 2.5, ly - 0.5, 7.5, 'F2', DARK)
+    const lx = cx + (dx / l) * 15
+    const ly = cy + (dy / l) * 15
+    const text = `P${i + 1}`
+    const w = textW(text, 7.5, true) + 5
+    labels.push({ x: lx - w / 2, y: ly - 4, w, h: 8, text, size: 7.5 })
   }
 
-  // ── Longueurs des côtés (décalage perpendiculaire, côté extérieur) ──
   for (let i = 0; i < n; i++) {
     const p = d.pts[i]
     const q = d.pts[(i + 1) % n]
@@ -360,12 +493,28 @@ function buildPage2(d: PlanData, dateStr: string): string {
     const nx = -vy / vl
     const ny = vx / vl
     const side = (mx - pCX) * nx + (my - pCY) * ny < 0 ? -1 : 1
-    const lx = mx + nx * side * 9
-    const ly = my + ny * side * 9
-    const label = formatM(d.sides[i])
-    const w = textW(label, 8) + 6
-    out.push(`1 1 1 rg ${(lx - w / 2).toFixed(2)} ${(ly - 5).toFixed(2)} ${w.toFixed(2)} 10 re f\n`)
-    txt(label, lx - w / 2 + 3, ly - 0.5, 8, 'F2', DARK)
+    const lx = mx + nx * side * 10
+    const ly = my + ny * side * 10
+    const text = formatM(d.sides[i])
+    const w = textW(text, 8, true) + 6
+    labels.push({ x: lx - w / 2, y: ly - 5, w, h: 10, text, size: 8 })
+  }
+
+  // Écarte les étiquettes qui se chevauchent (coins rapprochés / côtés courts).
+  separateLabels(labels)
+
+  // Filet de sécurité : ne laisse jamais une étiquette déborder de la zone de
+  // tracé (ni dans la bande d'échelle, ni hors du cadre).
+  for (const l of labels) {
+    if (l.y < A_Y0 + 2) l.y = A_Y0 + 2
+    if (l.y + l.h > A_Y1 - 2) l.y = A_Y1 - 2 - l.h
+    if (l.x < A_X0 + 2) l.x = A_X0 + 2
+    if (l.x + l.w > A_X1 - 2) l.x = A_X1 - 2 - l.w
+  }
+
+  for (const l of labels) {
+    out.push(`1 1 1 rg ${l.x.toFixed(2)} ${l.y.toFixed(2)} ${l.w.toFixed(2)} ${l.h.toFixed(2)} re f\n`)
+    txt(l.text, l.x + (l.w - textW(l.text, l.size, true)) / 2, l.y + (l.h - l.size) / 2 + 1, l.size, 'F2', DARK)
   }
 
   // ── Flèche nord (coin haut droit, hors emprise) ──
@@ -378,13 +527,14 @@ function buildPage2(d: PlanData, dateStr: string): string {
   )
   txt('N', nX - 3, nY + 14, 9, 'F2')
 
-  // ── Échelle graphique (barre en bas du plan) ──
+  // ── Échelle graphique (centrée dans sa bande réservée, jamais superposée
+  //    au polygone ni à ses étiquettes) ──
   const metersPerPt = (bx1 - bx0) / (A_X1 - A_X0)
   const barStep = niceStep(eX, 3)
   const segments = Math.max(1, Math.min(3, Math.floor((A_X1 - A_X0) / 2 / (barStep * metersPerPt))))
   const barW = segments * barStep * metersPerPt
   const barX = (A_X0 + A_X1) / 2 - barW / 2
-  const barY = P_Y0 + 22
+  const barY = P_Y0 + IP + 6
   out.push(`${DARK} RG 1 w ${DARK} rg\n`)
   out.push(`${barX.toFixed(2)} ${barY.toFixed(2)} m ${(barX + barW).toFixed(2)} ${barY.toFixed(2)} l S\n`)
   for (let i = 0; i <= segments; i++) {

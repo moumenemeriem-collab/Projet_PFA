@@ -15,6 +15,13 @@ import {
   ringCenter,
   showTerrainDims,
 } from '../utils/terrainDims'
+import {
+  computeParcelAffectations,
+  preparePAZones,
+  showAffectationsModal,
+  type AffectationPiece,
+  type PreparedPAZone,
+} from '../utils/affectations'
 
 import osmImg from '../assets/features/OSM.png'
 import satImg from '../assets/features/osm_sat.jpg'
@@ -265,17 +272,34 @@ const GMAP_ICON =
 const DIMS_ICON =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 21 7M7 17 21 11M3 21 5 19"/><path d="M3 17l4-4m6 2 4-4"/></svg>'
 
+const PARCELLES_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>'
+
+const DETAIL_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>'
+
+interface PopupAffectationsOpts {
+  idParcelle: string
+  computed: boolean
+}
+
 // Pied d'action commun aux popups : « Voir sur Google Maps » + « Dimensions du
-// terrain » (réservé aux parcelles cadastrales, qui disposent d'un anneau).
-const buildPopupActions = (lat: number, lng: number, ring?: number[][] | null, title?: string): string => {
+// terrain » + « Voir les parcelles » (affectations du plan d'aménagement).
+// Réservé aux parcelles cadastrales, qui disposent d'un anneau.
+const buildPopupActions = (lat: number, lng: number, ring?: number[][] | null, title?: string, affectations?: PopupAffectationsOpts | null): string => {
   const gmap = Number.isFinite(lat) && Number.isFinite(lng)
     ? `<button type="button" class="geo-popup-btn" data-action="gmaps" data-lat="${lat.toFixed(6)}" data-lng="${lng.toFixed(6)}">${GMAP_ICON}<span>Voir sur Google Maps</span></button>`
     : ''
   const dims = ring && ring.length >= 3
     ? `<button type="button" class="geo-popup-btn geo-popup-btn--primary" data-action="dims" data-geom="${escapeHtml(JSON.stringify(ring))}" data-title="${escapeHtml(title ?? '')}">${DIMS_ICON}<span>Dimensions du terrain</span></button>`
     : ''
-  if (!gmap && !dims) return ''
-  return `<div class="geo-popup-actions">${gmap}${dims}</div>`
+  const aff = affectations && ring && ring.length >= 3
+    ? affectations.computed
+      ? `<button type="button" class="geo-popup-btn geo-popup-btn--primary" data-action="affectations-detail" data-parcelle="${escapeHtml(affectations.idParcelle)}">${DETAIL_ICON}<span>Détail</span></button>`
+      : `<button type="button" class="geo-popup-btn geo-popup-btn--primary" data-action="parcelles" data-parcelle="${escapeHtml(affectations.idParcelle)}">${PARCELLES_ICON}<span>Voir les parcelles</span></button>`
+    : ''
+  if (!gmap && !dims && !aff) return ''
+  return `<div class="geo-popup-actions">${gmap}${dims}${aff}</div>`
 }
 
 function isValidGeoJSONFeature(f: CoucheFeature): boolean {
@@ -650,7 +674,7 @@ export function GeoportalPage(): React.JSX.Element {
   const [projet, setProjet] = useState<Projet | null>(null)
   const [projetError, setProjetError] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [cardHidden, setCardHidden] = useState(false)
+  const [cardHidden, setCardHidden] = useState(true)
   const [cardMode, setCardMode] = useState<CardMode>('search')
   const [selectedTerrain, setSelectedTerrain] = useState<AnalyseResultat | null>(null)
   const [cardError, setCardError] = useState<string | null>(null)
@@ -697,6 +721,9 @@ export function GeoportalPage(): React.JSX.Element {
   const searchParcelleRef = useRef<string | null>(null)
   const analyseFiltresRef = useRef<AnalyseFiltres | null>(null)
   const bufferLayerRef = useRef<any>(null)
+  const paPreparedRef = useRef<PreparedPAZone[] | null>(null)
+  const affectationsLayerRef = useRef<any>(null)
+  const affectationsResultRef = useRef<{ terrainNum: string; pieces: AffectationPiece[]; title: string } | null>(null)
 
   const parseDistance = (v: string | undefined): number | null => {
     if (!v || v === '') return null
@@ -728,6 +755,103 @@ export function GeoportalPage(): React.JSX.Element {
       map?.removeLayer(bufferLayerRef.current)
       bufferLayerRef.current = null
     }
+  }
+
+  const clearAffectations = (): void => {
+    const map = mapRef.current
+    if (affectationsLayerRef.current) {
+      map?.removeLayer(affectationsLayerRef.current)
+      affectationsLayerRef.current = null
+    }
+    affectationsResultRef.current = null
+  }
+
+  // Calcule le découpage de la parcelle et l'affiche sur la carte, puis bascule
+  // le bouton du popup de « Voir les parcelles » vers « Détail ».
+  const showParcelAffectations = (idParcelle: string, popup: any): void => {
+    const map = mapRef.current
+    const cadastreId = couchesDispo.find((c) => c.nom === 'cadastre')?.id
+    const paId = couchesDispo.find((c) => c.nom === 'plan_amenagement')?.id
+    const cadFeat = cadastreId != null
+      ? coucheDataRef.current[cadastreId]?.features.find((f) => String(f.properties?.num) === idParcelle)
+      : undefined
+    const paPrepared = paPreparedRef.current
+
+    if (!map || !cadFeat || paId == null || !paPrepared) {
+      return
+    }
+
+    const ring = extractRing(cadFeat.geometry)
+    const title = `Parcelle ${idParcelle}`
+    const pieces = computeParcelAffectations(cadFeat, paPrepared)
+
+    if (affectationsLayerRef.current) {
+      map.removeLayer(affectationsLayerRef.current)
+      affectationsLayerRef.current = null
+    }
+    if (pieces.length > 0) {
+      const group = L.featureGroup()
+      pieces.forEach((pc) => {
+        L.geoJSON(pc.feature, {
+          style: { color: '#0f3d6e', weight: 1.5, opacity: 0.95, fillColor: pc.color, fillOpacity: 0.75 },
+        }).addTo(group)
+      })
+      if (ring && ring.length >= 3) {
+        L.polygon(ring.map((pt) => [pt[1], pt[0]] as [number, number]), {
+          color: '#1b3a6e',
+          weight: 3,
+          opacity: 1,
+          fill: false,
+          interactive: false,
+        }).addTo(group)
+      }
+      group.addTo(map)
+      affectationsLayerRef.current = group
+      overlayFlyToBounds(map, group.getBounds().pad(0.15), { duration: 0.7, maxZoom: 19 })
+    }
+
+    affectationsResultRef.current = { terrainNum: idParcelle, pieces, title }
+    if (popup?.getElement && ring) {
+      const center = ringCenter(ring)
+      const info = pieces.length === 0
+        ? '<div class="geoportal-popup-warn">Aucune affectation trouvée pour cette parcelle dans le plan d\'aménagement.</div>'
+        : `<div class="geoportal-popup-affcount">${pieces.length} affectation${pieces.length > 1 ? 's' : ''} détectée${pieces.length > 1 ? 's' : ''}</div>`
+      popup.setContent(
+        `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(title)}</div>` +
+        `${info}` +
+        `<div class="geoportal-popup-coords">${propsToHtml(cadFeat.properties, CADASTRE_ATTRIBUTE_LABELS)}</div>` +
+        `${buildPopupActions(center.lat, center.lng, ring, title, { idParcelle, computed: pieces.length > 0 })}</div>`
+      )
+      bindAffectationButtons(popup)
+    }
+  }
+
+  const openAffectationsDetail = (): void => {
+    const result = affectationsResultRef.current
+    if (!result) return
+    const cadastreId = couchesDispo.find((c) => c.nom === 'cadastre')?.id
+    const cadFeat = cadastreId != null
+      ? coucheDataRef.current[cadastreId]?.features.find((f) => String(f.properties?.num) === result.terrainNum)
+      : undefined
+    const ring = cadFeat ? extractRing(cadFeat.geometry) : null
+    if (!ring || ring.length < 3) return
+    showAffectationsModal(result.title, ring, result.pieces)
+  }
+
+  const bindAffectationButtons = (popup: any): void => {
+    const el = popup?.getElement?.() as HTMLElement | null
+    console.log('[DEBUG bindAffectationButtons] el =', el ? el.className : el)
+    if (!el) return
+    el.querySelectorAll<HTMLElement>('[data-action="parcelles"]').forEach((b) => {
+      b.addEventListener('click', () => {
+        const idParcelle = b.getAttribute('data-parcelle')
+        if (!idParcelle) return
+        showParcelAffectations(idParcelle, popup)
+      })
+    })
+    el.querySelectorAll<HTMLElement>('[data-action="affectations-detail"]').forEach((b) => {
+      b.addEventListener('click', () => openAffectationsDetail())
+    })
   }
 
   const layersFromFiltres = (f: AnalyseFiltres): Record<string, boolean> => {
@@ -874,7 +998,9 @@ export function GeoportalPage(): React.JSX.Element {
     })
 
     map.on('popupopen', (ev: any) => {
+      console.log('[DEBUG popupopen] fired')
       const el = ev.popup?.getElement?.() as HTMLElement | null | undefined
+      console.log('[DEBUG popupopen] el =', el ? el.className : el)
       if (!el) return
       el.querySelectorAll<HTMLElement>('[data-action="gmaps"]').forEach((b) => {
         b.addEventListener('click', () => {
@@ -895,6 +1021,7 @@ export function GeoportalPage(): React.JSX.Element {
           }
         })
       })
+      bindAffectationButtons(ev.popup)
     })
 
     setupCustomDistances()
@@ -903,6 +1030,9 @@ export function GeoportalPage(): React.JSX.Element {
       map.remove()
       mapRef.current = null
       typeLayersRef.current = {}
+      bufferLayerRef.current = null
+      affectationsLayerRef.current = null
+      affectationsResultRef.current = null
       popupLayer.remove()
     }
   }, [projet])
@@ -933,6 +1063,9 @@ export function GeoportalPage(): React.JSX.Element {
           coucheDataRef.current[c.id] = collections[i]
           setCoucheCounts((prev) => ({ ...prev, [c.nom]: collections[i].features.length }))
           if (c.nom === 'cadastre') setCadastreReady(true)
+          if (c.nom === 'plan_amenagement') {
+            paPreparedRef.current = preparePAZones(collections[i].features)
+          }
           if (c.nom !== 'reseau_routier' && c.nom !== 'equipements_publics') return
           const attrKey = c.nom === 'reseau_routier' ? 'highway' : 'amenity'
           const counts = new Map<string, number>()
@@ -1025,6 +1158,9 @@ export function GeoportalPage(): React.JSX.Element {
         layerItem.on('click', (ev: any) => {
           const anchor = layerItem.getCenter?.() ?? layerItem.getLatLng?.() ?? ev?.latlng
           const idP = feature?.properties?.num
+          if (idP != null && affectationsResultRef.current && affectationsResultRef.current.terrainNum !== String(idP)) {
+            clearAffectations()
+          }
           const tr = idP != null
             ? analyseResultatsRef.current.find(
                 (r) => String(r.infos_generales?.reference_cadastrale) === String(idP)
@@ -1044,8 +1180,10 @@ export function GeoportalPage(): React.JSX.Element {
           const idParcelle = p.num ? `Parcelle ${p.num}` : 'Parcelle cadastrale'
           const ring = extractRing(feature.geometry)
           const center = ring ? ringCenter(ring) : { lat: NaN, lng: NaN }
+          const num = p.num != null ? String(p.num) : ''
+          const affOpts: PopupAffectationsOpts = { idParcelle: num, computed: num !== '' && affectationsResultRef.current?.terrainNum === num }
           layerItem.bindPopup(
-            `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(idParcelle)}</div><div class="geoportal-popup-coords">${propsToHtml(feature.properties, CADASTRE_ATTRIBUTE_LABELS)}</div>${buildPopupActions(center.lat, center.lng, ring, idParcelle)}</div>`,
+            `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(idParcelle)}</div><div class="geoportal-popup-coords">${propsToHtml(feature.properties, CADASTRE_ATTRIBUTE_LABELS)}</div>${buildPopupActions(center.lat, center.lng, ring, idParcelle, num ? affOpts : null)}</div>`,
             { autoPan: false }
           )
         }
@@ -1081,6 +1219,10 @@ export function GeoportalPage(): React.JSX.Element {
       : ''
     const center = ring ? ringCenter(ring) : { lat: NaN, lng: NaN }
     const title = p.num != null ? `Parcelle ${p.num}` : tr.nom
+    const num = p.num != null ? String(p.num) : ''
+    const affOpts: PopupAffectationsOpts | null = num !== ''
+      ? { idParcelle: num, computed: affectationsResultRef.current?.terrainNum === num }
+      : null
     return `<div class="geoportal-popup">
         <div class="geoportal-popup-title">${escapeHtml(tr.nom)}</div>
         <div class="geoportal-popup-classement">
@@ -1092,7 +1234,7 @@ export function GeoportalPage(): React.JSX.Element {
           ${rentaRow}
         </div>
         <div class="geoportal-popup-coords">${propsToHtml(p, CADASTRE_ATTRIBUTE_LABELS)}</div>
-        ${buildPopupActions(center.lat, center.lng, ring, title)}
+        ${buildPopupActions(center.lat, center.lng, ring, title, affOpts)}
       </div>`
   }
 
@@ -1140,7 +1282,11 @@ export function GeoportalPage(): React.JSX.Element {
   const cadastreParcelPopup = (props: Record<string, unknown>, ring?: number[][] | null): string => {
     const idParcelle = props.num ? `Parcelle ${props.num}` : 'Parcelle cadastrale'
     const center = ring ? ringCenter(ring) : { lat: NaN, lng: NaN }
-    return `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(idParcelle)}</div><div class="geoportal-popup-coords">${propsToHtml(props, CADASTRE_ATTRIBUTE_LABELS)}</div>${buildPopupActions(center.lat, center.lng, ring, idParcelle)}</div>`
+    const num = props.num != null ? String(props.num) : ''
+    const affOpts: PopupAffectationsOpts | null = num !== ''
+      ? { idParcelle: num, computed: affectationsResultRef.current?.terrainNum === num }
+      : null
+    return `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(idParcelle)}</div><div class="geoportal-popup-coords">${propsToHtml(props, CADASTRE_ATTRIBUTE_LABELS)}</div>${buildPopupActions(center.lat, center.lng, ring, idParcelle, affOpts)}</div>`
   }
 
   const highlightCadastreParcelle = (idParcelle: string): void => {
@@ -1290,6 +1436,7 @@ export function GeoportalPage(): React.JSX.Element {
     } else if (!cadastreEnabled && cadastreLayerRef.current) {
       map.removeLayer(cadastreLayerRef.current)
       cadastreLayerRef.current = null
+      clearAffectations()
     }
   }, [cadastreEnabled, cadastreReady, couchesDispo, projet])
 
@@ -1315,6 +1462,7 @@ export function GeoportalPage(): React.JSX.Element {
     const analyseId = params.get('analyse')
     if (!analyseId) return
     setCardMode('loading')
+    setCardHidden(false)
     setCadastreEnabled(true)
     const parcelle = params.get('parcelle')
     fetchAnalyseDetail(projetId, Number(analyseId))
@@ -1425,6 +1573,7 @@ export function GeoportalPage(): React.JSX.Element {
     }
     setCardError(null)
     setCardMode('loading')
+    setCardHidden(false)
     try {
       const response = await fetchAnalyse(projetId, filtres)
       analyseResultatsRef.current = response.resultats
@@ -1490,6 +1639,7 @@ export function GeoportalPage(): React.JSX.Element {
     analyseResultatsRef.current = []
     analyseFiltresRef.current = null
     clearTerrainBuffer()
+    clearAffectations()
     selectedTerrainIdRef.current = null
     focusParcelleRef.current = null
     pendingSearchRef.current = null

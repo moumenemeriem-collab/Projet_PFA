@@ -2656,6 +2656,113 @@
   }
 }
 
+/* ── Affectations (intersection cadastre × plan d'aménagement) ── */
+
+.geoportal-popup-affcount {
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #eef3fb;
+  color: #0f3d6e;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.geoportal-popup-warn {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.geo-aff-modal {
+  max-width: 640px;
+}
+
+.geo-aff-plot {
+  height: 280px;
+}
+
+.geo-aff-piece {
+  stroke: #ffffff;
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+  fill-opacity: 0.8;
+}
+
+.geo-aff-terrain {
+  fill: none;
+  stroke: #1b3a6e;
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+}
+
+.geo-aff-table th:first-child,
+.geo-aff-table td:first-child {
+  width: 44px;
+  text-align: center;
+}
+
+.geo-aff-table th:nth-child(3),
+.geo-aff-table td:nth-child(3),
+.geo-aff-table th:nth-child(4),
+.geo-aff-table td:nth-child(4) {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.geo-aff-cell-swatch {
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+
+.geo-aff-swatch {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  vertical-align: middle;
+}
+
+.geo-aff-name {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.geo-aff-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.geo-aff-detail {
+  white-space: nowrap;
+}
+
+.geo-aff-detail strong {
+  color: #0f3d6e;
+  font-weight: 600;
+}
+
+.geo-aff-cell-num {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.geo-aff-empty td {
+  color: #b91c1c;
+  font-weight: 600;
+  text-align: left !important;
+}
+
 /* ── Responsive ── */
 
 @media (max-width: 900px) {
