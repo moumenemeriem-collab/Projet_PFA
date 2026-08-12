@@ -724,6 +724,35 @@ export function GeoportalPage(): React.JSX.Element {
   const paPreparedRef = useRef<PreparedPAZone[] | null>(null)
   const affectationsLayerRef = useRef<any>(null)
   const affectationsResultRef = useRef<{ terrainNum: string; pieces: AffectationPiece[]; title: string } | null>(null)
+  
+  const openPopupRef = useRef<any>(null)
+  const popupActionHandlerRef = useRef<(e: MouseEvent) => void>(() => {})
+  popupActionHandlerRef.current = (e: MouseEvent) => {
+    const target = e.target as HTMLElement
+    const btn = target.closest('[data-action]') as HTMLElement | null
+    if (!btn) return
+    const action = btn.getAttribute('data-action')
+
+    if (action === 'gmaps') {
+      const lat = Number(btn.getAttribute('data-lat'))
+      const lng = Number(btn.getAttribute('data-lng'))
+      if (Number.isFinite(lat) && Number.isFinite(lng)) openGoogleMaps(lat, lng)
+    } else if (action === 'dims') {
+      const raw = btn.getAttribute('data-geom')
+      if (!raw) return
+      try {
+        const ring = JSON.parse(raw) as number[][]
+        showTerrainDims(ring, btn.getAttribute('data-title') ?? '')
+      } catch {
+        /* coordonnées invalides */
+      }
+    } else if (action === 'parcelles') {
+      const idParcelle = btn.getAttribute('data-parcelle')
+      if (idParcelle) showParcelAffectations(idParcelle, openPopupRef.current)
+    } else if (action === 'affectations-detail') {
+      openAffectationsDetail()
+    }
+  }
 
   const parseDistance = (v: string | undefined): number | null => {
     if (!v || v === '') return null
@@ -822,7 +851,7 @@ export function GeoportalPage(): React.JSX.Element {
         `<div class="geoportal-popup-coords">${propsToHtml(cadFeat.properties, CADASTRE_ATTRIBUTE_LABELS)}</div>` +
         `${buildPopupActions(center.lat, center.lng, ring, title, { idParcelle, computed: pieces.length > 0 })}</div>`
       )
-      bindAffectationButtons(popup)
+      bindPopupActionButtons(popup)
     }
   }
 
@@ -838,21 +867,44 @@ export function GeoportalPage(): React.JSX.Element {
     showAffectationsModal(result.title, ring, result.pieces)
   }
 
-  const bindAffectationButtons = (popup: any): void => {
-    const el = popup?.getElement?.() as HTMLElement | null
-    console.log('[DEBUG bindAffectationButtons] el =', el ? el.className : el)
-    if (!el) return
-    el.querySelectorAll<HTMLElement>('[data-action="parcelles"]').forEach((b) => {
-      b.addEventListener('click', () => {
-        const idParcelle = b.getAttribute('data-parcelle')
-        if (!idParcelle) return
-        showParcelAffectations(idParcelle, popup)
-      })
+// Remplace bindAffectationButtons par une fonction unique qui gère TOUTES les actions du popup
+const bindPopupActionButtons = (popup: any): void => {
+  const el = popup?.getElement?.() as HTMLElement | null
+  if (!el) return
+
+  el.querySelectorAll<HTMLElement>('[data-action="gmaps"]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const lat = Number(b.getAttribute('data-lat'))
+      const lng = Number(b.getAttribute('data-lng'))
+      if (Number.isFinite(lat) && Number.isFinite(lng)) openGoogleMaps(lat, lng)
     })
-    el.querySelectorAll<HTMLElement>('[data-action="affectations-detail"]').forEach((b) => {
-      b.addEventListener('click', () => openAffectationsDetail())
+  })
+
+  el.querySelectorAll<HTMLElement>('[data-action="dims"]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const raw = b.getAttribute('data-geom')
+      if (!raw) return
+      try {
+        const ring = JSON.parse(raw) as number[][]
+        showTerrainDims(ring, b.getAttribute('data-title') ?? '')
+      } catch {
+        /* coordonnées invalides */
+      }
     })
-  }
+  })
+
+  el.querySelectorAll<HTMLElement>('[data-action="parcelles"]').forEach((b) => {
+    b.addEventListener('click', () => {
+      const idParcelle = b.getAttribute('data-parcelle')
+      if (!idParcelle) return
+      showParcelAffectations(idParcelle, popup)
+    })
+  })
+
+  el.querySelectorAll<HTMLElement>('[data-action="affectations-detail"]').forEach((b) => {
+    b.addEventListener('click', () => openAffectationsDetail())
+  })
+}
 
   const layersFromFiltres = (f: AnalyseFiltres): Record<string, boolean> => {
     const toggles: Record<string, boolean> = {}
@@ -998,31 +1050,14 @@ export function GeoportalPage(): React.JSX.Element {
     })
 
     map.on('popupopen', (ev: any) => {
-      console.log('[DEBUG popupopen] fired')
-      const el = ev.popup?.getElement?.() as HTMLElement | null | undefined
-      console.log('[DEBUG popupopen] el =', el ? el.className : el)
-      if (!el) return
-      el.querySelectorAll<HTMLElement>('[data-action="gmaps"]').forEach((b) => {
-        b.addEventListener('click', () => {
-          const lat = Number(b.getAttribute('data-lat'))
-          const lng = Number(b.getAttribute('data-lng'))
-          if (Number.isFinite(lat) && Number.isFinite(lng)) openGoogleMaps(lat, lng)
-        })
-      })
-      el.querySelectorAll<HTMLElement>('[data-action="dims"]').forEach((b) => {
-        b.addEventListener('click', () => {
-          const raw = b.getAttribute('data-geom')
-          if (!raw) return
-          try {
-            const ring = JSON.parse(raw) as number[][]
-            showTerrainDims(ring, b.getAttribute('data-title') ?? '')
-          } catch {
-            /* coordonnées invalides */
-          }
-        })
-      })
-      bindAffectationButtons(ev.popup)
+      openPopupRef.current = ev.popup
     })
+    map.on('popupclose', () => {
+      openPopupRef.current = null
+    })
+
+    const onPopupLayerClick = (e: MouseEvent) => popupActionHandlerRef.current(e)
+    popupLayer.addEventListener('click', onPopupLayerClick)
 
     setupCustomDistances()
 
@@ -1034,6 +1069,7 @@ export function GeoportalPage(): React.JSX.Element {
       affectationsLayerRef.current = null
       affectationsResultRef.current = null
       popupLayer.remove()
+      popupLayer.removeEventListener('click', onPopupLayerClick)
     }
   }, [projet])
 
