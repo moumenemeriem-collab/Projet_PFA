@@ -720,6 +720,8 @@
     "notifications_sub": "بانتظار الاطلاع",
     "recent_title": "النشاط الأخير",
     "recent_empty": "لا يوجد نشاط حديث",
+    "recent_show_more": "عرض المزيد من النشاط",
+    "recent_show_less": "عرض أقل",
     "action_add": "إضافة",
     "action_edit": "تعديل",
     "action_delete": "حذف",

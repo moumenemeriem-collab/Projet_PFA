@@ -720,6 +720,8 @@
     "notifications_sub": "To review",
     "recent_title": "Recent activity",
     "recent_empty": "No recent activity",
+    "recent_show_more": "Show more activity",
+    "recent_show_less": "Show less",
     "action_add": "Added",
     "action_edit": "Modified",
     "action_delete": "Deleted",

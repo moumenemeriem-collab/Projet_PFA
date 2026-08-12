@@ -68,6 +68,10 @@ class LoginView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
+        from django.utils import timezone
+        utilisateur.derniere_connexion = timezone.now()
+        utilisateur.save(update_fields=['derniere_connexion'])
+
         tokens = get_tokens_for_user(utilisateur)
         return Response(
             {

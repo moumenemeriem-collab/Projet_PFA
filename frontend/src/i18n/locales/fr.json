@@ -720,6 +720,8 @@
     "notifications_sub": "À consulter",
     "recent_title": "Activité récente",
     "recent_empty": "Aucune activité récente",
+    "recent_show_more": "Voir plus d'activités",
+    "recent_show_less": "Réduire",
     "action_add": "Ajout",
     "action_edit": "Modification",
     "action_delete": "Suppression",

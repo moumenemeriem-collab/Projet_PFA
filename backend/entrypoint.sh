@@ -12,6 +12,9 @@ fi
 echo "==> Migrations..."
 python manage.py migrate --noinput
 
+echo "==> Statistiques tableau de bord..."
+python manage.py refresh_dashboard_stats || echo "(refresh_dashboard_stats ignoré)"
+
 echo "==> Seed des couches SIG..."
 python manage.py seed_couches || echo "(seed_couches ignoré)"
 

@@ -16,6 +16,7 @@ class Utilisateur(models.Model):
     mot_de_passe_hash = models.CharField(max_length=255)
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.INVESTISSEUR)
     date_creation = models.DateTimeField(auto_now_add=True)
+    derniere_connexion = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = 'utilisateur'
