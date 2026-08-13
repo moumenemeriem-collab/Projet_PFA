@@ -2700,6 +2700,17 @@
   stroke-linejoin: round;
 }
 
+.geo-aff-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  fill: #0f3d6e;
+  paint-order: stroke;
+  stroke: #fbfdff;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
 .geo-aff-table th:first-child,
 .geo-aff-table td:first-child {
   width: 44px;

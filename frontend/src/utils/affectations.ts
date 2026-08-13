@@ -66,10 +66,6 @@ export function affectationDetails(props: Record<string, unknown>): { label: str
   return out
 }
 
-function toRad(deg: number): number {
-  return (deg * Math.PI) / 180
-}
-
 // Bounding box [lng, lat] d'une géométrie (Polygon / MultiPolygon).
 export function featureBBoxFromGeom(geometry: unknown): { minX: number; maxX: number; minY: number; maxY: number } {
   let minX = Infinity
@@ -116,8 +112,8 @@ export function preparePAZones(features: { geometry: unknown; properties: Record
   })
 }
 
-function ringsFromGeometry(geometry: unknown): number[][] {
-  const out: number[][] = []
+function ringsFromGeometry(geometry: unknown): number[][][] {
+  const out: number[][][] = []
   const g = geometry as { type?: string; coordinates?: unknown }
   if (!g || typeof g !== 'object') return out
   if (g.type === 'Polygon') {
@@ -217,6 +213,52 @@ function affProject(ring: number[][]) {
   return { px, py }
 }
 
+function ringArea(ring: number[][]): number {
+  let s = 0
+  for (let i = 0; i < ring.length; i++) {
+    const p1 = ring[i]
+    const p2 = ring[(i + 1) % ring.length]
+    s += p1[0] * p2[1] - p2[0] * p1[1]
+  }
+  return Math.abs(s) / 2
+}
+
+// Centroïde d'un anneau (coordonnées [lng, lat]) par la formule du polygone.
+function ringCentroid(ring: number[][]): { x: number; y: number } | null {
+  const n = ring.length
+  if (n < 3) return null
+  let a = 0
+  let cx = 0
+  let cy = 0
+  for (let i = 0; i < n; i++) {
+    const p1 = ring[i]
+    const p2 = ring[(i + 1) % n]
+    const cross = p1[0] * p2[1] - p2[0] * p1[1]
+    a += cross
+    cx += (p1[0] + p2[0]) * cross
+    cy += (p1[1] + p2[1]) * cross
+  }
+  if (Math.abs(a) < 1e-12) return null
+  a *= 0.5
+  return { x: cx / (6 * a), y: cy / (6 * a) }
+}
+
+// Étiquette de l'affectation placée au centroïde de chaque pièce du plan.
+function affectationLabels(px: (v: number) => number, py: (v: number) => number, pieces: AffectationPiece[]): string {
+  return pieces
+    .map((pc) => {
+      const rings = ringsFromGeometry(pc.feature.geometry)
+      if (rings.length === 0) return ''
+      let main = rings[0]
+      for (const r of rings) if (ringArea(r) > ringArea(main)) main = r
+      const c = ringCentroid(main)
+      if (!c) return ''
+      const text = pc.designation || pc.label
+      return `<text x="${px(c.x).toFixed(1)}" y="${py(c.y).toFixed(1)}" text-anchor="middle" class="geo-aff-label">${escapeAffHtml(text)}</text>`
+    })
+    .join('')
+}
+
 export function buildAffectationPlanSvg(terrainRing: number[][], pieces: AffectationPiece[]): string {
   const { px, py } = affProject(terrainRing)
   const pts = (ring: number[][]): string => ring.map((p) => `${px(p[0]).toFixed(1)},${py(p[1]).toFixed(1)}`).join(' ')
@@ -232,6 +274,7 @@ export function buildAffectationPlanSvg(terrainRing: number[][], pieces: Affecta
     `<rect width="${AFF_SVG_W}" height="${AFF_SVG_H}" fill="#fbfdff"/>` +
     `<g class="geo-dims-grid">${AFF_GRID_LINES}</g>` +
     zones +
+    `<g class="geo-aff-labels">${affectationLabels(px, py, pieces)}</g>` +
     `<polygon class="geo-aff-terrain" points="${terrainPts}"/>` +
     `<g class="geo-dims-north" transform="translate(${AFF_SVG_W - 22},16)"><path d="M0 10 L4 4 L-4 4 Z"/><path d="M0 10 V16" stroke-width="1.4"/></g>`
   )

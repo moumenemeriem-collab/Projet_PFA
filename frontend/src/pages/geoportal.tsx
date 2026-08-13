@@ -160,7 +160,6 @@ const SIDEBAR_TRANSITION_MS = 280
 const CADASTRE_STYLE = { color: '#b45309', weight: 1.4, opacity: 0.9, fillColor: '#f59e0b', fillOpacity: 0.18 }
 const CADASTRE_SEARCH_STYLE = { color: '#dc2626', weight: 4, opacity: 1, fillColor: '#ef4444', fillOpacity: 0.45 }
 const PLAN_AMENAGEMENT_STYLE = { color: '#7c3aed', weight: 1.2, opacity: 0.85, fillColor: '#a855f7', fillOpacity: 0.16 }
-const PLAN_AMENAGEMENT_SEARCH_STYLE = { color: '#dc2626', weight: 4, opacity: 1, fillColor: '#ef4444', fillOpacity: 0.45 }
 
 // Règlement du plan d'aménagement, servi depuis le dossier public (Vite dev et build).
 // Le fichier PDF définitif sera fourni par le client et placé à cet emplacement.
@@ -295,7 +294,7 @@ const buildPopupActions = (lat: number, lng: number, ring?: number[][] | null, t
     : ''
   const aff = affectations && ring && ring.length >= 3
     ? affectations.computed
-      ? `<button type="button" class="geo-popup-btn geo-popup-btn--primary" data-action="affectations-detail" data-parcelle="${escapeHtml(affectations.idParcelle)}">${DETAIL_ICON}<span>Détail</span></button>`
+      ? `<button type="button" class="geo-popup-btn geo-popup-btn--primary" data-action="affectations-detail" data-parcelle="${escapeHtml(affectations.idParcelle)}">${DETAIL_ICON}<span>Voir Détail</span></button>`
       : `<button type="button" class="geo-popup-btn geo-popup-btn--primary" data-action="parcelles" data-parcelle="${escapeHtml(affectations.idParcelle)}">${PARCELLES_ICON}<span>Voir les parcelles</span></button>`
     : ''
   if (!gmap && !dims && !aff) return ''
@@ -871,9 +870,11 @@ export function GeoportalPage(): React.JSX.Element {
 const bindPopupActionButtons = (popup: any): void => {
   const el = popup?.getElement?.() as HTMLElement | null
   if (!el) return
+  const stop = (e: Event): void => e.stopPropagation()
 
   el.querySelectorAll<HTMLElement>('[data-action="gmaps"]').forEach((b) => {
-    b.addEventListener('click', () => {
+    b.addEventListener('click', (e) => {
+      stop(e)
       const lat = Number(b.getAttribute('data-lat'))
       const lng = Number(b.getAttribute('data-lng'))
       if (Number.isFinite(lat) && Number.isFinite(lng)) openGoogleMaps(lat, lng)
@@ -881,7 +882,8 @@ const bindPopupActionButtons = (popup: any): void => {
   })
 
   el.querySelectorAll<HTMLElement>('[data-action="dims"]').forEach((b) => {
-    b.addEventListener('click', () => {
+    b.addEventListener('click', (e) => {
+      stop(e)
       const raw = b.getAttribute('data-geom')
       if (!raw) return
       try {
@@ -894,7 +896,8 @@ const bindPopupActionButtons = (popup: any): void => {
   })
 
   el.querySelectorAll<HTMLElement>('[data-action="parcelles"]').forEach((b) => {
-    b.addEventListener('click', () => {
+    b.addEventListener('click', (e) => {
+      stop(e)
       const idParcelle = b.getAttribute('data-parcelle')
       if (!idParcelle) return
       showParcelAffectations(idParcelle, popup)
@@ -902,7 +905,10 @@ const bindPopupActionButtons = (popup: any): void => {
   })
 
   el.querySelectorAll<HTMLElement>('[data-action="affectations-detail"]').forEach((b) => {
-    b.addEventListener('click', () => openAffectationsDetail())
+    b.addEventListener('click', (e) => {
+      stop(e)
+      openAffectationsDetail()
+    })
   })
 }
 
@@ -1019,6 +1025,10 @@ const bindPopupActionButtons = (popup: any): void => {
 
     map.on('click', (e: any) => {
       const target = e?.originalEvent?.target as HTMLElement | undefined
+      // Un clic dans le popup (bouton « Voir les parcelles », etc.) ne doit pas
+      // être traité comme un clic carte : sinon le popup du point sélectionné
+      // s'ouvre et ferme celui de la parcelle.
+      if (target?.closest?.('.geo-popup-layer')) return
       const onFeature = !!target && (
         target.classList?.contains('leaflet-interactive') ||
         target.classList?.contains('leaflet-marker-icon')
@@ -1056,7 +1066,14 @@ const bindPopupActionButtons = (popup: any): void => {
       openPopupRef.current = null
     })
 
-    const onPopupLayerClick = (e: MouseEvent) => popupActionHandlerRef.current(e)
+    const onPopupLayerClick = (e: MouseEvent) => {
+      // Un clic dans le popup (bouton « Voir les parcelles », …) ne doit jamais
+      // remonter à la carte : sinon le popup « point sélectionné » s'ouvre et
+      // ferme celui du terrain. On stoppe la propagation ici, car après le
+      // `setContent()` le bouton est détaché du DOM et `closest` ne marche plus.
+      e.stopPropagation()
+      popupActionHandlerRef.current(e)
+    }
     popupLayer.addEventListener('click', onPopupLayerClick)
 
     setupCustomDistances()
