@@ -115,10 +115,27 @@ class Terrain(models.Model):
         related_name='terrains',
         db_column='projet_id',
     )
+    utilisateur = models.ForeignKey(
+        Utilisateur,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='terrains_ajoutes',
+        db_column='utilisateur_id',
+    )
     nom = models.CharField(max_length=150)
     superficie = models.DecimalField(max_digits=12, decimal_places=2)
-    lat = models.DecimalField(max_digits=9, decimal_places=6)
-    lng = models.DecimalField(max_digits=9, decimal_places=6)
+    lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    lng = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+
+    # Attributs de la table plan cadastrale (couche cadastre)
+    fid = models.BigIntegerField(null=True, blank=True)
+    indice = models.CharField(max_length=255, blank=True, default='')
+    complement = models.CharField(max_length=255, blank=True, default='')
+    consistance = models.CharField(max_length=255, blank=True, default='')
+    num_parcelle = models.CharField(max_length=255, blank=True, default='')
+    # Polygone du terrain dessiné sur le géoportail (GeoJSON)
+    geometry = models.TextField(blank=True, default='')
 
     accessibilite = models.IntegerField(choices=SCORE_CHOICES, default=5)
     positionnement = models.IntegerField(choices=SCORE_CHOICES, default=5)

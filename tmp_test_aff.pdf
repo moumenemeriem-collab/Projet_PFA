@@ -1,0 +1,296 @@
+%PDF-1.4
+%âãÏÓ
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R] /Count 3 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 841.89 595.28] /Resources << /Font << /F1 6 0 R /F2 7 0 R >> >> /Contents 8 0 R >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 841.89 595.28] /Resources << /Font << /F1 6 0 R /F2 7 0 R >> >> /Contents 9 0 R >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 841.89 595.28] /Resources << /Font << /F1 6 0 R /F2 7 0 R >> >> /Contents 10 0 R >>
+endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+7 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+8 0 obj
+<< /Length 2805 >>
+stream
+0.11 0.23 0.43 rg BT /F2 20 Tf 1 0 0 1 60.00 520.00 Tm (PLAN DES AFFECTATIONS DU TERRAIN) Tj ET
+0.11 0.23 0.43 rg BT /F2 12 Tf 1 0 0 1 60.00 498.00 Tm (Parcelle T26553) Tj ET
+0.11 0.23 0.43 RG 1.2 w 60 482 m 340 482 l S
+0.985 0.99 1 rg 60 301.00 721.89 151.00 re f
+0.82 0.87 0.95 RG 0.9 w 60 301.00 721.89 151.00 re S
+0.11 0.23 0.43 rg BT /F2 10 Tf 1 0 0 1 82.00 432.00 Tm (INFORMATIONS GÉNÉRALES) Tj ET
+0.82 0.87 0.95 RG 0.7 w 82.00 423.00 m 781.89 423.00 l S
+0.4 0.45 0.55 rg BT /F2 9 Tf 1 0 0 1 82.00 403.00 Tm (Système de coordonnées) Tj ET
+0.11 0.23 0.43 rg BT /F1 9 Tf 1 0 0 1 270.00 403.00 Tm (EPSG:26191 — Merchich / Sahara \(Lambert Conique Conforme\) — Unité : mètre) Tj ET
+0.4 0.45 0.55 rg BT /F2 9 Tf 1 0 0 1 82.00 376.00 Tm (Superficie totale du terrain) Tj ET
+0.11 0.23 0.43 rg BT /F1 9 Tf 1 0 0 1 270.00 376.00 Tm (6,84 ha \(68 397 m²\)) Tj ET
+0.4 0.45 0.55 rg BT /F2 9 Tf 1 0 0 1 82.00 349.00 Tm (Nombre d'affectations) Tj ET
+0.11 0.23 0.43 rg BT /F1 9 Tf 1 0 0 1 270.00 349.00 Tm (2) Tj ET
+0.4 0.45 0.55 rg BT /F2 9 Tf 1 0 0 1 82.00 322.00 Tm (Date de génération) Tj ET
+0.11 0.23 0.43 rg BT /F1 9 Tf 1 0 0 1 270.00 322.00 Tm (jeudi 13 août 2026 à 16h00) Tj ET
+0.11 0.23 0.43 rg BT /F2 10 Tf 1 0 0 1 60.00 275.00 Tm (AFFECTATIONS DÉTECTÉES) Tj ET
+0.11 0.23 0.43 rg BT /F2 8 Tf 1 0 0 1 88.00 257.00 Tm (Affectation) Tj ET
+0.11 0.23 0.43 rg BT /F2 8 Tf 1 0 0 1 420.00 257.00 Tm (Code) Tj ET
+0.11 0.23 0.43 rg BT /F2 8 Tf 1 0 0 1 621.32 257.00 Tm (Superficie) Tj ET
+0.11 0.23 0.43 rg BT /F2 8 Tf 1 0 0 1 754.44 257.00 Tm (Part) Tj ET
+0.82 0.87 0.95 RG 0.8 w 60 251.50 m 781.89 251.50 l S
+0.502 0.502 0.000 rg 64.00 234.00 14 14 re f
+0.8 0.85 0.9 RG 0.6 w 64.00 234.00 14 14 re S
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 88.00 236.50 Tm (Zone de protection loigne du barrage SIDI MOHAMMED BEN ABDELLAH — Zone d…) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 420.00 236.50 Tm (Zone de protection loigne du barrage SIDI MOHAMMED BEN ABDELLAH) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 589.74 236.50 Tm (6,86 ha \(68 620 m²\)) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 740.65 236.50 Tm (100.0 %) Tj ET
+0.941 0.639 0.639 rg 64.00 219.00 14 14 re f
+0.8 0.85 0.9 RG 0.6 w 64.00 219.00 14 14 re S
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 88.00 221.50 Tm (RB1 — La zone RB1 correspond  la zone loigne de la servitude de protection de la …) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 420.00 221.50 Tm (RB1) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 589.74 221.50 Tm (6,86 ha \(68 620 m²\)) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 740.65 221.50 Tm (100.0 %) Tj ET
+0.5 0.55 0.62 rg BT /F1 7.5 Tf 1 0 0 1 60.00 30.00 Tm (Généré le jeudi 13 août 2026 à 16h00) Tj ET
+0.5 0.55 0.62 rg BT /F1 7.5 Tf 1 0 0 1 547.20 30.00 Tm (Système EPSG:26191 \(Merchich / Sahara\) — Coordonnées Lambert en mètres) Tj ET
+
+endstream
+endobj
+9 0 obj
+<< /Length 5784 >>
+stream
+0.11 0.23 0.43 rg BT /F2 11 Tf 1 0 0 1 34.00 567.00 Tm (Zone de protection loigne du barrage SIDI MOHAMMED BEN ABDELLAH — Zone de protection loigne du barrag…) Tj ET
+0.5 0.55 0.62 rg BT /F1 7.5 Tf 1 0 0 1 34.00 553.00 Tm (Affectation « Zone de protection loigne du barrage SIDI MOHAMMED BEN ABDELLAH » — 6,84 ha \(68 397 m²\) — 100.0 % de la parcelle — EPSG:26191 \(Lambert Conique Conforme, unité : mètre\)) Tj ET
+0.92 0.94 0.96 RG 0.4 w
+103.10 90.00 m 103.10 531.00 l S
+196.96 90.00 m 196.96 531.00 l S
+290.83 90.00 m 290.83 531.00 l S
+384.69 90.00 m 384.69 531.00 l S
+478.55 90.00 m 478.55 531.00 l S
+44.00 419.95 m 526.00 419.95 l S
+44.00 326.09 m 526.00 326.09 l S
+44.00 232.22 m 526.00 232.22 l S
+44.00 138.36 m 526.00 138.36 l S
+0.07 0.15 0.28 RG 1.3 w 30 50 510 495 re S
+0.82 0.87 0.95 RG 0.6 w 44.00 90.00 m 526.00 90.00 l S
+0.82 0.87 0.95 RG 0.8 w
+100.32 363.20 m 272.94 456.78 l 463.49 292.06 l 469.68 285.02 l 356.20 164.22 l 234.64 228.42 l 108.95 273.47 l h S
+0.502 0.502 0.000 rg
+100.32 363.20 m 272.94 456.78 l 463.49 292.06 l 469.68 285.02 l 356.20 164.22 l 234.64 228.42 l 108.95 273.47 l h
+ f
+0.07 0.15 0.28 RG 1.5 w
+100.32 363.20 m 272.94 456.78 l 463.49 292.06 l 469.68 285.02 l 356.20 164.22 l 234.64 228.42 l 108.95 273.47 l h
+ S
+0.07 0.15 0.28 rg
+98.52 361.40 3.6 3.6 re f
+271.14 454.98 3.6 3.6 re f
+461.69 290.26 3.6 3.6 re f
+467.88 283.22 3.6 3.6 re f
+354.40 162.42 3.6 3.6 re f
+232.84 226.62 3.6 3.6 re f
+107.15 271.67 3.6 3.6 re f
+1 1 1 rg 78.81 363.32 14.17 8.00 re f
+0.07 0.15 0.28 rg BT /F2 7.5 Tf 1 0 0 1 81.31 364.57 Tm (P1) Tj ET
+1 1 1 rg 264.62 467.73 14.17 8.00 re f
+0.07 0.15 0.28 rg BT /F2 7.5 Tf 1 0 0 1 267.12 468.98 Tm (P2) Tj ET
+1 1 1 rg 471.32 285.11 14.17 8.00 re f
+0.07 0.15 0.28 rg BT /F2 7.5 Tf 1 0 0 1 473.82 286.36 Tm (P3) Tj ET
+1 1 1 rg 477.45 274.01 14.17 8.00 re f
+0.07 0.15 0.28 rg BT /F2 7.5 Tf 1 0 0 1 479.95 275.26 Tm (P4) Tj ET
+1 1 1 rg 355.68 146.73 14.17 8.00 re f
+0.07 0.15 0.28 rg BT /F2 7.5 Tf 1 0 0 1 358.18 147.98 Tm (P5) Tj ET
+1 1 1 rg 219.71 211.63 14.17 8.00 re f
+0.07 0.15 0.28 rg BT /F2 7.5 Tf 1 0 0 1 222.21 212.88 Tm (P6) Tj ET
+1 1 1 rg 87.19 266.39 14.17 8.00 re f
+0.07 0.15 0.28 rg BT /F2 7.5 Tf 1 0 0 1 89.69 267.64 Tm (P7) Tj ET
+1 1 1 rg 167.52 413.78 28.68 10.00 re f
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 170.52 415.78 Tm (209 m) Tj ET
+1 1 1 rg 360.41 376.98 28.68 10.00 re f
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 363.41 378.98 Tm (268 m) Tj ET
+1 1 1 rg 458.64 296.51 30.90 10.00 re f
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 461.64 298.51 Tm (10,0 m) Tj ET
+1 1 1 rg 405.89 212.77 28.68 10.00 re f
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 408.89 214.77 Tm (177 m) Tj ET
+1 1 1 rg 276.41 182.48 28.68 10.00 re f
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 279.41 184.48 Tm (146 m) Tj ET
+1 1 1 rg 154.08 236.53 28.68 10.00 re f
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 157.08 238.53 Tm (142 m) Tj ET
+1 1 1 rg 79.23 312.38 30.90 10.00 re f
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 82.23 314.38 Tm (96,0 m) Tj ET
+0.07 0.15 0.28 RG 1.2 w 0.07 0.15 0.28 rg
+514.00 501.00 m 514.00 527.00 l S
+514.00 527.00 m 509.00 517.00 l 519.00 517.00 l h f
+0.11 0.23 0.43 rg BT /F2 9 Tf 1 0 0 1 511.00 533.00 Tm (N) Tj ET
+0.07 0.15 0.28 RG 1 w 0.07 0.15 0.28 rg
+178.46 70.00 m 391.54 70.00 l S
+178.46 70.00 m 178.46 75.00 l S
+0.11 0.23 0.43 rg BT /F1 7 Tf 1 0 0 1 176.52 80.00 Tm (0) Tj ET
+285.00 70.00 m 285.00 75.00 l S
+0.11 0.23 0.43 rg BT /F1 7 Tf 1 0 0 1 279.16 80.00 Tm (100) Tj ET
+391.54 70.00 m 391.54 75.00 l S
+0.11 0.23 0.43 rg BT /F1 7 Tf 1 0 0 1 385.70 80.00 Tm (200) Tj ET
+0.11 0.23 0.43 rg BT /F1 7 Tf 1 0 0 1 395.54 80.00 Tm (m) Tj ET
+0.985 0.99 1 rg 566.00 407.00 245.89 138.00 re f
+0.11 0.23 0.43 RG 0.9 w 566.00 407.00 245.89 138.00 re S
+0.11 0.23 0.43 rg BT /F2 8.5 Tf 1 0 0 1 580.00 527.00 Tm (TABLEAU DES COORDONNÉES) Tj ET
+0.11 0.23 0.43 rg BT /F2 8 Tf 1 0 0 1 580.00 511.00 Tm (Coin) Tj ET
+0.11 0.23 0.43 rg BT /F2 8 Tf 1 0 0 1 672.00 511.00 Tm (X \(m\)) Tj ET
+0.11 0.23 0.43 rg BT /F2 8 Tf 1 0 0 1 744.00 511.00 Tm (Y \(m\)) Tj ET
+0.82 0.87 0.95 RG 0.8 w 580.00 505.50 m 764.00 505.50 l S
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 580.00 493.50 Tm (P1) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 651.97 493.50 Tm (373 797,04) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 723.97 493.50 Tm (356 960,46) Tj ET
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 580.00 481.50 Tm (P2) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 651.97 481.50 Tm (373 980,94) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 723.97 481.50 Tm (356 860,76) Tj ET
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 580.00 469.50 Tm (P3) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 651.97 469.50 Tm (374 183,95) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 723.97 469.50 Tm (357 036,25) Tj ET
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 580.00 457.50 Tm (P4) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 651.97 457.50 Tm (374 190,55) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 723.97 457.50 Tm (357 043,75) Tj ET
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 580.00 445.50 Tm (P5) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 651.97 445.50 Tm (374 069,65) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 723.97 445.50 Tm (357 172,45) Tj ET
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 580.00 433.50 Tm (P6) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 651.97 433.50 Tm (373 940,14) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 723.97 433.50 Tm (357 104,05) Tj ET
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 580.00 421.50 Tm (P7) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 651.97 421.50 Tm (373 806,24) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 723.97 421.50 Tm (357 056,05) Tj ET
+0.5 0.55 0.62 rg BT /F1 7.5 Tf 1 0 0 1 30.00 30.00 Tm (Généré le jeudi 13 août 2026 à 16h00) Tj ET
+0.5 0.55 0.62 rg BT /F1 7.5 Tf 1 0 0 1 547.20 30.00 Tm (Système EPSG:26191 \(Merchich / Sahara\) — Coordonnées Lambert en mètres) Tj ET
+
+endstream
+endobj
+10 0 obj
+<< /Length 5732 >>
+stream
+0.11 0.23 0.43 rg BT /F2 11 Tf 1 0 0 1 34.00 567.00 Tm (RB1 — La zone RB1 correspond  la zone loigne de la servitude de protection de la retenue du barrage Sidi Moha…) Tj ET
+0.5 0.55 0.62 rg BT /F1 7.5 Tf 1 0 0 1 34.00 553.00 Tm (Affectation « RB1 » — 6,84 ha \(68 397 m²\) — 100.0 % de la parcelle — EPSG:26191 \(Lambert Conique Conforme, unité : mètre\)) Tj ET
+0.92 0.94 0.96 RG 0.4 w
+103.10 90.00 m 103.10 531.00 l S
+196.96 90.00 m 196.96 531.00 l S
+290.83 90.00 m 290.83 531.00 l S
+384.69 90.00 m 384.69 531.00 l S
+478.55 90.00 m 478.55 531.00 l S
+44.00 419.95 m 526.00 419.95 l S
+44.00 326.09 m 526.00 326.09 l S
+44.00 232.22 m 526.00 232.22 l S
+44.00 138.36 m 526.00 138.36 l S
+0.07 0.15 0.28 RG 1.3 w 30 50 510 495 re S
+0.82 0.87 0.95 RG 0.6 w 44.00 90.00 m 526.00 90.00 l S
+0.82 0.87 0.95 RG 0.8 w
+100.32 363.20 m 272.94 456.78 l 463.49 292.06 l 469.68 285.02 l 356.20 164.22 l 234.64 228.42 l 108.95 273.47 l h S
+0.941 0.639 0.639 rg
+100.32 363.20 m 272.94 456.78 l 463.49 292.06 l 469.68 285.02 l 356.20 164.22 l 234.64 228.42 l 108.95 273.47 l h
+ f
+0.07 0.15 0.28 RG 1.5 w
+100.32 363.20 m 272.94 456.78 l 463.49 292.06 l 469.68 285.02 l 356.20 164.22 l 234.64 228.42 l 108.95 273.47 l h
+ S
+0.07 0.15 0.28 rg
+98.52 361.40 3.6 3.6 re f
+271.14 454.98 3.6 3.6 re f
+461.69 290.26 3.6 3.6 re f
+467.88 283.22 3.6 3.6 re f
+354.40 162.42 3.6 3.6 re f
+232.84 226.62 3.6 3.6 re f
+107.15 271.67 3.6 3.6 re f
+1 1 1 rg 78.81 363.32 14.17 8.00 re f
+0.07 0.15 0.28 rg BT /F2 7.5 Tf 1 0 0 1 81.31 364.57 Tm (P1) Tj ET
+1 1 1 rg 264.62 467.73 14.17 8.00 re f
+0.07 0.15 0.28 rg BT /F2 7.5 Tf 1 0 0 1 267.12 468.98 Tm (P2) Tj ET
+1 1 1 rg 471.32 285.11 14.17 8.00 re f
+0.07 0.15 0.28 rg BT /F2 7.5 Tf 1 0 0 1 473.82 286.36 Tm (P3) Tj ET
+1 1 1 rg 477.45 274.01 14.17 8.00 re f
+0.07 0.15 0.28 rg BT /F2 7.5 Tf 1 0 0 1 479.95 275.26 Tm (P4) Tj ET
+1 1 1 rg 355.68 146.73 14.17 8.00 re f
+0.07 0.15 0.28 rg BT /F2 7.5 Tf 1 0 0 1 358.18 147.98 Tm (P5) Tj ET
+1 1 1 rg 219.71 211.63 14.17 8.00 re f
+0.07 0.15 0.28 rg BT /F2 7.5 Tf 1 0 0 1 222.21 212.88 Tm (P6) Tj ET
+1 1 1 rg 87.19 266.39 14.17 8.00 re f
+0.07 0.15 0.28 rg BT /F2 7.5 Tf 1 0 0 1 89.69 267.64 Tm (P7) Tj ET
+1 1 1 rg 167.52 413.78 28.68 10.00 re f
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 170.52 415.78 Tm (209 m) Tj ET
+1 1 1 rg 360.41 376.98 28.68 10.00 re f
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 363.41 378.98 Tm (268 m) Tj ET
+1 1 1 rg 458.64 296.51 30.90 10.00 re f
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 461.64 298.51 Tm (10,0 m) Tj ET
+1 1 1 rg 405.89 212.77 28.68 10.00 re f
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 408.89 214.77 Tm (177 m) Tj ET
+1 1 1 rg 276.41 182.48 28.68 10.00 re f
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 279.41 184.48 Tm (146 m) Tj ET
+1 1 1 rg 154.08 236.53 28.68 10.00 re f
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 157.08 238.53 Tm (142 m) Tj ET
+1 1 1 rg 79.23 312.38 30.90 10.00 re f
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 82.23 314.38 Tm (96,0 m) Tj ET
+0.07 0.15 0.28 RG 1.2 w 0.07 0.15 0.28 rg
+514.00 501.00 m 514.00 527.00 l S
+514.00 527.00 m 509.00 517.00 l 519.00 517.00 l h f
+0.11 0.23 0.43 rg BT /F2 9 Tf 1 0 0 1 511.00 533.00 Tm (N) Tj ET
+0.07 0.15 0.28 RG 1 w 0.07 0.15 0.28 rg
+178.46 70.00 m 391.54 70.00 l S
+178.46 70.00 m 178.46 75.00 l S
+0.11 0.23 0.43 rg BT /F1 7 Tf 1 0 0 1 176.52 80.00 Tm (0) Tj ET
+285.00 70.00 m 285.00 75.00 l S
+0.11 0.23 0.43 rg BT /F1 7 Tf 1 0 0 1 279.16 80.00 Tm (100) Tj ET
+391.54 70.00 m 391.54 75.00 l S
+0.11 0.23 0.43 rg BT /F1 7 Tf 1 0 0 1 385.70 80.00 Tm (200) Tj ET
+0.11 0.23 0.43 rg BT /F1 7 Tf 1 0 0 1 395.54 80.00 Tm (m) Tj ET
+0.985 0.99 1 rg 566.00 407.00 245.89 138.00 re f
+0.11 0.23 0.43 RG 0.9 w 566.00 407.00 245.89 138.00 re S
+0.11 0.23 0.43 rg BT /F2 8.5 Tf 1 0 0 1 580.00 527.00 Tm (TABLEAU DES COORDONNÉES) Tj ET
+0.11 0.23 0.43 rg BT /F2 8 Tf 1 0 0 1 580.00 511.00 Tm (Coin) Tj ET
+0.11 0.23 0.43 rg BT /F2 8 Tf 1 0 0 1 672.00 511.00 Tm (X \(m\)) Tj ET
+0.11 0.23 0.43 rg BT /F2 8 Tf 1 0 0 1 744.00 511.00 Tm (Y \(m\)) Tj ET
+0.82 0.87 0.95 RG 0.8 w 580.00 505.50 m 764.00 505.50 l S
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 580.00 493.50 Tm (P1) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 651.97 493.50 Tm (373 797,04) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 723.97 493.50 Tm (356 960,46) Tj ET
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 580.00 481.50 Tm (P2) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 651.97 481.50 Tm (373 980,94) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 723.97 481.50 Tm (356 860,76) Tj ET
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 580.00 469.50 Tm (P3) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 651.97 469.50 Tm (374 183,95) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 723.97 469.50 Tm (357 036,25) Tj ET
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 580.00 457.50 Tm (P4) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 651.97 457.50 Tm (374 190,55) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 723.97 457.50 Tm (357 043,75) Tj ET
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 580.00 445.50 Tm (P5) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 651.97 445.50 Tm (374 069,65) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 723.97 445.50 Tm (357 172,45) Tj ET
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 580.00 433.50 Tm (P6) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 651.97 433.50 Tm (373 940,14) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 723.97 433.50 Tm (357 104,05) Tj ET
+0.07 0.15 0.28 rg BT /F2 8 Tf 1 0 0 1 580.00 421.50 Tm (P7) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 651.97 421.50 Tm (373 806,24) Tj ET
+0.11 0.23 0.43 rg BT /F1 8 Tf 1 0 0 1 723.97 421.50 Tm (357 056,05) Tj ET
+0.5 0.55 0.62 rg BT /F1 7.5 Tf 1 0 0 1 30.00 30.00 Tm (Généré le jeudi 13 août 2026 à 16h00) Tj ET
+0.5 0.55 0.62 rg BT /F1 7.5 Tf 1 0 0 1 547.20 30.00 Tm (Système EPSG:26191 \(Merchich / Sahara\) — Coordonnées Lambert en mètres) Tj ET
+
+endstream
+endobj
+xref
+0 11
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000133 00000 n 
+0000000275 00000 n 
+0000000417 00000 n 
+0000000560 00000 n 
+0000000657 00000 n 
+0000000759 00000 n 
+0000003616 00000 n 
+0000009452 00000 n 
+trailer
+<< /Size 11 /Root 1 0 R >>
+startxref
+15237
+%%EOF

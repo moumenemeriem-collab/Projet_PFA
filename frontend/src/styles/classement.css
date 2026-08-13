@@ -629,3 +629,29 @@
   font-size: 0.875rem;
   color: var(--text-muted);
 }
+
+/* ── Formulaire terrain : localisation (géoportail / dessin) ── */
+
+.terrain-draft-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.terrain-draft-clear {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--primary);
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.terrain-loc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}

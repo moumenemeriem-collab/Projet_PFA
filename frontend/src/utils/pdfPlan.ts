@@ -3,6 +3,8 @@
 // Aucune dépendance externe : projection implémentée + PDF minimal écrit à la main.
 // Structure : page 1 portrait = fiche d'identité du terrain, page 2 paysage = plan topographique.
 
+import type { AffectationPiece } from './affectations'
+
 interface Pt {
   x: number
   y: number
@@ -194,6 +196,11 @@ function charWidth(ch: string, bold: boolean): number {
   const table = bold ? HELV_BOLD_W : HELV_W
   const code = ch.codePointAt(0) ?? 0
   if (table[code] != null) return table[code]
+  // Les tables HELV_* indexent certains glyphes par leur code WinAnsi
+  // (— = 0x97, … = 0x85, guillemets 0x91-0x94, ² = 0xb2, …) et non par leur
+  // point de code Unicode : on cherche d'abord l'équivalent WinAnsi.
+  const byte = WIN_ANSI[ch]
+  if (byte != null && table[byte] != null) return table[byte]
   const base = ACCENT_BASE[ch]
   if (base) {
     const baseCode = base.codePointAt(0) ?? 0
@@ -222,6 +229,15 @@ function wrap(s: string, size: number, maxW: number, bold = false): string[] {
   }
   if (cur) lines.push(cur)
   return lines
+}
+
+// Tronque un texte pour tenir dans une largeur donnée (avec ellipse « … »),
+// utilisé pour les libellés sur une seule ligne (tableau, titres).
+function fitText(s: string, size: number, maxW: number, bold = false): string {
+  if (textW(s, size, bold) <= maxW) return s
+  let r = s
+  while (r.length > 1 && textW(r + '…', size, bold) > maxW) r = r.slice(0, -1)
+  return r + '…'
 }
 
 function frNum(v: number, maxDec = 0): string {
@@ -377,7 +393,19 @@ function buildPage1(d: PlanData, dateStr: string): string {
 // PAGE 2 — Plan topographique (paysage A4)
 // ---------------------------------------------------------------------------
 
-function buildPage2(d: PlanData, dateStr: string): string {
+interface Page2Opts {
+  // Remplissage du polygone (« r g b » en fractions 0..1). Sans lui, contour seul.
+  fill?: string
+  // Titre principal en haut à gauche (défaut : libellé de la parcelle).
+  titleText?: string
+  // Sous-titre gris sous le titre (défaut : mention du système de coordonnées).
+  subtitleText?: string
+  // Contour de contexte (ex. emprise du terrain) inclus dans le calcul des
+  // limites ET tracé en filigrane derrière le polygone.
+  background?: Pt[]
+}
+
+function buildPage2(d: PlanData, dateStr: string, opts: Page2Opts = {}): string {
   const out: string[] = []
   const txt = (s: string, x: number, y: number, size: number, font = 'F1', color = NAVY): void => {
     out.push(`${color} rg BT /${font} ${size} Tf 1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm (${esc(s)}) Tj ET\n`)
@@ -386,8 +414,11 @@ function buildPage2(d: PlanData, dateStr: string): string {
     txt(s, right - textW(s, size, font === 'F2'), y, size, font, color)
 
   const n = d.pts.length
-  const xs = d.pts.map((p) => p.x)
-  const ys = d.pts.map((p) => p.y)
+  // Les limites englobent le polygone ET le contour de contexte (le cas échéant),
+  // pour que le tracé en filigrane ne dépasse jamais du cadre.
+  const allPts = opts.background && opts.background.length ? [...d.pts, ...opts.background] : d.pts
+  const xs = allPts.map((p) => p.x)
+  const ys = allPts.map((p) => p.y)
   const minX = Math.min(...xs)
   const maxX = Math.max(...xs)
   const minY = Math.min(...ys)
@@ -420,8 +451,11 @@ function buildPage2(d: PlanData, dateStr: string): string {
   const A_Y1 = P_Y1 - IP
 
   // ── Titre du plan ──
-  txt(subj(d), P_X0 + 4, P_Y1 + 22, 11, 'F2')
-  txt('Plan topographique — EPSG:26191 (Lambert Conique Conforme, unité : mètre)', P_X0 + 4, P_Y1 + 8, 7.5, 'F1', GRAY)
+  txt(opts.titleText ?? subj(d), P_X0 + 4, P_Y1 + 22, 11, 'F2')
+  txt(
+    opts.subtitleText ?? 'Plan topographique — EPSG:26191 (Lambert Conique Conforme, unité : mètre)',
+    P_X0 + 4, P_Y1 + 8, 7.5, 'F1', GRAY
+  )
 
   const scale = Math.min((A_X1 - A_X0) / (bx1 - bx0), (A_Y1 - A_Y0) / (by1 - by0))
   const offX = (A_X1 - A_X0 - (bx1 - bx0) * scale) / 2
@@ -444,13 +478,23 @@ function buildPage2(d: PlanData, dateStr: string): string {
   out.push(`${DARK} RG 1.3 w 30 50 510 495 re S\n`)
   out.push(`${LINE} RG 0.6 w ${A_X0.toFixed(2)} ${A_Y0.toFixed(2)} m ${A_X1.toFixed(2)} ${A_Y0.toFixed(2)} l S\n`)
 
-  // ── Polygone (contour seul, sans remplissage) ──
-  out.push(`${DARK} RG 1.5 w\n`)
-  out.push(
-    d.pts
+  // ── Contour de contexte (filigrane, ex. emprise du terrain) ──
+  if (opts.background && opts.background.length >= 3) {
+    const bg = opts.background
       .map((p, i) => `${px(p.x).toFixed(2)} ${py(p.y).toFixed(2)} ${i === 0 ? 'm' : 'l'}`)
       .join(' ') + ' h S\n'
-  )
+    out.push(`${LINE} RG 0.8 w\n${bg}`)
+  }
+
+  // ── Polygone (rempli si une couleur est fournie, contour seul sinon) ──
+  const pathCmd =
+    d.pts
+      .map((p, i) => `${px(p.x).toFixed(2)} ${py(p.y).toFixed(2)} ${i === 0 ? 'm' : 'l'}`)
+      .join(' ') + ' h\n'
+  if (opts.fill) {
+    out.push(`${opts.fill} rg\n${pathCmd} f\n`)
+  }
+  out.push(`${DARK} RG 1.5 w\n${pathCmd} S\n`)
 
   // ── Marques des coins ──
   out.push(`${DARK} rg\n`)
@@ -590,8 +634,14 @@ function buildPage2(d: PlanData, dateStr: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Assemblage du PDF (2 pages)
+// Assemblage générique du PDF (N pages A4, polices F1/F2 partagées)
 // ---------------------------------------------------------------------------
+
+interface PdfPage {
+  width: number
+  height: number
+  content: string
+}
 
 function concat(parts: Uint8Array[]): Uint8Array {
   const total = parts.reduce((s, p) => s + p.length, 0)
@@ -608,35 +658,43 @@ function ascii(s: string): Uint8Array {
   return new Uint8Array(winAnsiBytes(s))
 }
 
-function buildPdf(d: PlanData): Uint8Array {
-  const dateStr = formatDateFr(new Date())
-  const content1 = ascii(buildPage1(d, dateStr))
-  const content2 = ascii(buildPage2(d, dateStr))
+// Assemble n'importe quelle liste de pages (MediaBox + flux de contenu propres)
+// en un PDF valide. Objets : 1=Catalog, 2=Pages, 3..3+n-1=Page, puis les polices
+// et les flux. La numérotation est calculée dynamiquement pour éviter toute
+// collision quand il y a plus de 2 pages (3..2+n écraserait la police 5).
+function assemblePdf(pages: PdfPage[]): Uint8Array {
+  const n = pages.length
+  const firstFont = 3 + n
+  const firstStream = firstFont + 2
   const objects: Uint8Array[] = []
   objects.push(
     ascii('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n'),
-    ascii('2 0 obj\n<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>\nendobj\n'),
     ascii(
-      '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + AP + ' ' + APH + '] ' +
-      '/Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> /Contents 7 0 R >>\nendobj\n'
-    ),
-    ascii(
-      '4 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + AL + ' ' + ALH + '] ' +
-      '/Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> /Contents 8 0 R >>\nendobj\n'
-    ),
-    ascii('5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\nendobj\n'),
-    ascii('6 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>\nendobj\n'),
-    concat([
-      ascii('7 0 obj\n<< /Length ' + content1.length + ' >>\nstream\n'),
-      content1,
-      ascii('\nendstream\nendobj\n'),
-    ]),
-    concat([
-      ascii('8 0 obj\n<< /Length ' + content2.length + ' >>\nstream\n'),
-      content2,
-      ascii('\nendstream\nendobj\n'),
-    ]),
+      `2 0 obj\n<< /Type /Pages /Kids [${pages.map((_, i) => `${3 + i} 0 R`).join(' ')}] /Count ${n} >>\nendobj\n`
+    )
   )
+  for (let i = 0; i < n; i++) {
+    objects.push(
+      ascii(
+        `${3 + i} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pages[i].width} ${pages[i].height}] ` +
+        `/Resources << /Font << /F1 ${firstFont} 0 R /F2 ${firstFont + 1} 0 R >> >> /Contents ${firstStream + i} 0 R >>\nendobj\n`
+      )
+    )
+  }
+  objects.push(
+    ascii(`${firstFont} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\nendobj\n`),
+    ascii(`${firstFont + 1} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>\nendobj\n`)
+  )
+  for (let i = 0; i < n; i++) {
+    const content = ascii(pages[i].content)
+    objects.push(
+      concat([
+        ascii(`${firstStream + i} 0 obj\n<< /Length ${content.length} >>\nstream\n`),
+        content,
+        ascii('\nendstream\nendobj\n'),
+      ])
+    )
+  }
 
   const header = ascii('%PDF-1.4\n%\xe2\xe3\xcf\xd3\n')
   const offsets: number[] = []
@@ -657,11 +715,236 @@ function buildPdf(d: PlanData): Uint8Array {
   return concat([...body, xref, trailer])
 }
 
+// PDF du plan topographique classique : page 1 portrait (fiche), page 2 paysage (plan).
+function buildPdf(d: PlanData): Uint8Array {
+  const dateStr = formatDateFr(new Date())
+  return assemblePdf([
+    { width: AP, height: APH, content: buildPage1(d, dateStr) },
+    { width: AL, height: ALH, content: buildPage2(d, dateStr) },
+  ])
+}
+
+// ---------------------------------------------------------------------------
+// PDF « Affectations du terrain »
+// ---------------------------------------------------------------------------
+
+// Premier anneau externe d'une géométrie GeoJSON (Polygon / MultiPolygon),
+// sans la coordonnée Z ni le sommet de fermeture — même logique que extractRing.
+function ringOf(geometry: unknown): number[][] | null {
+  const g = geometry as { type?: string; coordinates?: unknown }
+  if (!g || typeof g !== 'object') return null
+  const coords = g.coordinates as unknown
+  let raw: unknown = null
+  if (g.type === 'Polygon' && Array.isArray(coords)) raw = (coords as unknown[])[0]
+  else if (g.type === 'MultiPolygon' && Array.isArray(coords) && Array.isArray(coords[0])) {
+    raw = (coords as unknown[][])[0][0]
+  }
+  if (!Array.isArray(raw) || !Array.isArray(raw[0])) return null
+  const ring: number[][] = []
+  for (const pt of raw as number[][]) {
+    const last = ring[ring.length - 1]
+    if (!last || last[0] !== pt[0] || last[1] !== pt[1]) ring.push([pt[0], pt[1]])
+  }
+  if (ring.length > 1) {
+    const first = ring[0]
+    const last = ring[ring.length - 1]
+    if (first[0] === last[0] && first[1] === last[1]) ring.pop()
+  }
+  return ring.length >= 3 ? ring : null
+}
+
+// Convertit une couleur « #rrggbb » en composantes PDF « r g b » (fractions 0..1).
+function hexToRgb(hex: string): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex)
+  if (!m) return '0.5 0.55 0.62'
+  const n = parseInt(m[1], 16)
+  const r = ((n >> 16) & 255) / 255
+  const g = ((n >> 8) & 255) / 255
+  const b = (n & 255) / 255
+  return `${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)}`
+}
+
+// Nombre maximal de lignes du tableau récapitulatif par page (sous le pied de page).
+const AFF_SUMMARY_MAX_ROWS = 12
+
+// Page 1 des affectations (paysage) : fiche récapitulative + tableau des pièces.
+// Le tableau est paginé : `continuation` indique une page de suite (titre seul,
+// pas de fiche) qui reprend exactement les mêmes positions de tableau.
+function buildAffSummaryPage(d: PlanData, pieces: AffectationPiece[], totalCount: number, dateStr: string, continuation: boolean): string {
+  const out: string[] = []
+  const txt = (s: string, x: number, y: number, size: number, font = 'F1', color = NAVY): void => {
+    out.push(`${color} rg BT /${font} ${size} Tf 1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm (${esc(s)}) Tj ET\n`)
+  }
+  const txtR = (s: string, right: number, y: number, size: number, font = 'F1', color = NAVY): void =>
+    txt(s, right - textW(s, size, font === 'F2'), y, size, font, color)
+
+  // ── Titre ──
+  txt('PLAN DES AFFECTATIONS DU TERRAIN', 60, 520, 20, 'F2')
+  if (continuation) {
+    txt('(suite du tableau des affectations)', 60, 498, 12, 'F2', GRAY)
+  } else {
+    txt(subj(d), 60, 498, 12, 'F2')
+  }
+  out.push(`${NAVY} RG 1.2 w 60 482 m 340 482 l S\n`)
+
+  let tableTop = 275
+  if (!continuation) {
+    // ── Bloc d'informations ──
+    const rows: Array<{ label: string; value: string }> = [
+      { label: 'Système de coordonnées', value: 'EPSG:26191 — Merchich / Sahara (Lambert Conique Conforme) — Unité : mètre' },
+      { label: 'Superficie totale du terrain', value: formatA(d.area) },
+      { label: "Nombre d'affectations", value: `${totalCount}` },
+      { label: 'Date de génération', value: dateStr },
+    ]
+    const labelX = 82
+    const valX = 270
+    const valW = 781.89 - valX - 20
+    const lines = rows.map((r) => ({ label: r.label, text: wrap(r.value, 9, valW) }))
+
+    const cardTop = 452
+    const titleY = cardTop - 20
+    const titleRuleY = titleY - 9
+    let y = titleRuleY - 20
+    const positions: Array<{ label: string; text: string[]; y: number }> = []
+    for (const r of lines) {
+      positions.push({ label: r.label, text: r.text, y })
+      y -= r.text.length * 13 + 14
+    }
+    const cardBottom = y + 6
+    tableTop = cardBottom - 26
+
+    out.push(`0.985 0.99 1 rg 60 ${cardBottom.toFixed(2)} 721.89 ${(cardTop - cardBottom).toFixed(2)} re f\n`)
+    out.push(`${LINE} RG 0.9 w 60 ${cardBottom.toFixed(2)} 721.89 ${(cardTop - cardBottom).toFixed(2)} re S\n`)
+    txt('INFORMATIONS GÉNÉRALES', labelX, titleY, 10, 'F2')
+    out.push(`${LINE} RG 0.7 w ${labelX.toFixed(2)} ${titleRuleY.toFixed(2)} m ${781.89.toFixed(2)} ${titleRuleY.toFixed(2)} l S\n`)
+    for (const p of positions) {
+      txt(p.label, labelX, p.y, 9, 'F2', '0.4 0.45 0.55')
+      p.text.forEach((line, i) => txt(line, valX, p.y - i * 13, 9))
+    }
+  }
+
+  // ── Tableau des affectations ──
+  const colLabel = 88
+  const colCode = 420
+  const colSurfRight = 660
+  const colPartRight = 770
+
+  txt('AFFECTATIONS DÉTECTÉES', 60, tableTop, 10, 'F2')
+  const headY = tableTop - 18
+  txt('Affectation', colLabel, headY, 8, 'F2')
+  txt('Code', colCode, headY, 8, 'F2')
+  txtR('Superficie', colSurfRight, headY, 8, 'F2')
+  txtR('Part', colPartRight, headY, 8, 'F2')
+  out.push(`${LINE} RG 0.8 w 60 ${(headY - 5.5).toFixed(2)} m 781.89 ${(headY - 5.5).toFixed(2)} l S\n`)
+
+  const rowH = 15
+  pieces.forEach((pc, i) => {
+    const ry = headY - 5.5 - (i + 1) * rowH
+    const sw = 14
+    const sx = 64
+    out.push(`${hexToRgb(pc.color)} rg ${sx.toFixed(2)} ${(ry - 2.5).toFixed(2)} ${sw} ${sw} re f\n`)
+    out.push(`0.8 0.85 0.9 RG 0.6 w ${sx.toFixed(2)} ${(ry - 2.5).toFixed(2)} ${sw} ${sw} re S\n`)
+    txt(fitText(pc.label, 8, colCode - colLabel - 8, true), colLabel, ry, 8, 'F2', DARK)
+    txt(pc.designation, colCode, ry, 8)
+    txtR(formatA(pc.areaM2), colSurfRight, ry, 8)
+    txtR(`${pc.percent.toFixed(1)} %`, colPartRight, ry, 8)
+  })
+  if (pieces.length === 0) {
+    txt('Aucune affectation trouvée pour cette parcelle dans le plan d\'aménagement.', colLabel, headY - 5.5 - rowH, 8, 'F1', '0.72 0.11 0.11')
+  }
+
+  // ── Pied de page ──
+  txt(`Généré le ${dateStr}`, 60, 30, 7.5, 'F1', GRAY)
+  const footR = 'Système EPSG:26191 (Merchich / Sahara) — Coordonnées Lambert en mètres'
+  txt(footR, AL - 30 - textW(footR, 7.5), 30, 7.5, 'F1', GRAY)
+
+  return out.join('')
+}
+
+// Assemble le PDF des affectations : page 1 récapitulative + une page par pièce
+// (plan de la zone projetée en EPSG:26191, remplit de sa couleur, contour du
+// terrain en contexte, tableau des coordonnées).
+export function buildAffectationsPdf(title: string, terrainRing: number[][], pieces: AffectationPiece[]): Uint8Array {
+  const dateStr = formatDateFr(new Date())
+
+  const terrainPts = terrainRing.map(([lng, lat]) => projectSahara(lat, lng))
+  const terrainSides = terrainPts.map((p, i) => {
+    const q = terrainPts[(i + 1) % terrainPts.length]
+    return Math.hypot(q.x - p.x, q.y - p.y)
+  })
+  const terrain: PlanData = {
+    title,
+    pts: terrainPts,
+    sides: terrainSides,
+    perimeter: terrainSides.reduce((s, x) => s + x, 0),
+    area: polygonArea(terrainPts),
+  }
+
+  const pages: PdfPage[] = []
+
+  // Page 1 + suites du tableau récapitulatif (pagé pour ne pas déborder du pied de page).
+  if (pieces.length === 0) {
+    pages.push({ width: AL, height: ALH, content: buildAffSummaryPage(terrain, [], 0, dateStr, false) })
+  } else {
+    for (let i = 0; i < pieces.length; i += AFF_SUMMARY_MAX_ROWS) {
+      pages.push({
+        width: AL,
+        height: ALH,
+        content: buildAffSummaryPage(terrain, pieces.slice(i, i + AFF_SUMMARY_MAX_ROWS), pieces.length, dateStr, i > 0),
+      })
+    }
+  }
+
+  for (const pc of pieces) {
+    const ring = ringOf(pc.feature.geometry)
+    if (!ring || ring.length < 3) continue
+    const pts = ring.map(([lng, lat]) => projectSahara(lat, lng))
+    const sides = pts.map((p, i) => {
+      const q = pts[(i + 1) % pts.length]
+      return Math.hypot(q.x - p.x, q.y - p.y)
+    })
+    const d: PlanData = {
+      title: pc.label,
+      pts,
+      sides,
+      perimeter: sides.reduce((s, x) => s + x, 0),
+      area: polygonArea(pts),
+    }
+    const subtitle = pc.designation
+      ? `Affectation « ${pc.designation} » — ${formatA(d.area)} — ${pc.percent.toFixed(1)} % de la parcelle — EPSG:26191 (Lambert Conique Conforme, unité : mètre)`
+      : `${formatA(d.area)} — ${pc.percent.toFixed(1)} % de la parcelle — EPSG:26191 (Lambert Conique Conforme, unité : mètre)`
+    pages.push({
+      width: AL,
+      height: ALH,
+      content: buildPage2(d, dateStr, {
+        fill: hexToRgb(pc.color),
+        titleText: fitText(pc.label, 11, 600, true),
+        subtitleText: fitText(subtitle, 7.5, 700),
+        background: terrainPts,
+      }),
+    })
+  }
+
+  return assemblePdf(pages)
+}
+
 function sanitizeFileName(s: string): string {
   const clean = s
     .replace(/[^a-zA-Z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
   return clean || 'plan-terrain'
+}
+
+function downloadBytes(bytes: Uint8Array, name: string): void {
+  const blob = new Blob([bytes as unknown as BlobPart], { type: 'application/pdf' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 export function downloadTerrainPdf(ring: number[][], title: string): void {
@@ -672,14 +955,9 @@ export function downloadTerrainPdf(ring: number[][], title: string): void {
   })
   const perimeter = sides.reduce((s, x) => s + x, 0)
   const area = polygonArea(pts)
-  const pdf = buildPdf({ title, pts, sides, perimeter, area })
-  const blob = new Blob([pdf as unknown as BlobPart], { type: 'application/pdf' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${sanitizeFileName(title)}.pdf`
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  downloadBytes(buildPdf({ title, pts, sides, perimeter, area }), `${sanitizeFileName(title)}.pdf`)
+}
+
+export function downloadAffectationsPdf(title: string, terrainRing: number[][], pieces: AffectationPiece[]): void {
+  downloadBytes(buildAffectationsPdf(title, terrainRing, pieces), `${sanitizeFileName(title)}-affectations.pdf`)
 }

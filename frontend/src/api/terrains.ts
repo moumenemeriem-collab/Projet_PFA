@@ -4,13 +4,20 @@ export interface Terrain {
   id: number
   nom: string
   superficie: string
-  lat: string
-  lng: string
+  lat: string | null
+  lng: string | null
   accessibilite: number
   positionnement: number
   topographie: number
   score: string
   projet: number
+  utilisateur: number | null
+  fid: number | null
+  indice: string
+  complement: string
+  consistance: string
+  num_parcelle: string
+  geometry: string
   date_creation: string
 }
 
@@ -20,13 +27,15 @@ export interface TerrainListResponse {
 }
 
 export interface TerrainPayload {
-  nom: string
+  num: string
+  fid: number | null
+  indice: string
+  complement: string
+  consistance: string
   superficie: number
-  lat: number
-  lng: number
-  accessibilite: number
-  positionnement: number
-  topographie: number
+  lat: number | null
+  lng: number | null
+  geometry: string
 }
 
 export async function fetchTerrains(projetId: number, params: {

@@ -4,7 +4,7 @@ import { icons, Icon } from '../components/icons'
 import { DashboardLayout } from '../components/DashboardLayout'
 import { formatApiErrors } from '../api/auth'
 import { fetchProjet, type Projet } from '../api/projets'
-import { fetchAnalyse, type AnalyseFiltres, type AnalyseResultat } from '../api/terrains'
+import { createTerrain, fetchAnalyse, type AnalyseFiltres, type AnalyseResultat } from '../api/terrains'
 import { createAnalyse, fetchAnalyseDetail, type AnalyseDetail, type ResultatAnalyse } from '../api/analyses'
 import { fetchCouches, fetchCoucheGeoJSON, type Couche, type CoucheFeature, type CoucheFeatureCollection } from '../api/couches'
 import { attributeLabel, CADASTRE_ATTRIBUTE_LABELS, PLAN_AMENAGEMENT_ATTRIBUTE_LABELS } from '../utils/attributeLabels'
@@ -12,11 +12,13 @@ import { t } from '../i18n/index'
 import {
   extractRing,
   openGoogleMaps,
+  polygonAreaM2,
   ringCenter,
   showTerrainDims,
 } from '../utils/terrainDims'
 import {
   computeParcelAffectations,
+  formatAffArea,
   preparePAZones,
   showAffectationsModal,
   type AffectationPiece,
@@ -723,6 +725,31 @@ export function GeoportalPage(): React.JSX.Element {
   const paPreparedRef = useRef<PreparedPAZone[] | null>(null)
   const affectationsLayerRef = useRef<any>(null)
   const affectationsResultRef = useRef<{ terrainNum: string; pieces: AffectationPiece[]; title: string } | null>(null)
+  const drawModeRef = useRef(false)
+  const drawPointsRef = useRef<[number, number][]>([])
+  const drawLayerRef = useRef<any>(null)
+
+  const [drawMode, setDrawMode] = useState(false)
+  const [drawPointCount, setDrawPointCount] = useState(0)
+  const [drawFinished, setDrawFinished] = useState<{ area: number; center: { lat: number; lng: number }; geometry: string } | null>(null)
+  const [drawError, setDrawError] = useState<string | null>(null)
+  const [drawForForm, setDrawForForm] = useState(false)
+  const [addPopupOpen, setAddPopupOpen] = useState(false)
+  const [terrainForm, setTerrainForm] = useState({
+    num: '',
+    fid: '',
+    indice: '',
+    complement: '',
+    consistance: '',
+    superficie: '',
+    lat: '',
+    lng: '',
+    geometry: '',
+  })
+  const [savingTerrain, setSavingTerrain] = useState(false)
+  const [terrainError, setTerrainError] = useState<string | null>(null)
+  const [terrainNote, setTerrainNote] = useState<string | null>(null)
+  const addTerrainRef = useRef<HTMLDivElement>(null)
   
   const openPopupRef = useRef<any>(null)
   const popupActionHandlerRef = useRef<(e: MouseEvent) => void>(() => {})
@@ -794,8 +821,185 @@ export function GeoportalPage(): React.JSX.Element {
     affectationsResultRef.current = null
   }
 
+  // ---- Dessin du polygone du terrain (localisation depuis le formulaire) ----
+  const drawDraftKey = (pid: number): string => `terrain_draft_${pid}`
+
+  const clearDrawLayer = (): void => {
+    const map = mapRef.current
+    if (drawLayerRef.current) {
+      map?.removeLayer(drawLayerRef.current)
+      drawLayerRef.current = null
+    }
+  }
+
+  const renderDrawShape = (): void => {
+    const map = mapRef.current
+    if (!map) return
+    clearDrawLayer()
+    const pts = drawPointsRef.current
+    if (pts.length === 0) return
+    const layer = L.featureGroup()
+    if (pts.length === 1) {
+      L.circleMarker(pts[0], { radius: 5, color: '#e11d48', fillColor: '#e11d48', fillOpacity: 0.9 }).addTo(layer)
+    } else if (pts.length === 2) {
+      L.polyline(pts, { color: '#e11d48', weight: 2, dashArray: '4 4' }).addTo(layer)
+    } else {
+      L.polygon(pts, { color: '#e11d48', weight: 2, fillColor: '#e11d48', fillOpacity: 0.15 }).addTo(layer)
+      L.polyline([...pts, pts[0]], { color: '#e11d48', weight: 2, dashArray: '4 4' }).addTo(layer)
+    }
+    pts.forEach((p) => L.circleMarker(p, { radius: 4, color: '#fff', weight: 2, fillColor: '#e11d48', fillOpacity: 1 }).addTo(layer))
+    layer.addTo(map)
+    drawLayerRef.current = layer
+  }
+
+  const addDrawPoint = (latlng: { lat: number; lng: number }): void => {
+    drawPointsRef.current = [...drawPointsRef.current, [latlng.lat, latlng.lng]]
+    setDrawPointCount(drawPointsRef.current.length)
+    renderDrawShape()
+  }
+
+  const finishDraw = (): void => {
+    const pts = drawPointsRef.current
+    setDrawError(null)
+    if (pts.length < 3) {
+      setDrawError(t('ranking.draw_min_points'))
+      return
+    }
+    const ring: number[][] = pts.map((p) => [p[1], p[0]])
+    const area = polygonAreaM2(ring)
+    const center = ringCenter(ring)
+    const geometry = JSON.stringify({ type: 'Polygon', coordinates: [[...ring, ring[0]]] })
+    if (drawForForm) {
+      setTerrainForm((f) => ({
+        ...f,
+        superficie: f.superficie === '' ? String(Math.round(area)) : f.superficie,
+        lat: String(center.lat),
+        lng: String(center.lng),
+        geometry,
+      }))
+      setTerrainNote(t('ranking.loc_drawn'))
+      clearDrawLayer()
+      drawPointsRef.current = []
+      setDrawFinished(null)
+      setDrawMode(false)
+      setDrawForForm(false)
+      setAddPopupOpen(true)
+      return
+    }
+    setDrawFinished({ area, center, geometry })
+    setDrawMode(false)
+  }
+
+  const confirmDraw = (): void => {
+    if (!drawFinished || !projetId) return
+    localStorage.setItem(drawDraftKey(projetId), JSON.stringify(drawFinished))
+    window.close()
+  }
+
+  const resetDraw = (): void => {
+    clearDrawLayer()
+    drawPointsRef.current = []
+    setDrawFinished(null)
+    setDrawError(null)
+    setDrawMode(true)
+  }
+
+  const cancelDraw = (): void => {
+    clearDrawLayer()
+    drawPointsRef.current = []
+    setDrawFinished(null)
+    setDrawError(null)
+    setDrawMode(false)
+  }
+
+  useEffect(() => {
+    drawModeRef.current = drawMode
+  }, [drawMode])
+
+  const startFormDraw = (): void => {
+    clearDrawLayer()
+    drawPointsRef.current = []
+    setDrawFinished(null)
+    setDrawError(null)
+    setDrawForForm(true)
+    setDrawMode(true)
+    setAddPopupOpen(false)
+  }
+
+  const clearFormDraw = (): void => {
+    setTerrainForm((f) => ({ ...f, lat: '', lng: '', geometry: '' }))
+    setTerrainNote(null)
+  }
+
+  const viewTerrainOnMap = (): void => {
+    const map = mapRef.current
+    const lat = Number(terrainForm.lat)
+    const lng = Number(terrainForm.lng)
+    setTerrainError(null)
+    if (!map || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+      setTerrainError(t('ranking.validation_coords'))
+      return
+    }
+    if (markerRef.current) {
+      markerRef.current.setLatLng([lat, lng])
+    } else {
+      markerRef.current = L.circleMarker([lat, lng], {
+        radius: 8, color: '#1b3a6e', fillColor: '#1b3a6e', fillOpacity: 0.8, weight: 2,
+      }).addTo(map)
+    }
+    map.flyTo([lat, lng], Math.max(map.getZoom(), 15), { duration: 0.8 })
+    map.once('moveend', () => centerMapOnPoint(map, [lat, lng]))
+    setAddPopupOpen(false)
+  }
+
+  const handleAddTerrain = async (e: React.FormEvent): Promise<void> => {
+    e.preventDefault()
+    if (!projetId) return
+    const num = terrainForm.num.trim()
+    const superficie = Number(terrainForm.superficie)
+    const fid = terrainForm.fid !== '' ? Number(terrainForm.fid) : null
+    const lat = terrainForm.lat.trim() !== '' ? Number(terrainForm.lat) : null
+    const lng = terrainForm.lng.trim() !== '' ? Number(terrainForm.lng) : null
+    if (!num || !terrainForm.superficie || superficie <= 0) {
+      setTerrainError(t('ranking.validation_required'))
+      return
+    }
+    if (lat != null && lng != null && (Number.isNaN(lat) || Number.isNaN(lng))) {
+      setTerrainError(t('ranking.validation_coords'))
+      return
+    }
+    setSavingTerrain(true)
+    setTerrainError(null)
+    try {
+      await createTerrain(projetId, {
+        num,
+        fid,
+        indice: terrainForm.indice.trim(),
+        complement: terrainForm.complement.trim(),
+        consistance: terrainForm.consistance.trim(),
+        superficie,
+        lat,
+        lng,
+        geometry: terrainForm.geometry,
+      })
+      localStorage.setItem(`terrain_created_${projetId}`, String(Date.now()))
+      setTerrainForm({ num: '', fid: '', indice: '', complement: '', consistance: '', superficie: '', lat: '', lng: '', geometry: '' })
+      setTerrainNote(t('ranking.terrain_added'))
+      setTerrainError(null)
+    } catch (err) {
+      setTerrainError(formatApiErrors(err))
+    } finally {
+      setSavingTerrain(false)
+    }
+  }
+
   // Calcule le découpage de la parcelle et l'affiche sur la carte, puis bascule
   // le bouton du popup de « Voir les parcelles » vers « Détail ».
+  // Les pièces restent interactives (curseur + infobulle au survol), mais leur
+  // clic relance le handler « click » de la couche cadastre correspondante :
+  // cliquer sur une parcelle colorée se comporte exactement comme cliquer sur
+  // le terrain (popup du terrain, bouton « Voir Détail » conservé puisque le
+  // résultat est déjà calculé).
   const showParcelAffectations = (idParcelle: string, popup: any): void => {
     const map = mapRef.current
     const cadastreId = couchesDispo.find((c) => c.nom === 'cadastre')?.id
@@ -819,9 +1023,42 @@ export function GeoportalPage(): React.JSX.Element {
     }
     if (pieces.length > 0) {
       const group = L.featureGroup()
+      const openCadastreClick = (ev: any): void => {
+        // Le clic sur une pièce colorée se comporte comme un clic sur le terrain :
+        // on re-déclenche le handler « click » de la couche cadastre correspondante.
+        const cadLayer = cadastreLayerRef.current as any
+        if (!cadLayer) return
+        let targetLayer: any = null
+        cadLayer.eachLayer((l: any) => {
+          if (targetLayer) return
+          if (l?.feature?.properties?.num != null && String(l.feature.properties.num) === String(idParcelle)) {
+            targetLayer = l
+          }
+        })
+        if (targetLayer) {
+          targetLayer.fire('click', {
+            latlng: ev?.latlng,
+            layerPoint: ev?.layerPoint,
+            containerPoint: ev?.containerPoint,
+            originalEvent: ev?.originalEvent,
+          })
+        }
+      }
       pieces.forEach((pc) => {
+        const label = pc.label || pc.designation || 'Affectation'
+        const areaTxt = formatAffArea(pc.areaM2)
         L.geoJSON(pc.feature, {
+          interactive: true,
+          bubblingMouseEvents: false,
           style: { color: '#0f3d6e', weight: 1.5, opacity: 0.95, fillColor: pc.color, fillOpacity: 0.75 },
+          onEachFeature: (_feature: any, layerItem: any) => {
+            layerItem.bindTooltip(
+              `<div class="geo-aff-tooltip-title">${escapeHtml(label)}</div>` +
+              `<div class="geo-aff-tooltip-meta">${escapeHtml(areaTxt)} · ${pc.percent.toFixed(1)} % de la parcelle</div>`,
+              { sticky: true, className: 'geo-aff-tooltip', direction: 'top', offset: [0, -4] }
+            )
+            layerItem.on('click', openCadastreClick)
+          },
         }).addTo(group)
       })
       if (ring && ring.length >= 3) {
@@ -1025,6 +1262,11 @@ const bindPopupActionButtons = (popup: any): void => {
 
     map.on('click', (e: any) => {
       const target = e?.originalEvent?.target as HTMLElement | undefined
+      // En mode dessin du terrain, chaque clic pose un sommet du polygone.
+      if (drawModeRef.current) {
+        addDrawPoint(e.latlng)
+        return
+      }
       // Un clic dans le popup (bouton « Voir les parcelles », etc.) ne doit pas
       // être traité comme un clic carte : sinon le popup du point sélectionné
       // s'ouvre et ferme celui de la parcelle.
@@ -1077,6 +1319,20 @@ const bindPopupActionButtons = (popup: any): void => {
     popupLayer.addEventListener('click', onPopupLayerClick)
 
     setupCustomDistances()
+
+    const geoParams = new URLSearchParams(window.location.search)
+    const geoMode = geoParams.get('mode')
+    const geoLat = Number(geoParams.get('terrain_lat'))
+    const geoLng = Number(geoParams.get('terrain_lng'))
+    if (geoMode === 'dessin') {
+      setDrawMode(true)
+    } else if (geoMode === 'vue' && Number.isFinite(geoLat) && Number.isFinite(geoLng)) {
+      L.marker([geoLat, geoLng])
+        .addTo(map)
+        .bindPopup(`Lat: ${geoLat.toFixed(6)}, Lng: ${geoLng.toFixed(6)}`)
+        .openPopup()
+      map.flyTo([geoLat, geoLng], Math.max(map.getZoom(), 15), { duration: 0.8 })
+    }
 
     return () => {
       map.remove()
@@ -1597,6 +1853,17 @@ const bindPopupActionButtons = (popup: any): void => {
     document.addEventListener('click', onDocClick)
     return () => document.removeEventListener('click', onDocClick)
   }, [legendOpen])
+
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent): void => {
+      const bar = addTerrainRef.current
+      if (addPopupOpen && bar && !bar.contains(e.target as Node)) {
+        setAddPopupOpen(false)
+      }
+    }
+    document.addEventListener('click', onDocClick)
+    return () => document.removeEventListener('click', onDocClick)
+  }, [addPopupOpen])
 
   const toggleAccordion = (section: string): void => {
     setOpenSections((prev) => (prev.includes(section) ? prev.filter((s) => s !== section) : [...prev, section]))
@@ -2156,6 +2423,38 @@ const bindPopupActionButtons = (popup: any): void => {
 
                 <div className="geo-coord-display" id="coord-display">{coord}</div>
 
+                {drawMode || drawFinished ? (
+                  <div className="geo-draw-panel">
+                    {drawFinished ? (
+                      <>
+                        <div className="geo-draw-panel-title">{t('ranking.draw_done_title')}</div>
+                        <p className="geo-draw-panel-text">
+                          {t('ranking.draw_area')} : <strong>{drawFinished.area.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} m²</strong>
+                        </p>
+                        <p className="geo-draw-panel-text">{t('ranking.draw_center')} : {drawFinished.center.lat.toFixed(6)}, {drawFinished.center.lng.toFixed(6)}</p>
+                        <div className="geo-draw-panel-actions">
+                          <button type="button" className="btn btn-primary" onClick={confirmDraw}>{t('ranking.draw_back_form')}</button>
+                          <button type="button" className="btn btn-outline" onClick={resetDraw}>{t('ranking.draw_redo')}</button>
+                          <button type="button" className="btn btn-outline" onClick={cancelDraw}>{t('ranking.draw_cancel')}</button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="geo-draw-panel-title">{t('ranking.draw_title')}</div>
+                        <p className="geo-draw-panel-text">{t('ranking.draw_instructions')}</p>
+                        <p className="geo-draw-panel-text geo-draw-panel-text--count">
+                          {t('ranking.draw_points_count')} : {drawPointCount}
+                        </p>
+                        {drawError ? <div className="geo-draw-panel-error">{drawError}</div> : null}
+                        <div className="geo-draw-panel-actions">
+                          <button type="button" className="btn btn-primary" disabled={drawPointCount < 3} onClick={finishDraw}>{t('ranking.draw_finish')}</button>
+                          <button type="button" className="btn btn-outline" onClick={cancelDraw}>{t('ranking.draw_cancel')}</button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ) : null}
+
                 <div className="geo-top-controls" id="top-controls">
                 <div className="geo-map-layers-bar" id="layers-bar" ref={layersBarRef}>
                   <div className="geo-layers-trigger" id="layers-trigger">
@@ -2329,6 +2628,94 @@ const bindPopupActionButtons = (popup: any): void => {
                           </label>
                         ))}
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="geo-add-control" id="add-terrain-bar" ref={addTerrainRef}>
+                  <div className="geo-layers-trigger">
+                    <button
+                      type="button"
+                      className={`geo-top-fab${addPopupOpen ? ' geo-top-fab--active' : ''}`}
+                      title={t('ranking.add_terrain_title')}
+                      aria-expanded={addPopupOpen}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setBasemapMenuOpen(false)
+                        setLayersPopupOpen(false)
+                        setLegendOpen(false)
+                        setAddPopupOpen((v) => !v)
+                      }}
+                    >
+                      {icons.plus}
+                    </button>
+                  </div>
+                  <div className={`geo-top-popup geo-top-popup--add${addPopupOpen ? ' geo-top-popup--open' : ''}`} id="add-terrain-popup">
+                    <div className="geo-layers-popup-section">
+                      <span className="geo-layers-popup-label">{t('ranking.add_terrain_title')}</span>
+                      <form id="terrain-form" className="admin-modal-form geo-add-form" noValidate onSubmit={(e) => { void handleAddTerrain(e) }}>
+                        <div className="form-alert form-alert--error" hidden={!terrainError}>{terrainError}</div>
+                        {terrainNote ? (
+                          <div className="form-alert form-alert--success terrain-draft-note">
+                            {terrainNote}
+                            {terrainForm.geometry ? (
+                              <button type="button" className="terrain-draft-clear" onClick={clearFormDraw}>{t('ranking.loc_clear_draw')}</button>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        <div className="form-row">
+                          <div className="form-field form-field--half">
+                            <label htmlFor="g-t-num" className="form-label">{t('ranking.field_num_parcelle')}</label>
+                            <input id="g-t-num" name="num" className="modal-input" placeholder="T54884" value={terrainForm.num} onChange={(e) => setTerrainForm((f) => ({ ...f, num: e.target.value }))} required />
+                          </div>
+                          <div className="form-field form-field--half">
+                            <label htmlFor="g-t-fid" className="form-label">{t('ranking.field_fid')}</label>
+                            <input id="g-t-fid" name="fid" type="number" step="1" className="modal-input" value={terrainForm.fid} onChange={(e) => setTerrainForm((f) => ({ ...f, fid: e.target.value }))} />
+                          </div>
+                        </div>
+                        <div className="form-row">
+                          <div className="form-field form-field--half">
+                            <label htmlFor="g-t-indice" className="form-label">{t('ranking.field_indice')}</label>
+                            <input id="g-t-indice" name="indice" className="modal-input" value={terrainForm.indice} onChange={(e) => setTerrainForm((f) => ({ ...f, indice: e.target.value }))} />
+                          </div>
+                          <div className="form-field form-field--half">
+                            <label htmlFor="g-t-complement" className="form-label">{t('ranking.field_complement')}</label>
+                            <input id="g-t-complement" name="complement" className="modal-input" value={terrainForm.complement} onChange={(e) => setTerrainForm((f) => ({ ...f, complement: e.target.value }))} />
+                          </div>
+                        </div>
+                        <div className="form-row">
+                          <div className="form-field form-field--half">
+                            <label htmlFor="g-t-consistance" className="form-label">{t('ranking.field_consistance')}</label>
+                            <input id="g-t-consistance" name="consistance" className="modal-input" value={terrainForm.consistance} onChange={(e) => setTerrainForm((f) => ({ ...f, consistance: e.target.value }))} />
+                          </div>
+                          <div className="form-field form-field--half">
+                            <label htmlFor="g-t-superficie" className="form-label">{t('ranking.field_superficie')}</label>
+                            <input id="g-t-superficie" name="superficie" type="number" min="1" step="any" className="modal-input" value={terrainForm.superficie} onChange={(e) => setTerrainForm((f) => ({ ...f, superficie: e.target.value }))} required />
+                          </div>
+                        </div>
+                        <div className="form-row">
+                          <div className="form-field form-field--half">
+                            <label htmlFor="g-t-lat" className="form-label">{t('ranking.field_lat')}</label>
+                            <input id="g-t-lat" name="lat" type="number" step="any" className="modal-input" placeholder="33.88" value={terrainForm.lat} onChange={(e) => setTerrainForm((f) => ({ ...f, lat: e.target.value }))} />
+                          </div>
+                          <div className="form-field form-field--half">
+                            <label htmlFor="g-t-lng" className="form-label">{t('ranking.field_lng')}</label>
+                            <input id="g-t-lng" name="lng" type="number" step="any" className="modal-input" placeholder="-6.75" value={terrainForm.lng} onChange={(e) => setTerrainForm((f) => ({ ...f, lng: e.target.value }))} />
+                          </div>
+                        </div>
+                        <div className="form-row terrain-loc-actions">
+                          <button type="button" className="btn btn-outline btn-action" onClick={viewTerrainOnMap} title={t('ranking.loc_view_geoportal_title')}>
+                            {icons.mapPin} {t('ranking.loc_view_geoportal')}
+                          </button>
+                          <button type="button" className="btn btn-secondary btn-action" onClick={startFormDraw} title={t('ranking.loc_draw_polygon_title')}>
+                            {icons.edit} {t('ranking.loc_draw_polygon')}
+                          </button>
+                        </div>
+                        <div className="admin-modal-actions">
+                          <button type="button" className="btn btn-outline" onClick={() => setAddPopupOpen(false)}>{t('common.cancel')}</button>
+                          <button type="submit" className="btn btn-primary" disabled={savingTerrain}>{savingTerrain ? '…' : icons.save} {t('ranking.save_terrain')}</button>
+                        </div>
+                      </form>
                     </div>
                   </div>
                 </div>

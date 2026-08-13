@@ -519,7 +519,7 @@ class TerrainListView(APIView):
 
         serializer = TerrainCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        terrain = serializer.save(projet=projet)
+        terrain = serializer.save(projet=projet, utilisateur=request.user)
         _log(request.user, 'ajout', 'terrain', f'Ajout du terrain "{terrain.nom}" (projet {projet.nom})')
         return Response(
             TerrainListSerializer(terrain).data,

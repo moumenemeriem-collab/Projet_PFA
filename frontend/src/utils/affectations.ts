@@ -3,6 +3,7 @@
 
 import intersect from '@turf/intersect'
 import { extractRing, polygonAreaM2 } from './terrainDims'
+import { downloadAffectationsPdf } from './pdfPlan'
 
 export interface AffectationPiece {
   feature: any
@@ -45,25 +46,46 @@ export function affectationLabel(props: Record<string, unknown>): string {
   return 'Affectation non définie'
 }
 
-// Détails complémentaires (règlement) d'une affectation, sous forme de paires libellé/valeur.
-export function affectationDetails(props: Record<string, unknown>): { label: string; value: string }[] {
-  const fields: [string, string][] = [
-    ['definition', 'Définition'],
-    ['type_construction', 'Type de construction'],
-    ['cos', 'COS'],
-    ['cus', 'CUS'],
-    ['hauteur_max', 'Hauteur max'],
-    ['largeur_min', 'Largeur min'],
-    ['surface_min', 'Surface min'],
-    ['ville', 'Commune'],
-  ]
-  const out: { label: string; value: string }[] = []
-  fields.forEach(([key, label]) => {
-    const v = props[key]
-    if (v === null || v === undefined || v === '') return
-    out.push({ label, value: String(v) })
+// Ordre et libellés préférés des attributs du plan d'aménagement.
+const AFF_ATTR_ORDER: [string, string][] = [
+  ['designation', 'Code'],
+  ['definition', 'Définition'],
+  ['type_construction', 'Type de construction'],
+  ['cos', 'COS'],
+  ['cus', 'CUS'],
+  ['hauteur_max', 'Hauteur max'],
+  ['largeur_min', 'Largeur min'],
+  ['surface_min', 'Surface min'],
+  ['ville', 'Commune'],
+]
+
+const AFF_ATTR_EXCLUDED = new Set(['geometry', 'id', 'gid', 'ogc_fid', 'fid'])
+
+function humanizeKey(key: string): string {
+  return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function hasAttrData(pieces: AffectationPiece[], key: string): boolean {
+  return pieces.some((pc) => {
+    const v = pc.properties[key]
+    return v !== null && v !== undefined && v !== ''
   })
-  return out
+}
+
+// Liste des colonnes à afficher : attributs connus d'abord (s'ils ont des
+// données), puis tous les autres attributs non vides présents dans les pièces.
+export function collectAffectationColumns(pieces: AffectationPiece[]): [string, string][] {
+  const seen = new Set<string>()
+  const order: [string, string][] = []
+  const add = (key: string): void => {
+    if (seen.has(key) || AFF_ATTR_EXCLUDED.has(key) || !hasAttrData(pieces, key)) return
+    seen.add(key)
+    const label = AFF_ATTR_ORDER.find(([k]) => k === key)?.[1] ?? humanizeKey(key)
+    order.push([key, label])
+  }
+  AFF_ATTR_ORDER.forEach(([k]) => add(k))
+  pieces.forEach((pc) => Object.keys(pc.properties).forEach(add))
+  return order
 }
 
 // Bounding box [lng, lat] d'une géométrie (Polygon / MultiPolygon).
@@ -213,52 +235,6 @@ function affProject(ring: number[][]) {
   return { px, py }
 }
 
-function ringArea(ring: number[][]): number {
-  let s = 0
-  for (let i = 0; i < ring.length; i++) {
-    const p1 = ring[i]
-    const p2 = ring[(i + 1) % ring.length]
-    s += p1[0] * p2[1] - p2[0] * p1[1]
-  }
-  return Math.abs(s) / 2
-}
-
-// Centroïde d'un anneau (coordonnées [lng, lat]) par la formule du polygone.
-function ringCentroid(ring: number[][]): { x: number; y: number } | null {
-  const n = ring.length
-  if (n < 3) return null
-  let a = 0
-  let cx = 0
-  let cy = 0
-  for (let i = 0; i < n; i++) {
-    const p1 = ring[i]
-    const p2 = ring[(i + 1) % n]
-    const cross = p1[0] * p2[1] - p2[0] * p1[1]
-    a += cross
-    cx += (p1[0] + p2[0]) * cross
-    cy += (p1[1] + p2[1]) * cross
-  }
-  if (Math.abs(a) < 1e-12) return null
-  a *= 0.5
-  return { x: cx / (6 * a), y: cy / (6 * a) }
-}
-
-// Étiquette de l'affectation placée au centroïde de chaque pièce du plan.
-function affectationLabels(px: (v: number) => number, py: (v: number) => number, pieces: AffectationPiece[]): string {
-  return pieces
-    .map((pc) => {
-      const rings = ringsFromGeometry(pc.feature.geometry)
-      if (rings.length === 0) return ''
-      let main = rings[0]
-      for (const r of rings) if (ringArea(r) > ringArea(main)) main = r
-      const c = ringCentroid(main)
-      if (!c) return ''
-      const text = pc.designation || pc.label
-      return `<text x="${px(c.x).toFixed(1)}" y="${py(c.y).toFixed(1)}" text-anchor="middle" class="geo-aff-label">${escapeAffHtml(text)}</text>`
-    })
-    .join('')
-}
-
 export function buildAffectationPlanSvg(terrainRing: number[][], pieces: AffectationPiece[]): string {
   const { px, py } = affProject(terrainRing)
   const pts = (ring: number[][]): string => ring.map((p) => `${px(p[0]).toFixed(1)},${py(p[1]).toFixed(1)}`).join(' ')
@@ -266,7 +242,10 @@ export function buildAffectationPlanSvg(terrainRing: number[][], pieces: Affecta
   const zones = pieces
     .map((pc) =>
       ringsFromGeometry(pc.feature.geometry)
-        .map((r) => `<polygon class="geo-aff-piece" fill="${pc.color}" points="${pts(r)}"/>`)
+        .map((r) => {
+          const title = `<title>${escapeAffHtml(pc.label)} — ${escapeAffHtml(formatAffArea(pc.areaM2))} · ${pc.percent.toFixed(1)} %</title>`
+          return `<polygon class="geo-aff-piece" fill="${pc.color}" points="${pts(r)}">${title}</polygon>`
+        })
         .join('')
     )
     .join('')
@@ -274,7 +253,6 @@ export function buildAffectationPlanSvg(terrainRing: number[][], pieces: Affecta
     `<rect width="${AFF_SVG_W}" height="${AFF_SVG_H}" fill="#fbfdff"/>` +
     `<g class="geo-dims-grid">${AFF_GRID_LINES}</g>` +
     zones +
-    `<g class="geo-aff-labels">${affectationLabels(px, py, pieces)}</g>` +
     `<polygon class="geo-aff-terrain" points="${terrainPts}"/>` +
     `<g class="geo-dims-north" transform="translate(${AFF_SVG_W - 22},16)"><path d="M0 10 L4 4 L-4 4 Z"/><path d="M0 10 V16" stroke-width="1.4"/></g>`
   )
@@ -292,25 +270,31 @@ export function escapeAffHtml(value: unknown): string {
 export function buildAffectationsModalHtml(title: string, terrainRing: number[][], pieces: AffectationPiece[]): string {
   const terrainArea = polygonAreaM2(terrainRing)
   const piecesArea = pieces.reduce((sum, p) => sum + p.areaM2, 0)
+  const columns = collectAffectationColumns(pieces)
+  const numCols = columns.length + 3
   const rows = pieces
     .map((pc) => {
-      const details = affectationDetails(pc.properties)
-        .map((d) => `<span class="geo-aff-detail">${escapeAffHtml(d.label)}&nbsp;: <strong>${escapeAffHtml(d.value)}</strong></span>`)
+      const propCells = columns
+        .map(([key]) => {
+          const v = pc.properties[key]
+          const val = v === null || v === undefined || v === '' ? '' : String(v)
+          return `<td class="geo-aff-cell">${escapeAffHtml(val)}</td>`
+        })
         .join('')
-      return `<tr>
-        <td class="geo-aff-cell-swatch"><span class="geo-aff-swatch" style="background:${pc.color}"></span></td>
-        <td class="geo-aff-cell-main">
-          <div class="geo-aff-name">${escapeAffHtml(pc.label)}</div>
-          ${details ? `<div class="geo-aff-details">${details}</div>` : ''}
-        </td>
-        <td class="geo-aff-cell-num">${escapeAffHtml(formatAffArea(pc.areaM2))}</td>
-        <td class="geo-aff-cell-num">${pc.percent.toFixed(1)} %</td>
-      </tr>`
+      return (
+        `<tr class="geo-aff-row">` +
+        `<td class="geo-aff-cell-swatch"><span class="geo-aff-swatch" style="background:${pc.color}"></span></td>` +
+        `<td class="geo-aff-cell-main"><div class="geo-aff-name">${escapeAffHtml(pc.label)}</div></td>` +
+        `<td class="geo-aff-cell-num">${escapeAffHtml(formatAffArea(pc.areaM2))}</td>` +
+        `<td class="geo-aff-cell-num">${pc.percent.toFixed(1)} %</td>` +
+        propCells +
+        `</tr>`
+      )
     })
     .join('')
 
   const emptyRows = pieces.length === 0
-    ? '<tr class="geo-aff-empty"><td colspan="4">Aucune affectation trouvée pour cette parcelle dans le plan d\'aménagement.</td></tr>'
+    ? `<tr class="geo-aff-empty"><td colspan="${numCols}">Aucune affectation trouvée pour cette parcelle dans le plan d\'aménagement.</td></tr>`
     : ''
 
   return (
@@ -319,23 +303,38 @@ export function buildAffectationsModalHtml(title: string, terrainRing: number[][
     `<div class="geo-dims-header">` +
     `<h3>Affectations du terrain</h3>` +
     `<div class="geo-dims-header-actions">` +
+    `<button type="button" class="geo-dims-download" data-aff-pdf title="Télécharger le plan des affectations (PDF)" aria-label="Télécharger le plan des affectations (PDF)">` +
+    `<svg class="geo-dims-pdf-icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2 1.5A1.5 1.5 0 0 1 3.5 0H10l4 4v10.5A1.5 1.5 0 0 1 12.5 16h-9A1.5 1.5 0 0 1 2 14.5v-13zM10 0.5V4a1 1 0 0 0 1 1h3.5L10 0.5zM9 7v5.3L7.1 10.4a.6.6 0 1 0-.85.85l2.6 2.6a.6.6 0 0 0 .85 0l2.6-2.6a.6.6 0 1 0-.85-.85L10 12.3V7a.6.6 0 1 0-1 0z"/></svg>` +
+    `</button>` +
     `<button type="button" class="geo-dims-close" data-aff-close aria-label="Fermer">&times;</button>` +
     `</div>` +
     `</div>` +
     `<div class="geo-dims-body">` +
     `<div class="geo-dims-title">${escapeAffHtml(title)}</div>` +
-    `<div class="geo-dims-plot geo-aff-plot">` +
-    `<svg class="geo-dims-svg" viewBox="0 0 ${AFF_SVG_W} ${AFF_SVG_H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Affectations de la parcelle">${buildAffectationPlanSvg(terrainRing, pieces)}</svg>` +
+    `<div class="geo-dims-plot geo-aff-plot" data-aff-plot>` +
+    `<svg class="geo-dims-svg geo-aff-svg" data-aff-svg viewBox="0 0 ${AFF_SVG_W} ${AFF_SVG_H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Affectations de la parcelle">${buildAffectationPlanSvg(terrainRing, pieces)}</svg>` +
+    `<div class="geo-dims-zoom">` +
+    `<button type="button" class="geo-dims-zoom-btn" data-aff-zoom="out" aria-label="Dézoomer">&#8722;</button>` +
+    `<span class="geo-dims-zoom-value" data-aff-hint>100%</span>` +
+    `<button type="button" class="geo-dims-zoom-btn" data-aff-zoom="in" aria-label="Zoomer">+</button>` +
     `</div>` +
+    `</div>` +
+    `<div class="geo-aff-scroll">` +
     `<table class="geo-dims-table geo-aff-table">` +
-    `<thead><tr><th></th><th>Affectation</th><th>Superficie</th><th>Part</th></tr></thead>` +
+    `<thead><tr>` +
+    `<th></th><th>Affectation</th><th>Superficie</th><th>Part</th>` +
+    columns.map(([, label]) => `<th class="geo-aff-cell">${escapeAffHtml(label)}</th>`).join('') +
+    `</tr></thead>` +
     `<tbody>` +
     rows +
     emptyRows +
-    `<tr class="geo-dims-total"><td></td><td>Total parcelles intersectées</td><td>${escapeAffHtml(formatAffArea(piecesArea))}</td><td></td></tr>` +
-    `<tr class="geo-dims-total"><td></td><td>Superficie totale du terrain</td><td>${escapeAffHtml(formatAffArea(terrainArea))}</td><td></td></tr>` +
+    `<tr class="geo-dims-total"><td></td><td>Total parcelles intersectées</td><td>${escapeAffHtml(formatAffArea(piecesArea))}</td><td></td>` +
+    `<td colspan="${columns.length}"></td></tr>` +
+    `<tr class="geo-dims-total"><td></td><td>Superficie totale du terrain</td><td>${escapeAffHtml(formatAffArea(terrainArea))}</td><td></td>` +
+    `<td colspan="${columns.length}"></td></tr>` +
     `</tbody>` +
     `</table>` +
+    `</div>` +
     `</div>` +
     `</div>` +
     `</div>`
@@ -348,16 +347,72 @@ export function showAffectationsModal(title: string, terrainRing: number[][], pi
   div.innerHTML = buildAffectationsModalHtml(title, terrainRing, pieces)
   const overlay = div.firstElementChild as HTMLElement
   document.body.appendChild(overlay)
-  const close = (): void => overlay.remove()
+
+  const close = (): void => {
+    overlay.remove()
+    document.removeEventListener('keydown', onKey)
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+  }
+
   overlay.addEventListener('click', (e: MouseEvent) => {
     if (e.target === overlay) close()
   })
   overlay.querySelector<HTMLElement>('[data-aff-close]')?.addEventListener('click', close)
+  overlay.querySelector<HTMLElement>('[data-aff-pdf]')?.addEventListener('click', () => {
+    downloadAffectationsPdf(title, terrainRing, pieces)
+  })
+
+  // Navigation du dessin : zoom (+/- boutons et molette) + déplacement (glisser).
+  const svg = overlay.querySelector<SVGSVGElement>('[data-aff-svg]')
+  const hint = overlay.querySelector<HTMLElement>('[data-aff-hint]')
+  const plot = overlay.querySelector<HTMLElement>('[data-aff-plot]')
+  let scale = 1
+  let tx = 0
+  let ty = 0
+  const apply = (): void => {
+    if (svg) svg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`
+    if (hint) hint.textContent = `${Math.round(scale * 100)}%`
+  }
+  const setScale = (s: number): void => {
+    scale = Math.min(4, Math.max(1, s))
+    apply()
+  }
+  overlay.querySelector<HTMLElement>('[data-aff-zoom="in"]')?.addEventListener('click', () => setScale(scale + 0.25))
+  overlay.querySelector<HTMLElement>('[data-aff-zoom="out"]')?.addEventListener('click', () => setScale(scale - 0.25))
+
+  let dragging = false
+  let lastX = 0
+  let lastY = 0
+  const onMove = (e: MouseEvent): void => {
+    if (!dragging) return
+    tx += e.clientX - lastX
+    ty += e.clientY - lastY
+    lastX = e.clientX
+    lastY = e.clientY
+    apply()
+  }
+  const onUp = (): void => {
+    if (!dragging) return
+    dragging = false
+    plot?.classList.remove('geo-aff-plot--dragging')
+  }
+  plot?.addEventListener('mousedown', (e) => {
+    if ((e.target as HTMLElement).closest('[data-aff-zoom]')) return
+    dragging = true
+    lastX = e.clientX
+    lastY = e.clientY
+    plot.classList.add('geo-aff-plot--dragging')
+  })
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
+  plot?.addEventListener('wheel', (e) => {
+    e.preventDefault()
+    setScale(scale + (e.deltaY < 0 ? 0.25 : -0.25))
+  }, { passive: false })
+
   const onKey = (e: KeyboardEvent): void => {
-    if (e.key === 'Escape') {
-      close()
-      document.removeEventListener('keydown', onKey)
-    }
+    if (e.key === 'Escape') close()
   }
   document.addEventListener('keydown', onKey)
 }

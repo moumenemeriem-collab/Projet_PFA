@@ -559,6 +559,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  position: relative;
 }
 
 .geo-topbar {
@@ -684,6 +685,59 @@
   color: var(--text-muted);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   pointer-events: none;
+}
+
+/* ── Panneau de dessin du terrain (localisation) ── */
+
+.geo-draw-panel {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 84px;
+  z-index: 1100;
+  width: min(360px, calc(100% - 24px));
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(27, 58, 110, 0.18);
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(2, 16, 40, 0.25);
+  padding: 16px;
+  color: var(--text);
+}
+
+.geo-draw-panel-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--primary, #1b3a6e);
+  margin-bottom: 8px;
+}
+
+.geo-draw-panel-text {
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.geo-draw-panel-text--count {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.geo-draw-panel-error {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  background: #fdeaea;
+  color: #b91c1c;
+}
+
+.geo-draw-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 /* ── Floating navigation bar (top center) ── */
@@ -1175,8 +1229,28 @@
   order: 1;
 }
 
-.geo-top-controls > .geo-legend-control {
+.geo-top-controls > .geo-add-control {
   order: 3;
+}
+
+.geo-top-controls > .geo-legend-control {
+  order: 4;
+}
+
+.geo-add-control {
+  position: static;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.geo-top-popup--add {
+  min-width: 380px;
+  width: 380px;
+}
+
+.geo-add-form .modal-input {
+  font-size: 0.8125rem;
 }
 
 .geo-top-fab {
@@ -2679,11 +2753,21 @@
 }
 
 .geo-aff-modal {
-  max-width: 640px;
+  max-width: 860px;
 }
 
 .geo-aff-plot {
   height: 280px;
+  cursor: grab;
+}
+
+.geo-aff-plot--dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+.geo-aff-plot svg.geo-aff-svg {
+  transform-origin: 0 0;
 }
 
 .geo-aff-piece {
@@ -2700,29 +2784,57 @@
   stroke-linejoin: round;
 }
 
-.geo-aff-label {
-  font-family: 'Inter', sans-serif;
-  font-size: 0.68rem;
-  font-weight: 700;
-  fill: #0f3d6e;
-  paint-order: stroke;
-  stroke: #fbfdff;
-  stroke-width: 3px;
-  stroke-linejoin: round;
+.geo-aff-scroll {
+  overflow-x: auto;
+}
+
+.geo-aff-table {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 640px;
+}
+
+.geo-aff-table th {
+  white-space: nowrap;
 }
 
 .geo-aff-table th:first-child,
 .geo-aff-table td:first-child {
-  width: 44px;
+  width: 60px;
   text-align: center;
 }
 
+.geo-aff-table th:nth-child(2),
+.geo-aff-table td:nth-child(2) {
+  width: 170px;
+}
+
 .geo-aff-table th:nth-child(3),
-.geo-aff-table td:nth-child(3),
+.geo-aff-table td:nth-child(3) {
+  width: 120px;
+  text-align: right;
+}
+
 .geo-aff-table th:nth-child(4),
 .geo-aff-table td:nth-child(4) {
+  width: 90px;
   text-align: right;
-  white-space: nowrap;
+}
+
+.geo-aff-table th:last-child,
+.geo-aff-table td:last-child {
+  text-align: left;
+  font-weight: 400;
+  color: inherit;
+  white-space: normal;
+}
+
+.geo-aff-cell {
+  width: 140px;
+  min-width: 140px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .geo-aff-cell-swatch {
@@ -2740,27 +2852,14 @@
   vertical-align: middle;
 }
 
+.geo-aff-cell-main {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .geo-aff-name {
   font-weight: 700;
   color: #1e293b;
-}
-
-.geo-aff-details {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  margin-top: 4px;
-  font-size: 0.75rem;
-  color: #64748b;
-}
-
-.geo-aff-detail {
-  white-space: nowrap;
-}
-
-.geo-aff-detail strong {
-  color: #0f3d6e;
-  font-weight: 600;
 }
 
 .geo-aff-cell-num {
@@ -2772,6 +2871,35 @@
   color: #b91c1c;
   font-weight: 600;
   text-align: left !important;
+}
+
+/* ── Infobulle de survol des pièces d'affectation ── */
+
+.geo-aff-tooltip.leaflet-tooltip {
+  background: #0f223c;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  padding: 7px 10px;
+}
+
+.geo-aff-tooltip.leaflet-tooltip-top::before {
+  border-top-color: #0f223c;
+}
+
+.geo-aff-tooltip .geo-aff-tooltip-title {
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.geo-aff-tooltip .geo-aff-tooltip-meta {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: nowrap;
 }
 
 /* ── Responsive ── */

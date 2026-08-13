@@ -113,22 +113,29 @@ class TerrainListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'nom', 'superficie', 'lat', 'lng',
             'accessibilite', 'positionnement', 'topographie', 'score',
-            'projet', 'date_creation',
+            'projet', 'utilisateur', 'fid', 'indice', 'complement',
+            'consistance', 'num_parcelle', 'geometry', 'date_creation',
         ]
         read_only_fields = ['id', 'score', 'date_creation']
 
 
 class TerrainCreateSerializer(serializers.Serializer):
-    nom = serializers.CharField(max_length=150)
+    num = serializers.CharField(max_length=150)
+    fid = serializers.IntegerField(required=False, allow_null=True, default=None)
+    indice = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
+    complement = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
+    consistance = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
     superficie = serializers.DecimalField(max_digits=12, decimal_places=2)
-    lat = serializers.DecimalField(max_digits=9, decimal_places=6)
-    lng = serializers.DecimalField(max_digits=9, decimal_places=6)
+    lat = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True, default=None)
+    lng = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True, default=None)
+    geometry = serializers.CharField(required=False, allow_blank=True, default='')
     accessibilite = serializers.IntegerField(min_value=1, max_value=10, default=5)
     positionnement = serializers.IntegerField(min_value=1, max_value=10, default=5)
     topographie = serializers.IntegerField(min_value=1, max_value=10, default=5)
 
     def create(self, validated_data: dict) -> Terrain:
-        terrain = Terrain(**validated_data)
+        num = validated_data.pop('num', '')
+        terrain = Terrain(nom=num, num_parcelle=num, **validated_data)
         terrain.save()
         return terrain
 
