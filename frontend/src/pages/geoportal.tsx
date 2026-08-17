@@ -1333,6 +1333,9 @@ const bindPopupActionButtons = (popup: any): void => {
         .openPopup()
       map.flyTo([geoLat, geoLng], Math.max(map.getZoom(), 15), { duration: 0.8 })
     }
+    if (geoParams.get('add') === '1') {
+      setAddPopupOpen(true)
+    }
 
     return () => {
       map.remove()
@@ -2472,6 +2475,7 @@ const bindPopupActionButtons = (popup: any): void => {
                         e.stopPropagation()
                         setBasemapMenuOpen(false)
                         setLegendOpen(false)
+                        setAddPopupOpen(false)
                         setLayersPopupOpen((v) => !v)
                       }}
                     >
@@ -2589,6 +2593,7 @@ const bindPopupActionButtons = (popup: any): void => {
                       e.stopPropagation()
                       setLayersPopupOpen(false)
                       setLegendOpen(false)
+                      setAddPopupOpen(false)
                       setBasemapMenuOpen((v) => !v)
                     }}
                   >
@@ -2736,6 +2741,7 @@ const bindPopupActionButtons = (popup: any): void => {
                         e.stopPropagation()
                         setBasemapMenuOpen(false)
                         setLayersPopupOpen(false)
+                        setAddPopupOpen(false)
                         setLegendOpen((v) => !v)
                       }}
                     >

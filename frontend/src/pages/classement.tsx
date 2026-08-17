@@ -4,7 +4,7 @@ import { icons } from '../components/icons'
 import { DashboardLayout } from '../components/DashboardLayout'
 import { formatApiErrors } from '../api/auth'
 import { fetchProjet, type Projet } from '../api/projets'
-import { deleteTerrain, fetchTerrains, createTerrain, type Terrain } from '../api/terrains'
+import { deleteTerrain, fetchTerrains, type Terrain } from '../api/terrains'
 import {
   fetchAnalyseDetail,
   fetchAnalyses,
@@ -208,21 +208,6 @@ export function ClassementPage(): React.JSX.Element {
   const [page, setPage] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const [terrainsLoading, setTerrainsLoading] = useState(false)
-  const [terrainModalOpen, setTerrainModalOpen] = useState(false)
-  const [savingTerrain, setSavingTerrain] = useState(false)
-  const [terrainError, setTerrainError] = useState<string | null>(null)
-  const [terrainForm, setTerrainForm] = useState({
-    num: '',
-    fid: '',
-    indice: '',
-    complement: '',
-    consistance: '',
-    superficie: '',
-    lat: '',
-    lng: '',
-    geometry: '',
-  })
-  const [terrainDraftNote, setTerrainDraftNote] = useState<string | null>(null)
 
   useEffect(() => {
     if (!id || !Number.isInteger(projetId) || projetId <= 0) {
@@ -339,49 +324,6 @@ export function ClassementPage(): React.JSX.Element {
     setParcellesPage(1)
   }, [analyse])
 
-  const terrainDraftKey = (pid: number): string => `terrain_draft_${pid}`
-
-  const openGeoportal = (mode: 'vue' | 'dessin'): void => {
-    if (!projetId) return
-    const lat = terrainForm.lat.trim()
-    const lng = terrainForm.lng.trim()
-    let url = `/projets/${projetId}/classement/ajouter?mode=${mode}`
-    if (lat && lng) url += `&terrain_lat=${encodeURIComponent(lat)}&terrain_lng=${encodeURIComponent(lng)}`
-    window.open(url, '_blank', 'noopener,noreferrer')
-  }
-
-  const clearDraft = (): void => {
-    if (!projetId) return
-    localStorage.removeItem(terrainDraftKey(projetId))
-    setTerrainForm((f) => ({ ...f, lat: '', lng: '', geometry: '' }))
-    setTerrainDraftNote(null)
-  }
-
-  useEffect(() => {
-    if (!terrainModalOpen || !projetId) return
-    const applyDraft = (): void => {
-      const raw = localStorage.getItem(terrainDraftKey(projetId))
-      if (!raw) return
-      try {
-        const draft = JSON.parse(raw) as { area: number; center: { lat: number; lng: number }; geometry: string }
-        if (!draft || typeof draft.area !== 'number' || !draft.geometry) return
-        setTerrainForm((f) => ({
-          ...f,
-          superficie: f.superficie === '' ? String(Math.round(draft.area)) : f.superficie,
-          lat: String(draft.center.lat),
-          lng: String(draft.center.lng),
-          geometry: draft.geometry,
-        }))
-        setTerrainDraftNote(t('ranking.loc_drawn'))
-      } catch {
-        /* polygone invalide */
-      }
-    }
-    applyDraft()
-    window.addEventListener('focus', applyDraft)
-    return () => window.removeEventListener('focus', applyDraft)
-  }, [terrainModalOpen, projetId])
-
   const handleDelete = async (terrainId: number): Promise<void> => {
     if (!projetId || !window.confirm(t('ranking.confirm_delete'))) return
     try {
@@ -392,51 +334,6 @@ export function ClassementPage(): React.JSX.Element {
       setAlert({ type: 'success', message: t('ranking.deleted') })
     } catch (err) {
       setAlert({ type: 'error', message: formatApiErrors(err) })
-    }
-  }
-
-  const handleAddTerrain = async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault()
-    if (!projetId) return
-    const num = terrainForm.num.trim()
-    const superficie = Number(terrainForm.superficie)
-    const fid = terrainForm.fid !== '' ? Number(terrainForm.fid) : null
-    const lat = terrainForm.lat.trim() !== '' ? Number(terrainForm.lat) : null
-    const lng = terrainForm.lng.trim() !== '' ? Number(terrainForm.lng) : null
-    if (!num || !terrainForm.superficie || superficie <= 0) {
-      setTerrainError(t('ranking.validation_required'))
-      return
-    }
-    if (lat != null && lng != null && (Number.isNaN(lat) || Number.isNaN(lng))) {
-      setTerrainError(t('ranking.validation_coords'))
-      return
-    }
-    setSavingTerrain(true)
-    setTerrainError(null)
-    try {
-      await createTerrain(projetId, {
-        num,
-        fid,
-        indice: terrainForm.indice.trim(),
-        complement: terrainForm.complement.trim(),
-        consistance: terrainForm.consistance.trim(),
-        superficie,
-        lat,
-        lng,
-        geometry: terrainForm.geometry,
-      })
-      const data = await fetchTerrains(projetId, { search, page })
-      setTerrains(data.results)
-      setTotalCount(data.count)
-      localStorage.removeItem(terrainDraftKey(projetId))
-      setTerrainModalOpen(false)
-      setTerrainDraftNote(null)
-      setTerrainForm({ num: '', fid: '', indice: '', complement: '', consistance: '', superficie: '', lat: '', lng: '', geometry: '' })
-      setAlert({ type: 'success', message: t('ranking.terrain_added') })
-    } catch (err) {
-      setTerrainError(formatApiErrors(err))
-    } finally {
-      setSavingTerrain(false)
     }
   }
 
@@ -627,7 +524,7 @@ export function ClassementPage(): React.JSX.Element {
                 <input type="search" id="classement-search" className="classement-search-input" placeholder={t('ranking.search_placeholder')} value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
               </div>
               <span className="classement-count">{totalCount} {t('ranking.total_terrains')}</span>
-              <button type="button" className="btn btn-primary btn-action" onClick={() => setTerrainModalOpen(true)}>
+              <button type="button" className="btn btn-primary btn-action" onClick={() => navigate(`/projets/${projetId}/classement/ajouter?add=1`)}>
                 {icons.plus} {t('ranking.add_terrain')}
               </button>
             </div>
@@ -729,79 +626,6 @@ export function ClassementPage(): React.JSX.Element {
         </div>
       ) : null}
 
-      {terrainModalOpen ? (
-        <div className="admin-modal-overlay" onClick={() => { if (!savingTerrain) setTerrainModalOpen(false) }}>
-          <div className="admin-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-            <div className="admin-modal-header">
-              <h3>{t('ranking.add_terrain_title')}</h3>
-              <button type="button" className="admin-modal-close" aria-label={t('common.close')} onClick={() => { if (!savingTerrain) setTerrainModalOpen(false) }}>{icons.close}</button>
-            </div>
-            <form id="terrain-form" className="admin-modal-form" noValidate onSubmit={(e) => { void handleAddTerrain(e) }}>
-              <div id="terrain-error" className="form-alert form-alert--error" hidden={!terrainError}>{terrainError}</div>
-              {terrainDraftNote ? (
-                <div className="form-alert form-alert--success terrain-draft-note">
-                  {terrainDraftNote}
-                  {terrainForm.geometry ? (
-                    <button type="button" className="terrain-draft-clear" onClick={clearDraft}>{t('ranking.loc_clear_draw')}</button>
-                  ) : null}
-                </div>
-              ) : null}
-              <div className="form-row">
-                <div className="form-field form-field--half">
-                  <label htmlFor="t-num" className="form-label">{t('ranking.field_num_parcelle')}</label>
-                  <input id="t-num" name="num" className="modal-input" placeholder="T54884" value={terrainForm.num} onChange={(e) => setTerrainForm((f) => ({ ...f, num: e.target.value }))} required />
-                </div>
-                <div className="form-field form-field--half">
-                  <label htmlFor="t-fid" className="form-label">{t('ranking.field_fid')}</label>
-                  <input id="t-fid" name="fid" type="number" step="1" className="modal-input" value={terrainForm.fid} onChange={(e) => setTerrainForm((f) => ({ ...f, fid: e.target.value }))} />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-field form-field--half">
-                  <label htmlFor="t-indice" className="form-label">{t('ranking.field_indice')}</label>
-                  <input id="t-indice" name="indice" className="modal-input" value={terrainForm.indice} onChange={(e) => setTerrainForm((f) => ({ ...f, indice: e.target.value }))} />
-                </div>
-                <div className="form-field form-field--half">
-                  <label htmlFor="t-complement" className="form-label">{t('ranking.field_complement')}</label>
-                  <input id="t-complement" name="complement" className="modal-input" value={terrainForm.complement} onChange={(e) => setTerrainForm((f) => ({ ...f, complement: e.target.value }))} />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-field form-field--half">
-                  <label htmlFor="t-consistance" className="form-label">{t('ranking.field_consistance')}</label>
-                  <input id="t-consistance" name="consistance" className="modal-input" value={terrainForm.consistance} onChange={(e) => setTerrainForm((f) => ({ ...f, consistance: e.target.value }))} />
-                </div>
-                <div className="form-field form-field--half">
-                  <label htmlFor="t-superficie" className="form-label">{t('ranking.field_superficie')}</label>
-                  <input id="t-superficie" name="superficie" type="number" min="1" step="any" className="modal-input" value={terrainForm.superficie} onChange={(e) => setTerrainForm((f) => ({ ...f, superficie: e.target.value }))} required />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-field form-field--half">
-                  <label htmlFor="t-lat" className="form-label">{t('ranking.field_lat')}</label>
-                  <input id="t-lat" name="lat" type="number" step="any" className="modal-input" placeholder="33.88" value={terrainForm.lat} onChange={(e) => setTerrainForm((f) => ({ ...f, lat: e.target.value }))} />
-                </div>
-                <div className="form-field form-field--half">
-                  <label htmlFor="t-lng" className="form-label">{t('ranking.field_lng')}</label>
-                  <input id="t-lng" name="lng" type="number" step="any" className="modal-input" placeholder="-6.75" value={terrainForm.lng} onChange={(e) => setTerrainForm((f) => ({ ...f, lng: e.target.value }))} />
-                </div>
-              </div>
-              <div className="form-row terrain-loc-actions">
-                <button type="button" className="btn btn-outline btn-action" onClick={() => openGeoportal('vue')} title={t('ranking.loc_view_geoportal_title')}>
-                  {icons.mapPin} {t('ranking.loc_view_geoportal')}
-                </button>
-                <button type="button" className="btn btn-secondary btn-action" onClick={() => openGeoportal('dessin')} title={t('ranking.loc_draw_polygon_title')}>
-                  {icons.edit} {t('ranking.loc_draw_polygon')}
-                </button>
-              </div>
-              <div className="admin-modal-actions">
-                <button type="button" className="btn btn-outline" onClick={() => { if (!savingTerrain) setTerrainModalOpen(false) }}>{t('common.cancel')}</button>
-                <button type="submit" className="btn btn-primary" disabled={savingTerrain}>{savingTerrain ? '…' : icons.save} {t('ranking.save_terrain')}</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
     </DashboardLayout>
   )
 }
