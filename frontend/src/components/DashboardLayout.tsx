@@ -16,7 +16,7 @@ interface NavItem {
 }
 
 const investisseurNav: NavItem[] = [
-  { id: 'dashboard', labelKey: 'dashboard.sidebar.home', icon: 'dashboard', href: '/projets' },
+  { id: 'dashboard', labelKey: 'dashboard.sidebar.home', icon: 'dashboard', href: '/investisseur/tableau-de-bord' },
   { id: 'projects', labelKey: 'dashboard.sidebar.projects', icon: 'projects', href: '/projets' },
   { id: 'messages', labelKey: 'dashboard.sidebar.messages', icon: 'message', href: '/messages' },
   { id: 'ranking', labelKey: 'dashboard.sidebar.ranking', icon: 'ranking', href: '/classement' },

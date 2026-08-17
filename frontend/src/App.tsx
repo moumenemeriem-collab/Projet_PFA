@@ -17,6 +17,7 @@ import { AdminDataPage } from './pages/admin/data'
 import { AdminMessagesPage } from './pages/admin/messages'
 import { AdminProfilePage } from './pages/admin/profile'
 import { AdminDashboardPage } from './pages/admin/dashboard'
+import { InvestorDashboardPage } from './pages/investor/dashboard'
 
 function ScrollToTop(): null {
   const { pathname, hash } = useLocation()
@@ -61,6 +62,7 @@ export default function App(): React.JSX.Element {
         <Route path="/login" element={<GuestGuard><LoginPage /></GuestGuard>} />
         <Route path="/register" element={<GuestGuard><RegisterPage /></GuestGuard>} />
         <Route path="/projets" element={<AuthGuard role="investisseur"><ProjectsPage /></AuthGuard>} />
+        <Route path="/investisseur/tableau-de-bord" element={<AuthGuard role="investisseur"><InvestorDashboardPage /></AuthGuard>} />
         <Route path="/projets/nouveau" element={<AuthGuard role="investisseur"><CreateProjectPage /></AuthGuard>} />
         <Route path="/classement" element={<AuthGuard role="investisseur"><RankingProjectsPage /></AuthGuard>} />
         <Route path="/projets/:id/classement" element={<AuthGuard role="investisseur"><ClassementPage /></AuthGuard>} />

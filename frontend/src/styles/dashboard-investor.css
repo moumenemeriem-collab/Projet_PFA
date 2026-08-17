@@ -1,0 +1,606 @@
+/* ── Tableau de bord investisseur ── */
+
+.idash-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 1280px;
+}
+
+.idash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.idash-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: -0.02em;
+}
+
+.idash-subtitle {
+  margin-top: 4px;
+  font-size: 0.9375rem;
+  color: #94a3b8;
+}
+
+.idash-updated {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border-radius: 100px;
+  background: #f8fafc;
+  border: 1px solid #eef2f7;
+  color: #64748b;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+/* ── Cartes de statistiques ── */
+
+.idash-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px;
+}
+
+.idash-stat-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid #eef2f7;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.idash-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05), 0 14px 32px rgba(15, 23, 42, 0.08);
+}
+
+.idash-stat-icon {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 13px;
+}
+
+.idash-stat-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.idash-stat-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.idash-stat-value {
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.1;
+}
+
+.idash-stat-label {
+  margin-top: 2px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.idash-stat-sub {
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+/* ── Grid layouts ── */
+
+.idash-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.idash-grid--2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* ── Section headers ── */
+
+.idash-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.idash-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.idash-section-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.idash-card-link {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #3b82f6;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: opacity 0.15s;
+}
+
+.idash-card-link:hover {
+  opacity: 0.8;
+}
+
+.idash-card-link svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ── Terrain ranking list ── */
+
+.idash-terrain-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.idash-terrain-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #fafbfd;
+  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+  transition: background 0.15s;
+}
+
+.idash-terrain-row:hover {
+  background: #f1f5f9;
+}
+
+.idash-terrain-rank {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #3b82f6;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.idash-terrain-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.idash-terrain-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.idash-terrain-projet {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.idash-terrain-scores {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.idash-terrain-score-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 32px;
+}
+
+.idash-terrain-score-label {
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.idash-terrain-score-val {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.idash-terrain-score-global {
+  flex-shrink: 0;
+  width: 100px;
+}
+
+/* ── Score bar ── */
+
+.idash-score-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.idash-score-bar-track {
+  flex: 1;
+  height: 6px;
+  background: #f1f5f9;
+  border-radius: 100px;
+  overflow: hidden;
+}
+
+.idash-score-bar-fill {
+  height: 100%;
+  border-radius: 100px;
+  transition: width 0.6s ease;
+}
+
+.idash-score-bar-value {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #1e293b;
+  min-width: 28px;
+  text-align: right;
+}
+
+/* ── Top results ── */
+
+.idash-result-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.idash-result-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #fafbfd;
+  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+  transition: background 0.15s;
+}
+
+.idash-result-row:hover {
+  background: #f1f5f9;
+}
+
+.idash-result-rank {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #f5f3ff;
+  color: #8b5cf6;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.idash-result-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.idash-result-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.idash-result-projet {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.idash-result-score {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.idash-result-score-val {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.idash-result-score-label {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+/* ── Project cards ── */
+
+.idash-projects-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.idash-project-card {
+  background: #ffffff;
+  border: 1px solid #eef2f7;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.04);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.idash-project-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05), 0 14px 32px rgba(15, 23, 42, 0.08);
+}
+
+.idash-project-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.idash-project-name {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.idash-project-type {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border-radius: 100px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.idash-project-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.idash-project-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.idash-project-metric-label {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.idash-project-metric-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.idash-project-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.idash-project-score {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.idash-mini-donut {
+  width: 32px;
+  height: 32px;
+}
+
+.idash-project-no-score {
+  font-size: 0.8125rem;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.idash-project-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #3b82f6;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.idash-project-link svg {
+  width: 14px;
+  height: 14px;
+}
+
+.idash-project-link:hover {
+  opacity: 0.8;
+}
+
+/* ── Analysis list ── */
+
+.idash-analysis-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.idash-analysis-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 4px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.idash-analysis-row:last-child {
+  border-bottom: none;
+}
+
+.idash-analysis-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.idash-analysis-projet {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.idash-analysis-meta {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+/* ── Empty states ── */
+
+.idash-empty {
+  padding: 32px 16px;
+  text-align: center;
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+/* ── Onboarding ── */
+
+.idash-onboarding {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 64px 24px;
+  text-align: center;
+  background: #f8fafc;
+  border: 2px dashed #e2e8f0;
+  border-radius: 16px;
+}
+
+.idash-onboarding-icon {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eff6ff;
+  color: #3b82f6;
+  border-radius: 50%;
+}
+
+.idash-onboarding-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.idash-onboarding h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.idash-onboarding p {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: #64748b;
+  max-width: 400px;
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 1100px) {
+  .idash-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .idash-projects-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 820px) {
+  .idash-grid--2 {
+    grid-template-columns: 1fr;
+  }
+
+  .idash-projects-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .idash-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .idash-terrain-scores {
+    display: none;
+  }
+
+  .idash-terrain-score-global {
+    width: 80px;
+  }
+}

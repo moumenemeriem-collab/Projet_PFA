@@ -1,5 +1,6 @@
 from django.urls import path
 
+from .investor_dashboard import InvestorDashboardView
 from .views import (
     AnalyseDetailView,
     AnalyseListView,
@@ -19,6 +20,7 @@ from .views import (
 
 urlpatterns = [
     path('types/', TypeProjetListView.as_view(), name='projets-types'),
+    path('investor-dashboard/', InvestorDashboardView.as_view(), name='investor-dashboard'),
     path('', ProjetListView.as_view(), name='projets-list'),
     path('<int:pk>/', ProjetDetailView.as_view(), name='projets-detail'),
     path('<int:projet_pk>/terrains/', TerrainListView.as_view(), name='terrains-list'),
