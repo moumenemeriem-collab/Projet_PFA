@@ -1363,22 +1363,28 @@ const bindPopupActionButtons = (popup: any): void => {
   useEffect(() => {
     if (couchesDispo.length === 0) return
     let cancelled = false
-    Promise.all(couchesDispo.map((c) => fetchCoucheGeoJSON(c.id)))
-      .then((collections) => {
+    Promise.allSettled(couchesDispo.map((c) => fetchCoucheGeoJSON(c.id)))
+      .then((results) => {
         if (cancelled) return
         const routes: CoucheType[] = []
         const equips: CoucheType[] = []
         couchesDispo.forEach((c, i) => {
-          coucheDataRef.current[c.id] = collections[i]
-          setCoucheCounts((prev) => ({ ...prev, [c.nom]: collections[i].features.length }))
+          const result = results[i]
+          if (result.status !== 'fulfilled') {
+            console.warn(`[couches] ${c.nom}: chargement échoué`, result.reason)
+            return
+          }
+          const collection = result.value
+          coucheDataRef.current[c.id] = collection
+          setCoucheCounts((prev) => ({ ...prev, [c.nom]: collection.features.length }))
           if (c.nom === 'cadastre') setCadastreReady(true)
           if (c.nom === 'plan_amenagement') {
-            paPreparedRef.current = preparePAZones(collections[i].features)
+            paPreparedRef.current = preparePAZones(collection.features)
           }
           if (c.nom !== 'reseau_routier' && c.nom !== 'equipements_publics') return
           const attrKey = c.nom === 'reseau_routier' ? 'highway' : 'amenity'
           const counts = new Map<string, number>()
-          collections[i].features.forEach((f) => {
+          collection.features.forEach((f) => {
             const v = String(f.properties?.[attrKey] ?? 'autre')
             counts.set(v, (counts.get(v) ?? 0) + 1)
           })
@@ -1392,7 +1398,6 @@ const bindPopupActionButtons = (popup: any): void => {
         setRouteTypes(routes)
         setEquipTypes(equips)
       })
-      .catch(() => {})
     return () => {
       cancelled = true
     }
