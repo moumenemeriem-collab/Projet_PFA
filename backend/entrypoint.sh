@@ -12,20 +12,20 @@ fi
 echo "==> Migrations..."
 python manage.py migrate --noinput
 
-echo "==> Statistiques tableau de bord..."
-python manage.py refresh_dashboard_stats || echo "(refresh_dashboard_stats ignoré)"
-
 echo "==> Seed des couches SIG..."
-python manage.py seed_couches || echo "(seed_couches ignoré)"
+python manage.py seed_couches
 
 echo "==> Création des tables des couches (PostgreSQL)..."
-python manage.py init_couche_tables || echo "(init_couche_tables ignoré)"
+python manage.py init_couche_tables
 
 echo "==> Seed des types de projet..."
-python seed_types.py || echo "(seed_types ignoré)"
+python seed_types.py
 
 echo "==> Import des données (si fixtures présentes)..."
 python manage.py load_project_data || echo "(load_project_data ignoré)"
+
+echo "==> Statistiques tableau de bord..."
+python manage.py refresh_dashboard_stats || echo "(refresh_dashboard_stats ignoré)"
 
 echo "==> Collectstatic..."
 python manage.py collectstatic --noinput
