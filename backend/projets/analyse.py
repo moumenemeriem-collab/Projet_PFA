@@ -21,7 +21,7 @@ import numpy as np
 from django.conf import settings
 from django.db import connection
 
-from .models import calculer_rentabilite
+
 
 LAT_M = 111320.0  # mètres par degré de latitude
 
@@ -404,11 +404,12 @@ def _score_superficie(superficie_m2, souhaitee):
 
 
 # ---------------------------------------------------------------------------
-# Rentabilité (ROI) — pondération du score final
+# Rentabilité — pondération du score final
 # ---------------------------------------------------------------------------
 
-POIDS_AMC = 0.70
-POIDS_RENTABILITE = 0.30
+POIDS_RENTABILITE = 0.40
+POIDS_AMC = 0.30
+POIDS_SURFACE = 0.30
 
 ROI_MIN, ROI_MAX = -100.0, 100.0
 
@@ -424,53 +425,6 @@ def _normaliser_roi(roi):
     if roi <= 0.0:
         return 50.0 * (roi - ROI_MIN) / (0.0 - ROI_MIN)
     return 50.0 + 50.0 * roi / ROI_MAX
-
-
-def _load_rentabilite() -> dict:
-    """Références rentabilité : prix du terrain par parcelle + ROI par type de projet."""
-    with connection.cursor() as cur:
-        cur.execute(
-            'SELECT id_parcelle, prix_terrain, id_type, roi, marge, benefice_net '
-            'FROM rentabilite'
-        )
-        rows = cur.fetchall()
-    refs = {}
-    for id_parcelle, prix_terrain, id_type, roi, marge, benefice_net in rows:
-        refs[id_parcelle] = {
-            'prix_terrain': float(prix_terrain) if prix_terrain is not None else None,
-            'id_type': id_type,
-            'roi': float(roi) if roi is not None else None,
-            'marge': float(marge) if marge is not None else None,
-            'benefice_net': float(benefice_net) if benefice_net is not None else None,
-        }
-    return refs
-
-
-def _rentabilite_parcelle(projet: dict, prix_terrain_parcelle, ref_rentabilite: dict):
-    """(roi, marge, benefice_net, score_rentabilite, type_rentabilite) pour une parcelle.
-
-    - 'personnalisee' : ROI recalculé avec le prix du terrain de la parcelle ;
-    - 'benchmark'      : ROI de référence du même type de projet ;
-    - 'indisponible'   : aucune donnée exploitable.
-    """
-    has_revenu = bool(projet.get('revenu_estime')) or (
-        bool(projet.get('prix_vente_unitaire')) and bool(projet.get('nombre_unites')))
-    if has_revenu:
-        prix = prix_terrain_parcelle if prix_terrain_parcelle is not None else projet.get('prix_terrain')
-        if prix is not None:
-            res = calculer_rentabilite(
-                prix, projet.get('cout_construction'), projet.get('autres_charges'),
-                projet.get('prix_vente_unitaire'), projet.get('nombre_unites'),
-                projet.get('revenu_estime'), projet.get('budget_total'))
-            if res.get('complete'):
-                roi = res['roi']
-                return roi, res['marge'], res['benefice_net'], _normaliser_roi(roi), 'personnalisee'
-
-    ref = ref_rentabilite
-    if ref and ref.get('id_type') == projet.get('id_type') and ref.get('roi') is not None:
-        return ref['roi'], ref.get('marge'), ref.get('benefice_net'), _normaliser_roi(ref['roi']), 'benchmark'
-
-    return None, None, None, None, 'indisponible'
 
 
 def _charger_criteres_projet(projet_pk: int) -> dict:
@@ -573,7 +527,6 @@ def analyser_parcelles(projet_pk: int, filtres: dict) -> dict:
     equipments = _load_equipment()
     projet = _charger_criteres_projet(projet_pk)
     surface_souhaitee = projet.get('surface_souhaitee') or 0
-    rentabilite_refs = _load_rentabilite()
 
     # chemin du fichier MNT stocké sur la couche 'mnt'
     mnt_path = None
@@ -676,22 +629,17 @@ def analyser_parcelles(projet_pk: int, filtres: dict) -> dict:
         score_topo = _pente_score(pente if pente is not None else None)
 
         score_superf = _score_superficie(parcelle.get('surface'), surface_souhaitee)
+
+        score_amc = round(0.40 * score_access + 0.40 * score_pos + 0.20 * score_topo, 1)
+
+        roi, marge, benefice_net, score_rentabilite, type_rentabilite = None, None, None, None, 'indisponible'
+        prix_terrain = None
+
         if score_superf is not None:
-            score_amc = round(
-                0.30 * score_access + 0.30 * score_pos + 0.25 * score_topo + 0.15 * score_superf, 1)
-        else:
-            score_amc = round(0.35 * score_access + 0.35 * score_pos + 0.30 * score_topo, 1)
-
-        ref_rentabilite = rentabilite_refs.get(parcelle.get('num'))
-        prix_terrain = ref_rentabilite['prix_terrain'] if ref_rentabilite else None
-        roi, marge, benefice_net, score_rentabilite, type_rentabilite = _rentabilite_parcelle(
-            projet, prix_terrain, ref_rentabilite)
-
-        if score_rentabilite is not None:
             score_final = round(
-                POIDS_AMC * score_amc + POIDS_RENTABILITE * score_rentabilite, 1)
+                POIDS_RENTABILITE * 0 + POIDS_AMC * score_amc + POIDS_SURFACE * score_superf, 1)
         else:
-            score_final = score_amc
+            score_final = round(POIDS_AMC * score_amc, 1)
 
         infos = {
             'reference_cadastrale': parcelle.get('num') or f"P-{parcelle['id']}",

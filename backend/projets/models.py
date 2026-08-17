@@ -173,8 +173,8 @@ class Analyse(models.Model):
     )
     date_creation = models.DateTimeField(auto_now_add=True)
     filtres = models.JSONField(blank=True, null=True)
-    poids_amc = models.DecimalField(max_digits=5, decimal_places=2, default=0.70)
-    poids_rentabilite = models.DecimalField(max_digits=5, decimal_places=2, default=0.30)
+    poids_amc = models.DecimalField(max_digits=5, decimal_places=2, default=0.30)
+    poids_rentabilite = models.DecimalField(max_digits=5, decimal_places=2, default=0.40)
     nombre_parcelles = models.IntegerField(default=0)
     statut = models.CharField(max_length=20, choices=STATUT_CHOICES, default='complete')
 

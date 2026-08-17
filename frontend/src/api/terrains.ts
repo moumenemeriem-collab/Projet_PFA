@@ -139,7 +139,7 @@ export async function fetchAnalyse(projetId: number, filtres: AnalyseFiltres): P
   const res = await apiFetch(`/api/projets/${projetId}/analyser-parcelles/`, {
     method: 'POST',
     body: JSON.stringify(filtres),
-  })
+  }, 120000)
   return parseResponse<AnalyseResponse>(res)
 }
 

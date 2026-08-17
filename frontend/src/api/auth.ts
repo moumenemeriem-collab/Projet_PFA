@@ -112,7 +112,7 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 }
 
-export async function apiFetch(url: string, options: RequestInit = {}): Promise<Response> {
+export async function apiFetch(url: string, options: RequestInit = {}, timeoutMs: number = 15000): Promise<Response> {
   const buildHeaders = () => {
     const headers = new Headers(options.headers)
     if (!headers.has('Content-Type') && options.body) {
@@ -124,7 +124,7 @@ export async function apiFetch(url: string, options: RequestInit = {}): Promise<
   }
 
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 15000)
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
   try {
     let response = await fetch(url, {

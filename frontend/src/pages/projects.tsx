@@ -14,7 +14,7 @@ import {
 } from '../api/projets'
 import { t } from '../i18n/index'
 
-const PAGE_SIZE = 12
+const PAGE_SIZE = 9
 
 interface ProjectFormValues {
   nom: string
@@ -156,6 +156,8 @@ export function ProjectsPage(): React.JSX.Element {
   }, [page, search, typeId, reloadKey])
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
+  const start = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
+  const end = Math.min(page * PAGE_SIZE, totalCount)
   const rentabilite = detailProjet?.rentabilite ?? null
 
   const openMenu = (e: React.MouseEvent<HTMLButtonElement>, projet: Projet): void => {
@@ -335,7 +337,7 @@ export function ProjectsPage(): React.JSX.Element {
         <div className="projects-list-header">
           <h2 className="projects-list-title">{t('projects.list_title')}</h2>
           <div className="projects-list-meta">
-            <span>{t('projects.showing')} {projets.length} {t('projects.on')} {totalCount}</span>
+            <span>{t('messages.pagination_showing')} {start}-{end} {t('messages.pagination_on')} {totalCount} {t('messages.pagination_results')}</span>
             {totalPages > 1 ? (
               <div className="projects-progress">
                 <div className="projects-progress-bar" style={{ width: `${(page / totalPages) * 100}%` }}></div>
@@ -365,15 +367,37 @@ export function ProjectsPage(): React.JSX.Element {
           </div>
         )}
 
-        {totalPages > 1 ? (
-          <div className="projects-load-more">
-            <button type="button" className="btn btn-outline" id="prev-page" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-              {icons.chevronLeft} {t('common.prev')}
-            </button>
-            <span style={{ padding: '0 12px', color: 'var(--text-muted)', fontSize: '0.875rem' }}>{page} / {totalPages}</span>
-            <button type="button" className="btn btn-outline" id="next-page" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
-              {t('common.next')} {icons.chevron}
-            </button>
+        {totalCount > 0 ? (
+          <div className="users-pagination">
+            <span className="pagination-info">
+              {t('messages.pagination_showing')} {start}-{end} {t('messages.pagination_on')} {totalCount}{' '}
+              {t('messages.pagination_results')}
+            </span>
+            <div className="users-pagination-controls">
+              <button type="button" className="pagination-btn" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                {icons.chevronLeft} {t('messages.pagination_prev')}
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => {
+                const p = i + 1
+                if (totalPages > 7) {
+                  if (p === 1 || p === totalPages || (p >= page - 1 && p <= page + 1)) {
+                    return (
+                      <button key={i} type="button" className={`pagination-btn pagination-btn--page${p === page ? ' pagination-btn--active' : ''}`} onClick={() => setPage(p)}>{p}</button>
+                    )
+                  }
+                  if (p === page - 2 || p === page + 2) {
+                    return <span className="pagination-ellipsis" key={i}>...</span>
+                  }
+                  return null
+                }
+                return (
+                  <button key={i} type="button" className={`pagination-btn pagination-btn--page${p === page ? ' pagination-btn--active' : ''}`} onClick={() => setPage(p)}>{p}</button>
+                )
+              })}
+              <button type="button" className="pagination-btn" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                {t('messages.pagination_next')} {icons.chevron}
+              </button>
+            </div>
           </div>
         ) : null}
       </div>

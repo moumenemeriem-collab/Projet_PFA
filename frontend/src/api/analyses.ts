@@ -56,7 +56,7 @@ export async function createAnalyse(
   const res = await apiFetch(`/api/projets/${projetId}/analyses/`, {
     method: 'POST',
     body: JSON.stringify({ filtres }),
-  })
+  }, 120000)
   return parseResponse<AnalyseDetail>(res)
 }
 

@@ -227,8 +227,8 @@ class AnalyseCreateSerializer(serializers.Serializer):
         analyse = Analyse.objects.create(
             projet=projet,
             filtres=filtres,
-            poids_amc=0.70,
-            poids_rentabilite=0.30,
+            poids_amc=0.30,
+            poids_rentabilite=0.40,
             nombre_parcelles=len(parcelles),
             statut='complete',
         )
