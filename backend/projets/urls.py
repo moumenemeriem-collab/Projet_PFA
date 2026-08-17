@@ -14,6 +14,11 @@ from .views import (
     TerrainDetailView,
     TerrainListView,
     TypeProjetListView,
+    couche_features_create,
+    couche_features_delete,
+    couche_features_duplicate,
+    couche_features_list,
+    couche_features_update,
     importer_couche,
     telecharger_couche,
 )
@@ -34,4 +39,9 @@ urlpatterns = [
     path('couches/<int:pk>/', CoucheDetail.as_view(), name='couche-detail'),
     path('couches/<int:pk>/import/', importer_couche, name='couche-import'),
     path('couches/<int:pk>/download/', telecharger_couche, name='couche-download'),
+    path('couches/<int:pk>/features/', couche_features_list, name='couche-features-list'),
+    path('couches/<int:pk>/features/create/', couche_features_create, name='couche-features-create'),
+    path('couches/<int:pk>/features/<int:feature_id>/update/', couche_features_update, name='couche-features-update'),
+    path('couches/<int:pk>/features/<int:feature_id>/delete/', couche_features_delete, name='couche-features-delete'),
+    path('couches/<int:pk>/features/<int:feature_id>/duplicate/', couche_features_duplicate, name='couche-features-duplicate'),
 ]

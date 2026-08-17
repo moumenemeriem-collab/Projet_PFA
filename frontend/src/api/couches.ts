@@ -123,3 +123,73 @@ export function telechargerCouche(id: number): void {
     })
     .catch(err => alert(err.message))
 }
+
+export interface CoucheFeatureRow {
+  id: number
+  geometry: unknown
+  properties: Record<string, unknown>
+}
+
+export interface CoucheFeaturesResponse {
+  count: number
+  results: CoucheFeatureRow[]
+}
+
+export async function fetchCoucheFeatures(id: number, params?: { search?: string; page?: number; page_size?: number }): Promise<CoucheFeaturesResponse> {
+  const qs = new URLSearchParams()
+  if (params?.search) qs.set('search', params.search)
+  if (params?.page) qs.set('page', String(params.page))
+  if (params?.page_size) qs.set('page_size', String(params.page_size))
+  const url = `${API_BASE}/${id}/features/${qs.toString() ? '?' + qs.toString() : ''}`
+  return apiJson<CoucheFeaturesResponse>(url)
+}
+
+export async function createCoucheFeature(id: number, properties: Record<string, unknown>, geometry?: unknown): Promise<{ id: number }> {
+  const token = localStorage.getItem('access_token')
+  const response = await fetch(`${API_BASE}/${id}/features/create/`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ properties, geometry: geometry ?? null }),
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Erreur lors de la création')
+  return data as { id: number }
+}
+
+export async function updateCoucheFeature(coucheId: number, featureId: number, properties: Record<string, unknown>, geometry?: unknown): Promise<void> {
+  const token = localStorage.getItem('access_token')
+  const response = await fetch(`${API_BASE}/${coucheId}/features/${featureId}/update/`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ properties, geometry }),
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Erreur lors de la mise à jour')
+}
+
+export async function deleteCoucheFeature(coucheId: number, featureId: number): Promise<void> {
+  const token = localStorage.getItem('access_token')
+  const response = await fetch(`${API_BASE}/${coucheId}/features/${featureId}/delete/`, {
+    method: 'DELETE',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Erreur lors de la suppression')
+}
+
+export async function duplicateCoucheFeature(coucheId: number, featureId: number): Promise<{ id: number }> {
+  const token = localStorage.getItem('access_token')
+  const response = await fetch(`${API_BASE}/${coucheId}/features/${featureId}/duplicate/`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Erreur lors de la duplication')
+  return data as { id: number }
+}
