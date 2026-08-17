@@ -270,21 +270,27 @@ export function escapeAffHtml(value: unknown): string {
 export function buildAffectationsModalHtml(title: string, terrainRing: number[][], pieces: AffectationPiece[]): string {
   const terrainArea = polygonAreaM2(terrainRing)
   const piecesArea = pieces.reduce((sum, p) => sum + p.areaM2, 0)
-  const columns = collectAffectationColumns(pieces)
+  const columns = collectAffectationColumns(pieces).filter(([k]) => k !== 'designation')
   const numCols = columns.length + 3
   const rows = pieces
     .map((pc) => {
+      const code = pc.designation || ''
+      const desc = String(pc.properties.type_construction ?? pc.properties.definition ?? '').trim()
       const propCells = columns
+        .filter(([key]) => key !== 'designation')
         .map(([key]) => {
           const v = pc.properties[key]
           const val = v === null || v === undefined || v === '' ? '' : String(v)
-          return `<td class="geo-aff-cell">${escapeAffHtml(val)}</td>`
+          return `<td class="geo-aff-cell${key === 'definition' ? ' geo-aff-cell--wide' : ''}">${escapeAffHtml(val)}</td>`
         })
         .join('')
+      const nameContent = code
+        ? `<span class="geo-aff-badge">${escapeAffHtml(code)}</span>` + (desc ? `<span class="geo-aff-desc" title="${escapeAffHtml(desc)}">${escapeAffHtml(desc)}</span>` : '')
+        : `<span title="${escapeAffHtml(desc || 'Affectation non définie')}">${escapeAffHtml(desc || 'Affectation non définie')}</span>`
       return (
         `<tr class="geo-aff-row">` +
         `<td class="geo-aff-cell-swatch"><span class="geo-aff-swatch" style="background:${pc.color}"></span></td>` +
-        `<td class="geo-aff-cell-main"><div class="geo-aff-name">${escapeAffHtml(pc.label)}</div></td>` +
+        `<td class="geo-aff-cell-main"><div class="geo-aff-name">${nameContent}</div></td>` +
         `<td class="geo-aff-cell-num">${escapeAffHtml(formatAffArea(pc.areaM2))}</td>` +
         `<td class="geo-aff-cell-num">${pc.percent.toFixed(1)} %</td>` +
         propCells +
@@ -306,6 +312,10 @@ export function buildAffectationsModalHtml(title: string, terrainRing: number[][
     `<button type="button" class="geo-dims-download" data-aff-pdf title="Télécharger le plan des affectations (PDF)" aria-label="Télécharger le plan des affectations (PDF)">` +
     `<svg class="geo-dims-pdf-icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2 1.5A1.5 1.5 0 0 1 3.5 0H10l4 4v10.5A1.5 1.5 0 0 1 12.5 16h-9A1.5 1.5 0 0 1 2 14.5v-13zM10 0.5V4a1 1 0 0 0 1 1h3.5L10 0.5zM9 7v5.3L7.1 10.4a.6.6 0 1 0-.85.85l2.6 2.6a.6.6 0 0 0 .85 0l2.6-2.6a.6.6 0 1 0-.85-.85L10 12.3V7a.6.6 0 1 0-1 0z"/></svg>` +
     `</button>` +
+    `<button type="button" class="geo-dims-expand" data-aff-expand title="Agrandir / réduire" aria-label="Agrandir / réduire">` +
+    `<svg class="geo-dims-expand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>` +
+    `<svg class="geo-dims-expand-icon geo-dims-expand-icon--min" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg>` +
+    `</button>` +
     `<button type="button" class="geo-dims-close" data-aff-close aria-label="Fermer">&times;</button>` +
     `</div>` +
     `</div>` +
@@ -323,7 +333,7 @@ export function buildAffectationsModalHtml(title: string, terrainRing: number[][
     `<table class="geo-dims-table geo-aff-table">` +
     `<thead><tr>` +
     `<th></th><th>Affectation</th><th>Superficie</th><th>Part</th>` +
-    columns.map(([, label]) => `<th class="geo-aff-cell">${escapeAffHtml(label)}</th>`).join('') +
+    columns.map(([key, label]) => `<th class="geo-aff-cell${key === 'definition' ? ' geo-aff-cell--wide' : ''}">${escapeAffHtml(label)}</th>`).join('') +
     `</tr></thead>` +
     `<tbody>` +
     rows +
@@ -361,6 +371,11 @@ export function showAffectationsModal(title: string, terrainRing: number[][], pi
   overlay.querySelector<HTMLElement>('[data-aff-close]')?.addEventListener('click', close)
   overlay.querySelector<HTMLElement>('[data-aff-pdf]')?.addEventListener('click', () => {
     downloadAffectationsPdf(title, terrainRing, pieces)
+  })
+
+  const modal = overlay.querySelector<HTMLElement>('.geo-aff-modal')
+  overlay.querySelector<HTMLElement>('[data-aff-expand]')?.addEventListener('click', () => {
+    modal?.classList.toggle('geo-aff-modal--expanded')
   })
 
   // Navigation du dessin : zoom (+/- boutons et molette) + déplacement (glisser).

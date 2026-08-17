@@ -18,7 +18,6 @@ import {
 } from '../utils/terrainDims'
 import {
   computeParcelAffectations,
-  formatAffArea,
   preparePAZones,
   showAffectationsModal,
   type AffectationPiece,
@@ -215,49 +214,62 @@ const TYPE_LABELS: Record<string, string> = {
   '': 'Autre',
 }
 
-const EQUIP_SYMBOLS: Record<string, string> = {
-  pharmacy: '<path d="M12 4v16M4 12h16"/>',
-  cafe: '<path d="M5 8h13v4a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V8z"/><path d="M18 8h1a2 2 0 0 1 0 4h-1"/><path d="M4 20h16"/>',
-  restaurant: '<path d="M7 3v9M4 3v9M5.5 3v9"/><path d="M5.5 12v6"/><path d="M19 3c-2 1-3 4-3 8l-1 7M15 18h5"/>',
-  fuel: '<path d="M6 3h8v18H6z"/><path d="M6 9h8"/><path d="M14 12h4v7a1.5 1.5 0 0 1-3 0"/><path d="M18 12l1-1"/><path d="M8 3v3"/>',
-  place_of_worship: '<path d="M12 3l7 6H5z"/><path d="M5 9h14v12H5z"/><path d="M9 21v-5a3 3 0 0 1 6 0v5"/>',
-  fast_food: '<path d="M4 13h16a8 8 0 0 1-16 0z"/><path d="M12 13V5c0-1.5-1-2-1-2"/><path d="M4 16h16"/><path d="M6 19h12"/>',
-  bank: '<path d="M12 3l9 5H3z"/><path d="M4 8h16v3H4z"/><path d="M6 11v6h12v-6"/><path d="M4 20h16"/>',
-  school: '<path d="M12 4l10 4-10 4L2 8z"/><path d="M5 10.5V16c2.5 2.5 9 2.5 14 0v-5.5"/>',
-  post_office: '<rect x="4" y="6" width="16" height="12"/><path d="M4 7l8 6 8-6"/>',
-  driving_school: '<path d="M5 10l2-4h10l2 4"/><rect x="3" y="10" width="18" height="8"/><circle cx="8" cy="15" r="1.6"/><circle cx="16" cy="15" r="1.6"/>',
-  parking: '<path d="M10 4h4a4 4 0 1 1 0 8h-4V4z"/><path d="M10 12v8"/>',
-  taxi: '<path d="M4 11l1-3h14l1 3"/><rect x="3" y="11" width="18" height="7"/><circle cx="8" cy="15" r="1.4"/><circle cx="16" cy="15" r="1.4"/><path d="M6 18v2M18 18v2"/>',
-  doctors: '<circle cx="12" cy="7" r="2.5"/><path d="M12 9.5V15"/><path d="M12 15a5 5 0 0 0 5 5h1"/><path d="M12 15a5 5 0 0 1-5 5H6"/>',
-  parking_entrance: '<rect x="3" y="6" width="18" height="12"/><path d="M10 4h4a4 4 0 1 1 0 8h-4V4z"/><path d="M10 12v8"/>',
-  money_transfer: '<rect x="4" y="7" width="16" height="10"/><circle cx="12" cy="12" r="2.2"/><path d="M4 9l2 2M4 9V7h2M20 15l-2-2M20 15v2h-2"/>',
-  bar: '<path d="M5 4h14l-7 8z"/><path d="M12 12v8"/><path d="M8 20h8"/>',
-  police: '<path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/>',
-  kindergarten: '<circle cx="12" cy="7" r="3"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/>',
-  dentist: '<path d="M8.5 4C6 4 4 5.5 4 8.5 4 12.5 6 14.5 7 16.5l1 3.5c1.8.5 2.4-1.5 4-1.5s2.2 2 4 1.5l1-3.5c1-2 3-4 3-8C20 5.5 18 4 15.5 4c-1 0-2 .7-3.5.7S9.5 4 8.5 4z"/>',
-  atm: '<rect x="4" y="8" width="16" height="10"/><path d="M4 12h16"/><path d="M12 15h.01"/>',
-  hospital: '<rect x="6" y="4" width="12" height="16"/><path d="M12 4v16M6 12h12M9 8v8M15 8v8"/>',
-  community_centre: '<circle cx="9" cy="8" r="2.5"/><circle cx="16" cy="9" r="2"/><path d="M4 19c0-3 2.5-4 5-4s5 1 5 4"/><path d="M14 15c2.5 0 5 1 5 4"/>',
-  car_wash: '<path d="M5 10l2-4h10l2 4"/><rect x="3" y="10" width="18" height="8"/><circle cx="8" cy="15" r="1.5"/><circle cx="16" cy="15" r="1.5"/><path d="M7 20v1M12 20v1M17 20v1"/>',
-  internet_cafe: '<rect x="4" y="6" width="16" height="11"/><path d="M12 17v3M8 20h8"/>',
-  courthouse: '<path d="M12 3v18M5 21h14"/><path d="M6 6h12"/><path d="M6 6l-3 5M6 6l3 5M18 6l-3 5M18 6l3 5"/>',
-  animal_breeding: '<circle cx="8" cy="11" r="2"/><circle cx="16" cy="11" r="2"/><circle cx="12" cy="16" r="2.5"/><circle cx="5" cy="15" r="1.6"/><circle cx="19" cy="15" r="1.6"/>',
-  nursing_home: '<path d="M12 20C7 15 4 12 4 9a4 4 0 0 1 8-1 4 4 0 0 1 8 1c0 3-3 6-8 11z"/>',
-  vehicle_inspection: '<path d="M14 6a4.5 4.5 0 0 0-7 5L3 15a1.6 1.6 0 0 0 2.3 2.3l4-4A4.5 4.5 0 0 0 14 6z"/><path d="M15 4l3 3-1.5 1.5L13.5 5.5z"/>',
-  drinking_water: '<path d="M12 3c4 5 6 8 6 11a6 6 0 0 1-12 0c0-3 2-6 6-11z"/>',
-  payment_terminal: '<rect x="3" y="6" width="18" height="12"/><path d="M6 12h5"/>',
-  childcare: '<circle cx="9" cy="9" r="2.5"/><circle cx="16" cy="10" r="2"/><path d="M4 19c.7-3 3-4.5 5-4.5S13 16 14 19"/><path d="M13 16c2.5 0 5 1 6 3"/>',
-  water_point: '<path d="M12 3c4 5 6 8 6 11a6 6 0 0 1-12 0c0-3 2-6 6-11z"/><path d="M10 13a2 2 0 0 0 2 2"/>',
-  prep_school: '<path d="M4 6h6a2 2 0 0 1 2 2v12c-1-1-3-1-8-1V6z"/><path d="M20 6h-6a2 2 0 0 0-2 2v12c1-1 3-1 8-1V6z"/>',
-  charging_station: '<path d="M13 3L5 13h5l-2 8 8-10h-5z"/>',
-  bus_station: '<rect x="4" y="6" width="16" height="12"/><path d="M4 11h16"/><circle cx="8" cy="15" r="1.5"/><circle cx="16" cy="15" r="1.5"/><path d="M6 18v2M18 18v2"/>',
-  surf_school: '<path d="M6 4c5-2 11 0 13 3-2 4-8 6-13 4l3-7z"/><path d="M5 21c0-3 3-5 7-5s7 2 7 5"/>',
-  fountain: '<path d="M12 4v5"/><circle cx="12" cy="3" r="1"/><path d="M5 21h14c-1-3-3-5-7-5s-6 2-7 5z"/><path d="M8 9c1 1 2 1 4 1s3 0 4-1"/>',
-  toilets: '<path d="M4 8h6v11H6a2 2 0 0 1-2-2V8z"/><path d="M14 8h6v11h-4a2 2 0 0 1-2-2V8z"/><path d="M5 8l1-4h4l1 4M15 8l1-4h4l1 4"/>',
-  hunting_stand: '<circle cx="12" cy="12" r="7"/><path d="M12 2v6M12 16v6M2 12h6M16 12h6"/>',
-  '': '<circle cx="12" cy="12" r="5"/>',
+const EQUIP_GROUP_MAPPING: Record<string, string> = {
+  pharmacy: 'Pharmacie',
+  school: 'Éducation',
+  kindergarten: 'Éducation',
+  prep_school: 'Éducation',
+  hospital: 'Santé',
+  doctors: 'Santé',
+  dentist: 'Santé',
+  bank: 'Services financiers',
+  money_transfer: 'Services financiers',
+  payment_terminal: 'Services financiers',
+  atm: 'Services financiers',
+  place_of_worship: 'Lieu de culte',
+  fuel: 'Services automobiles',
+  vehicle_inspection: 'Services automobiles',
+  charging_station: 'Services automobiles',
+  car_wash: 'Services automobiles',
+  police: 'Sécurité et justice',
+  courthouse: 'Sécurité et justice',
+  post_office: 'Administration',
+  cafe: 'Restauration',
+  restaurant: 'Restauration',
+  fast_food: 'Restauration',
+  bar: 'Restauration',
+  parking: 'Parking',
+  parking_entrance: 'Parking',
+  taxi: 'Transport',
+  bus_station: 'Transport',
 }
-const EQUIP_FALLBACK_SYMBOL = '<circle cx="12" cy="12" r="5"/>'
+
+const EQUIP_GROUP_SYMBOLS: Record<string, string> = {
+  Pharmacie: '<path d="M12 4v16M4 12h16"/>',
+  Éducation: '<path d="M12 4l10 4-10 4L2 8z"/><path d="M5 10.5V16c2.5 2.5 9 2.5 14 0v-5.5"/>',
+  Santé: '<rect x="6" y="4" width="12" height="16"/><path d="M12 4v16M6 12h12M9 8v8M15 8v8"/>',
+  'Services financiers': '<path d="M12 3l9 5H3z"/><path d="M4 8h16v3H4z"/><path d="M6 11v6h12v-6"/><path d="M4 20h16"/>',
+  'Lieu de culte': '<path d="M12 3l7 6H5z"/><path d="M5 9h14v12H5z"/><path d="M9 21v-5a3 3 0 0 1 6 0v5"/>',
+  'Services automobiles': '<path d="M6 3h8v18H6z"/><path d="M6 9h8"/><path d="M14 12h4v7a1.5 1.5 0 0 1-3 0"/><path d="M18 12l1-1"/><path d="M8 3v3"/>',
+  'Sécurité et justice': '<path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/>',
+  Administration: '<rect x="4" y="6" width="16" height="12"/><path d="M4 7l8 6 8-6"/>',
+  Restauration: '<path d="M7 3v9M4 3v9M5.5 3v9"/><path d="M5.5 12v6"/><path d="M19 3c-2 1-3 4-3 8l-1 7M15 18h5"/>',
+  Parking: '<path d="M10 4h4a4 4 0 1 1 0 8h-4V4z"/><path d="M10 12v8"/>',
+  Transport: '<rect x="4" y="6" width="16" height="12"/><path d="M4 11h16"/><circle cx="8" cy="15" r="1.5"/><circle cx="16" cy="15" r="1.5"/><path d="M6 18v2M18 18v2"/>',
+}
+
+const EQUIP_DEFAULT_GROUP = 'Autres équipements'
+const EQUIP_DEFAULT_GROUP_SYMBOL = '<circle cx="12" cy="12" r="5"/>'
+
+function equipGroupOf(amenity: string): string {
+  return EQUIP_GROUP_MAPPING[amenity] ?? EQUIP_DEFAULT_GROUP
+}
+
+const EQUIP_GROUP_SUBTYPES: Record<string, string[]> = {}
+Object.entries(EQUIP_GROUP_MAPPING).forEach(([raw, group]) => {
+  const list = EQUIP_GROUP_SUBTYPES[group] ?? (EQUIP_GROUP_SUBTYPES[group] = [])
+  if (!list.includes(raw)) list.push(raw)
+})
 
 function escapeHtml(value: unknown): string {
   return String(value ?? '')
@@ -1000,6 +1012,14 @@ export function GeoportalPage(): React.JSX.Element {
   // cliquer sur une parcelle colorée se comporte exactement comme cliquer sur
   // le terrain (popup du terrain, bouton « Voir Détail » conservé puisque le
   // résultat est déjà calculé).
+
+  const firstSentence = (text: string, maxLen = 100): string => {
+    if (!text) return ''
+    const m = text.match(/^(.+?[.!?])\s/)
+    const raw = m ? m[1] : text
+    return raw.length > maxLen ? raw.slice(0, maxLen).replace(/\s+\S*$/, '') + '…' : raw
+  }
+
   const showParcelAffectations = (idParcelle: string, popup: any): void => {
     const map = mapRef.current
     const cadastreId = couchesDispo.find((c) => c.nom === 'cadastre')?.id
@@ -1044,17 +1064,22 @@ export function GeoportalPage(): React.JSX.Element {
           })
         }
       }
+
       pieces.forEach((pc) => {
-        const label = pc.label || pc.designation || 'Affectation'
-        const areaTxt = formatAffArea(pc.areaM2)
+        const pcCode = pc.designation || 'Affectation non définie'
+        const pcDef = String(pc.properties.definition ?? pc.properties.type_construction ?? '').trim()
+        const pcDesc = firstSentence(pcDef)
+        const tooltipHtml =
+          `<div class="geo-aff-tooltip-title">${escapeHtml(pcCode)}</div>` +
+          (pcDesc ? `<div class="geo-aff-tooltip-meta">${escapeHtml(pcDesc)}</div>` : '')
+
         L.geoJSON(pc.feature, {
           interactive: true,
           bubblingMouseEvents: false,
           style: { color: '#0f3d6e', weight: 1.5, opacity: 0.95, fillColor: pc.color, fillOpacity: 0.75 },
           onEachFeature: (_feature: any, layerItem: any) => {
             layerItem.bindTooltip(
-              `<div class="geo-aff-tooltip-title">${escapeHtml(label)}</div>` +
-              `<div class="geo-aff-tooltip-meta">${escapeHtml(areaTxt)} · ${pc.percent.toFixed(1)} % de la parcelle</div>`,
+              tooltipHtml,
               { sticky: true, className: 'geo-aff-tooltip', direction: 'top', offset: [0, -4] }
             )
             layerItem.on('click', openCadastreClick)
@@ -1163,7 +1188,7 @@ const bindPopupActionButtons = (popup: any): void => {
       if (!values) return
       values.forEach((val) => {
         ;(FILTRE_AMENITY_OSM[group]?.[val] ?? []).forEach((osm) => {
-          if (equipCouche) toggles[`${equipCouche.id}:${osm}`] = true
+          if (equipCouche) toggles[`${equipCouche.id}:${equipGroupOf(osm)}`] = true
         })
       })
     })
@@ -1383,16 +1408,31 @@ const bindPopupActionButtons = (popup: any): void => {
           }
           if (c.nom !== 'reseau_routier' && c.nom !== 'equipements_publics') return
           const attrKey = c.nom === 'reseau_routier' ? 'highway' : 'amenity'
-          const counts = new Map<string, number>()
-          collection.features.forEach((f) => {
-            const v = String(f.properties?.[attrKey] ?? 'autre')
-            counts.set(v, (counts.get(v) ?? 0) + 1)
-          })
-          const items = Array.from(counts.entries())
-            .sort((a, b) => b[1] - a[1])
-            .map(([type, count]) => ({ key: `${c.id}:${type}`, coucheId: c.id, type, count }))
-          if (c.nom === 'reseau_routier') routes.push(...items)
-          else equips.push(...items)
+          if (c.nom === 'reseau_routier') {
+            const counts = new Map<string, number>()
+            collection.features.forEach((f) => {
+              const v = String(f.properties?.[attrKey] ?? 'autre')
+              counts.set(v, (counts.get(v) ?? 0) + 1)
+            })
+            const items = Array.from(counts.entries())
+              .sort((a, b) => b[1] - a[1])
+              .map(([type, count]) => ({ key: `${c.id}:${type}`, coucheId: c.id, type, count }))
+            routes.push(...items)
+          } else {
+            const groupCounts = new Map<string, { count: number; subTypes: string[] }>()
+            collection.features.forEach((f) => {
+              const raw = String(f.properties?.[attrKey] ?? 'autre')
+              const group = equipGroupOf(raw)
+              const entry = groupCounts.get(group) ?? { count: 0, subTypes: [] }
+              entry.count++
+              if (!entry.subTypes.includes(raw)) entry.subTypes.push(raw)
+              groupCounts.set(group, entry)
+            })
+            const items = Array.from(groupCounts.entries())
+              .sort((a, b) => b[1].count - a[1].count)
+              .map(([group, { count }]) => ({ key: `${c.id}:${group}`, coucheId: c.id, type: group, count }))
+            equips.push(...items)
+          }
         })
         if (cancelled) return
         setRouteTypes(routes)
@@ -1434,8 +1474,8 @@ const bindPopupActionButtons = (popup: any): void => {
         style: { color: style.color, weight: style.weight, opacity: 0.9, dashArray: style.dashArray },
       }).addTo(map)
     }
-    const label = TYPE_LABELS[type] ?? type
-    const symbol = EQUIP_SYMBOLS[type] ?? EQUIP_FALLBACK_SYMBOL
+    const label = type
+    const symbol = EQUIP_GROUP_SYMBOLS[type] ?? EQUIP_DEFAULT_GROUP_SYMBOL
     return L.geoJSON(validFeatures(fc), {
       pointToLayer: (_feature: any, latlng: any) =>
         L.marker(latlng, {
@@ -1697,8 +1737,10 @@ const bindPopupActionButtons = (popup: any): void => {
         const fc = coucheDataRef.current[id]
         if (!fc) return
         const couche = couchesDispo.find((c) => c.id === id)
+        const isEquip = couche?.nom === 'equipements_publics'
         const attrKey = couche?.nom === 'reseau_routier' ? 'highway' : 'amenity'
-        const features = fc.features.filter((f) => String(f.properties?.[attrKey] ?? 'autre') === type)
+        const subTypes = isEquip ? (EQUIP_GROUP_SUBTYPES[type] ?? [type]) : [type]
+        const features = fc.features.filter((f) => subTypes.includes(String(f.properties?.[attrKey] ?? 'autre')))
         const layer = buildTypeLayer(map, id, type, { type: 'FeatureCollection', features })
         typeLayersRef.current[key] = layer
         if (features.length > 0) {
@@ -2564,9 +2606,9 @@ const bindPopupActionButtons = (popup: any): void => {
                                       onChange={() => setTypeToggles((prev) => ({ ...prev, [et.key]: !prev[et.key] }))}
                                     />
                                     <span className="geo-couche-type-svg">
-                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: EQUIP_SYMBOLS[et.type] ?? EQUIP_FALLBACK_SYMBOL }} />
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: EQUIP_GROUP_SYMBOLS[et.type] ?? EQUIP_DEFAULT_GROUP_SYMBOL }} />
                                     </span>
-                                    <span>{TYPE_LABELS[et.type] ?? et.type} <em className="geo-couche-count">({et.count})</em></span>
+                                    <span>{et.type} <em className="geo-couche-count">({et.count})</em></span>
                                   </label>
                                 ))}
                               </div>
@@ -2767,9 +2809,9 @@ const bindPopupActionButtons = (popup: any): void => {
                         {activeEquipTypes.map((et) => (
                           <div className="geo-legend-item" key={et.key}>
                             <span className="geo-couche-type-svg">
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: EQUIP_SYMBOLS[et.type] ?? EQUIP_FALLBACK_SYMBOL }} />
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: EQUIP_GROUP_SYMBOLS[et.type] ?? EQUIP_DEFAULT_GROUP_SYMBOL }} />
                             </span>
-                            <span>{TYPE_LABELS[et.type] ?? et.type}</span>
+                            <span>{et.type}</span>
                           </div>
                         ))}
                         {activeOverlays.map((ol) => (
