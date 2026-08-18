@@ -12,8 +12,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DJANGO_SETTINGS_MODULE=config.settings
 WORKDIR /app/backend
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgdal-dev gdal-bin libgeos-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir GDAL==$(gdal-config --version)
 COPY backend/ ./
 COPY --from=frontend /app/frontend/dist ./frontend_dist
 RUN chmod +x entrypoint.sh
