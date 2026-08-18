@@ -3,6 +3,7 @@ import os
 
 from django.conf import settings
 from django.core.files.base import ContentFile
+from django.db import connection
 from django.db.models import Q
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -801,3 +802,220 @@ class AnalyseResultatsView(APIView):
             'total': resultats.count(),
             'resultats': ResultatAnalyseSerializer(resultats, many=True).data,
         })
+
+
+# ---------------------------------------------------------------------------
+# Couche features CRUD (gestion des lignes par l'investisseur)
+# ---------------------------------------------------------------------------
+
+def _get_attributs(couche):
+    return [a['nom'] for a in couche.attributs if a['nom'].lower() != 'fid'] if couche.attributs else []
+
+
+def _get_attributs_all(couche):
+    return [a['nom'] for a in couche.attributs] if couche.attributs else []
+
+
+@api_view(['GET'])
+def couche_features_list(request, pk):
+    try:
+        couche = Couche.objects.get(pk=pk)
+    except Couche.DoesNotExist:
+        return Response({'error': 'Couche introuvable'}, status=status.HTTP_404_NOT_FOUND)
+
+    table = couche.table_liee
+    if not table:
+        return Response({'count': 0, 'results': []})
+
+    attributs = _get_attributs_all(couche)
+    search = request.GET.get('search', '').strip()
+    page = int(request.GET.get('page', 1))
+    page_size = int(request.GET.get('page_size', 20))
+
+    col_sql = ', '.join(f'"{c}"' for c in attributs) if attributs else ''
+    select = f'id, geometry, {col_sql}' if col_sql else 'id, geometry'
+
+    where = ''
+    params = []
+    if search and attributs:
+        conditions = []
+        for a in attributs:
+            conditions.append(f'"{a}"::text ILIKE %s')
+            params.append(f'%{search}%')
+        where = 'WHERE ' + ' OR '.join(conditions)
+
+    count_sql = f'SELECT COUNT(*) FROM "{table}" {where}'
+    sql = f'SELECT {select} FROM "{table}" {where} ORDER BY id LIMIT %s OFFSET %s'
+    params_count = list(params)
+    params_page = params + [page_size, (page - 1) * page_size]
+
+    features = []
+    total = 0
+    try:
+        with connection.cursor() as cur:
+            cur.execute(count_sql, params_count)
+            total = cur.fetchone()[0]
+            cur.execute(sql, params_page)
+            cols = [desc[0] for desc in cur.description]
+            for row in cur.fetchall():
+                props = {}
+                for i, col in enumerate(cols):
+                    if col in ('id', 'geometry'):
+                        continue
+                    props[col] = row[i]
+                geometry = row[cols.index('geometry')]
+                if isinstance(geometry, str):
+                    try:
+                        geometry = json.loads(geometry)
+                    except ValueError:
+                        geometry = None
+                features.append({
+                    'id': row[cols.index('id')],
+                    'geometry': geometry,
+                    'properties': props,
+                })
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    return Response({'count': total, 'results': features})
+
+
+@api_view(['POST'])
+def couche_features_create(request, pk):
+    try:
+        couche = Couche.objects.get(pk=pk)
+    except Couche.DoesNotExist:
+        return Response({'error': 'Couche introuvable'}, status=status.HTTP_404_NOT_FOUND)
+
+    table = couche.table_liee
+    if not table:
+        return Response({'error': 'Pas de table associée'}, status=status.HTTP_400_BAD_REQUEST)
+
+    attributs = _get_attributs(couche)
+    data = request.data
+    geometry = data.get('geometry')
+    props = data.get('properties', {})
+
+    cols = ['geometry']
+    vals = [json.dumps(geometry) if isinstance(geometry, dict) else None]
+    for a in attributs:
+        cols.append(f'"{a}"')
+        vals.append(props.get(a))
+
+    placeholders = ', '.join(['%s'] * len(cols))
+    cols_sql = ', '.join(cols)
+    sql = f'INSERT INTO "{table}" ({cols_sql}) VALUES ({placeholders}) RETURNING id'
+
+    try:
+        with connection.cursor() as cur:
+            cur.execute(sql, vals)
+            new_id = cur.fetchone()[0]
+        return Response({'id': new_id, 'message': 'Ligne créée'}, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['PUT'])
+def couche_features_update(request, pk, feature_id):
+    try:
+        couche = Couche.objects.get(pk=pk)
+    except Couche.DoesNotExist:
+        return Response({'error': 'Couche introuvable'}, status=status.HTTP_404_NOT_FOUND)
+
+    table = couche.table_liee
+    if not table:
+        return Response({'error': 'Pas de table associée'}, status=status.HTTP_400_BAD_REQUEST)
+
+    attributs = _get_attributs(couche)
+    data = request.data
+    geometry = data.get('geometry')
+    props = data.get('properties', {})
+
+    set_parts = []
+    vals = []
+    if geometry is not None:
+        set_parts.append('geometry = %s')
+        vals.append(json.dumps(geometry) if isinstance(geometry, dict) else None)
+    for a in attributs:
+        if a in props:
+            set_parts.append(f'"{a}" = %s')
+            vals.append(props.get(a))
+
+    if not set_parts:
+        return Response({'error': 'Aucun champ à modifier'}, status=status.HTTP_400_BAD_REQUEST)
+
+    vals.append(feature_id)
+    sql = f'UPDATE "{table}" SET {", ".join(set_parts)} WHERE id = %s'
+
+    try:
+        with connection.cursor() as cur:
+            cur.execute(sql, vals)
+            if cur.rowcount == 0:
+                return Response({'error': 'Ligne introuvable'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'message': 'Ligne mise à jour'})
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['DELETE'])
+def couche_features_delete(request, pk, feature_id):
+    try:
+        couche = Couche.objects.get(pk=pk)
+    except Couche.DoesNotExist:
+        return Response({'error': 'Couche introuvable'}, status=status.HTTP_404_NOT_FOUND)
+
+    table = couche.table_liee
+    if not table:
+        return Response({'error': 'Pas de table associée'}, status=status.HTTP_400_BAD_REQUEST)
+
+    sql = f'DELETE FROM "{table}" WHERE id = %s'
+    try:
+        with connection.cursor() as cur:
+            cur.execute(sql, [feature_id])
+            if cur.rowcount == 0:
+                return Response({'error': 'Ligne introuvable'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'message': 'Ligne supprimée'})
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+def couche_features_duplicate(request, pk, feature_id):
+    try:
+        couche = Couche.objects.get(pk=pk)
+    except Couche.DoesNotExist:
+        return Response({'error': 'Couche introuvable'}, status=status.HTTP_404_NOT_FOUND)
+
+    table = couche.table_liee
+    if not table:
+        return Response({'error': 'Pas de table associée'}, status=status.HTTP_400_BAD_REQUEST)
+
+    attributs_all = _get_attributs_all(couche)
+    attributs_write = _get_attributs(couche)
+    col_sql = ', '.join(f'"{a}"' for a in attributs_all) if attributs_all else ''
+    select = f'id, geometry, {col_sql}' if col_sql else 'id, geometry'
+    sql_fetch = f'SELECT {select} FROM "{table}" WHERE id = %s'
+
+    try:
+        with connection.cursor() as cur:
+            cur.execute(sql_fetch, [feature_id])
+            row = cur.fetchone()
+            if not row:
+                return Response({'error': 'Ligne introuvable'}, status=status.HTTP_404_NOT_FOUND)
+            cols = [desc[0] for desc in cur.description]
+            geom = row[cols.index('geometry')]
+            geom_val = json.dumps(geom) if isinstance(geom, str) else geom
+
+            insert_cols = ['geometry']
+            insert_vals = [geom_val]
+            for a in attributs_write:
+                insert_cols.append(f'"{a}"')
+                insert_vals.append(row[cols.index(a)] if a in cols else None)
+
+            placeholders = ', '.join(['%s'] * len(insert_cols))
+            cols_sql_ins = ', '.join(insert_cols)
+            cur.execute(f'INSERT INTO "{table}" ({cols_sql_ins}) VALUES ({placeholders}) RETURNING id', insert_vals)
+            new_id = cur.fetchone()[0]
+        return Response({'id': new_id, 'message': 'Ligne dupliquée'}, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

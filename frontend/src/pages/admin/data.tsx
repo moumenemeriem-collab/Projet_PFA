@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { icons } from '../../components/icons'
 import { DashboardLayout } from '../../components/DashboardLayout'
+import { GererLignesModal } from '../../components/GererLignesModal'
 import { formatApiErrors } from '../../api/auth'
 import {
   type AttributDefinition,
@@ -60,6 +61,7 @@ export function AdminDataPage(): React.JSX.Element {
   const [couches, setCouches] = useState<Couche[]>([])
   const [importLoading, setImportLoading] = useState<number | null>(null)
   const [detailCouche, setDetailCouche] = useState<Couche | null>(null)
+  const [gererCouche, setGererCouche] = useState<Couche | null>(null)
   const [initialLoading, setInitialLoading] = useState(true)
   const [initialError, setInitialError] = useState('')
   const [alerts, setAlerts] = useState<Record<string, AlertState>>({})
@@ -134,6 +136,15 @@ export function AdminDataPage(): React.JSX.Element {
 
   const handleDownload = (id: number): void => {
     telechargerCouche(id)
+  }
+
+  const handleGerer = async (id: number): Promise<void> => {
+    try {
+      const couche = await fetchCouche(id)
+      setGererCouche(couche)
+    } catch (error) {
+      showAlert('page-error', formatApiErrors(error), true)
+    }
   }
 
   const handleDetail = async (id: number): Promise<void> => {
@@ -241,6 +252,7 @@ export function AdminDataPage(): React.JSX.Element {
             <th>Date MAJ</th>
             <th>Mise à jour</th>
             <th>Télécharger</th>
+            <th>Gérer</th>
             <th>Détails</th>
           </tr>
         </thead>
@@ -279,6 +291,13 @@ export function AdminDataPage(): React.JSX.Element {
                     {icons.download} Télécharger
                   </button>
                 </td>
+                <td className="data-td-actions">
+                  {c.nom_affichage !== 'MNT' ? (
+                    <button type="button" className="btn btn-sm btn-outline gerer-trigger" onClick={() => { void handleGerer(c.id) }}>
+                      {icons.database} Gérer
+                    </button>
+                  ) : <span className="gerer-null">—</span>}
+                </td>
                 <td className="data-td-detail">
                   <button type="button" className="btn btn-sm btn-outline detail-trigger" data-couche-id={c.id} onClick={() => { void handleDetail(c.id) }}>
                     {icons.eye} Détails
@@ -310,10 +329,21 @@ export function AdminDataPage(): React.JSX.Element {
     content = listContent
   }
 
+  const gererModal = gererCouche ? (
+    <GererLignesModal
+      coucheId={gererCouche.id}
+      coucheName={gererCouche.nom_affichage}
+      attributs={gererCouche.attributs}
+      onClose={() => setGererCouche(null)}
+      onUpdated={() => { void loadCouches() }}
+    />
+  ) : null
+
   return (
     <DashboardLayout role="admin" activePage="data">
       {content}
       {detailModal}
+      {gererModal}
     </DashboardLayout>
   )
 }
