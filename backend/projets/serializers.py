@@ -2,6 +2,7 @@ from django.contrib.gis.geos import GEOSGeometry
 from rest_framework import serializers
 
 from .models import Analyse, Couche, Projet, ResultatAnalyse, Terrain, TypeProjet
+from .profitability import calculer_rentabilite_projet
 
 
 class TypeProjetSerializer(serializers.ModelSerializer):
@@ -24,11 +25,22 @@ class ProjetListSerializer(serializers.ModelSerializer):
             'nombre_unites', 'surface_construite', 'cout_construction',
             'autres_charges', 'prix_vente_unitaire', 'revenu_estime',
             'image', 'date_creation', 'investisseur', 'rentabilite',
+            'prix_foncier_m2', 'frais_acquisition', 'taux_chute', 'cos', 'cus',
+            'has_appartement', 'has_commerce', 'has_bureau',
+            'quote_part_appartement', 'quote_part_commerce', 'quote_part_bureau',
+            'prix_vente_appartement', 'prix_vente_commerce', 'prix_vente_bureau',
+            'cout_construction_appartement', 'cout_construction_commerce', 'cout_construction_bureau',
+            'taux_etudes_honoraires', 'taux_imprevus', 'taux_commercialisation',
+            'duree_construction', 'duree_commercialisation', 'taux_actualisation',
+            'repartition_construction', 'repartition_ventes',
         ]
         read_only_fields = ['id', 'date_creation', 'investisseur']
 
     def get_rentabilite(self, obj: Projet) -> dict:
-        return obj.calculer_rentabilite()
+        try:
+            return calculer_rentabilite_projet(obj)
+        except Exception:
+            return None
 
 
 class ProjetDetailSerializer(serializers.ModelSerializer):
@@ -44,11 +56,22 @@ class ProjetDetailSerializer(serializers.ModelSerializer):
             'nombre_unites', 'surface_construite', 'cout_construction',
             'autres_charges', 'prix_vente_unitaire', 'revenu_estime',
             'image', 'date_creation', 'investisseur', 'rentabilite',
+            'prix_foncier_m2', 'frais_acquisition', 'taux_chute', 'cos', 'cus',
+            'has_appartement', 'has_commerce', 'has_bureau',
+            'quote_part_appartement', 'quote_part_commerce', 'quote_part_bureau',
+            'prix_vente_appartement', 'prix_vente_commerce', 'prix_vente_bureau',
+            'cout_construction_appartement', 'cout_construction_commerce', 'cout_construction_bureau',
+            'taux_etudes_honoraires', 'taux_imprevus', 'taux_commercialisation',
+            'duree_construction', 'duree_commercialisation', 'taux_actualisation',
+            'repartition_construction', 'repartition_ventes',
         ]
         read_only_fields = ['id', 'date_creation', 'investisseur']
 
     def get_rentabilite(self, obj: Projet) -> dict:
-        return obj.calculer_rentabilite()
+        try:
+            return calculer_rentabilite_projet(obj)
+        except Exception:
+            return None
 
 
 class ProjetCreateSerializer(serializers.Serializer):
@@ -65,6 +88,40 @@ class ProjetCreateSerializer(serializers.Serializer):
     prix_vente_unitaire = serializers.DecimalField(max_digits=15, decimal_places=2, required=False, allow_null=True, default=None)
     revenu_estime = serializers.DecimalField(max_digits=15, decimal_places=2, required=False, allow_null=True, default=None)
     image = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
+
+    # Nouveaux champs rentabilité
+    prix_foncier_m2 = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=None)
+    frais_acquisition = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default=7)
+    taux_chute = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default=30)
+    cos = serializers.DecimalField(max_digits=6, decimal_places=2, required=False, allow_null=True, default=None)
+    cus = serializers.DecimalField(max_digits=6, decimal_places=2, required=False, allow_null=True, default=None)
+
+    has_appartement = serializers.BooleanField(required=False, default=True)
+    has_commerce = serializers.BooleanField(required=False, default=False)
+    has_bureau = serializers.BooleanField(required=False, default=False)
+
+    quote_part_appartement = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default=100)
+    quote_part_commerce = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default=0)
+    quote_part_bureau = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default=0)
+
+    prix_vente_appartement = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=None)
+    prix_vente_commerce = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=None)
+    prix_vente_bureau = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=None)
+
+    cout_construction_appartement = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=None)
+    cout_construction_commerce = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=None)
+    cout_construction_bureau = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=None)
+
+    taux_etudes_honoraires = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default=10)
+    taux_imprevus = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default=5)
+    taux_commercialisation = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default=3)
+
+    duree_construction = serializers.IntegerField(required=False, default=2)
+    duree_commercialisation = serializers.IntegerField(required=False, default=3)
+    taux_actualisation = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default=8)
+
+    repartition_construction = serializers.JSONField(required=False, allow_null=True, default=None)
+    repartition_ventes = serializers.JSONField(required=False, allow_null=True, default=None)
 
     def validate_id_type(self, value: int) -> int:
         if not TypeProjet.objects.filter(pk=value, actif=True).exists():
@@ -92,6 +149,40 @@ class ProjetUpdateSerializer(serializers.Serializer):
     prix_vente_unitaire = serializers.DecimalField(max_digits=15, decimal_places=2, required=False, allow_null=True)
     revenu_estime = serializers.DecimalField(max_digits=15, decimal_places=2, required=False, allow_null=True)
     image = serializers.CharField(max_length=255, required=False, allow_blank=True)
+
+    # Nouveaux champs rentabilité
+    prix_foncier_m2 = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+    frais_acquisition = serializers.DecimalField(max_digits=5, decimal_places=2, required=False)
+    taux_chute = serializers.DecimalField(max_digits=5, decimal_places=2, required=False)
+    cos = serializers.DecimalField(max_digits=6, decimal_places=2, required=False, allow_null=True)
+    cus = serializers.DecimalField(max_digits=6, decimal_places=2, required=False, allow_null=True)
+
+    has_appartement = serializers.BooleanField(required=False)
+    has_commerce = serializers.BooleanField(required=False)
+    has_bureau = serializers.BooleanField(required=False)
+
+    quote_part_appartement = serializers.DecimalField(max_digits=5, decimal_places=2, required=False)
+    quote_part_commerce = serializers.DecimalField(max_digits=5, decimal_places=2, required=False)
+    quote_part_bureau = serializers.DecimalField(max_digits=5, decimal_places=2, required=False)
+
+    prix_vente_appartement = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+    prix_vente_commerce = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+    prix_vente_bureau = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+
+    cout_construction_appartement = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+    cout_construction_commerce = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+    cout_construction_bureau = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+
+    taux_etudes_honoraires = serializers.DecimalField(max_digits=5, decimal_places=2, required=False)
+    taux_imprevus = serializers.DecimalField(max_digits=5, decimal_places=2, required=False)
+    taux_commercialisation = serializers.DecimalField(max_digits=5, decimal_places=2, required=False)
+
+    duree_construction = serializers.IntegerField(required=False)
+    duree_commercialisation = serializers.IntegerField(required=False)
+    taux_actualisation = serializers.DecimalField(max_digits=5, decimal_places=2, required=False)
+
+    repartition_construction = serializers.JSONField(required=False, allow_null=True)
+    repartition_ventes = serializers.JSONField(required=False, allow_null=True)
 
     def validate_id_type(self, value: int) -> int:
         if not TypeProjet.objects.filter(pk=value, actif=True).exists():

@@ -3,43 +3,7 @@ from django.db import models
 
 from accounts.models import Utilisateur
 
-
-def calculer_rentabilite(prix_terrain, cout_construction, autres_charges,
-                         prix_vente_unitaire, nombre_unites, revenu_estime, budget_total=None) -> dict:
-    """Calcule les indicateurs de rentabilité à partir des montants fournis."""
-    def dec(v) -> float:
-        return float(v) if v is not None else 0.0
-
-    investissement_total = (
-        dec(prix_terrain) + dec(cout_construction) + dec(autres_charges)
-    )
-
-    revenu_total = dec(revenu_estime)
-    if revenu_total == 0 and prix_vente_unitaire is not None and nombre_unites:
-        revenu_total = dec(prix_vente_unitaire) * dec(nombre_unites)
-
-    benefice_net = revenu_total - investissement_total
-
-    roi = (benefice_net / investissement_total * 100) if investissement_total > 0 else None
-    marge = (benefice_net / revenu_total * 100) if revenu_total > 0 else None
-    seuil_unites = (investissement_total / dec(prix_vente_unitaire)) if (
-        prix_vente_unitaire is not None and dec(prix_vente_unitaire) > 0
-    ) else None
-    budget_respecte = dec(budget_total) >= dec(prix_terrain) if prix_terrain is not None else None
-
-    def r(v):
-        return round(v, 2) if v is not None else None
-
-    return {
-        'investissement_total': r(investissement_total),
-        'revenu_total': r(revenu_total) if revenu_total > 0 else None,
-        'benefice_net': r(benefice_net),
-        'roi': r(roi),
-        'marge': r(marge),
-        'seuil_unites': r(seuil_unites),
-        'budget_respecte': budget_respecte,
-        'complete': revenu_total > 0 and investissement_total > 0,
-    }
+SHOB_FACTOR = 1.20
 
 
 class TypeProjet(models.Model):
@@ -87,24 +51,55 @@ class Projet(models.Model):
         db_column='investisseur_id',
     )
 
+    # ── Nouveaux champs : Rentabilité immobilière ──
+
+    # Données foncières
+    prix_foncier_m2 = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    frais_acquisition = models.DecimalField(max_digits=5, decimal_places=2, default=7)
+    taux_chute = models.DecimalField(max_digits=5, decimal_places=2, default=30)
+    cos = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    cus = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+
+    # Types de biens
+    has_appartement = models.BooleanField(default=True)
+    has_commerce = models.BooleanField(default=False)
+    has_bureau = models.BooleanField(default=False)
+
+    # Quote-parts (%)
+    quote_part_appartement = models.DecimalField(max_digits=5, decimal_places=2, default=100)
+    quote_part_commerce = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    quote_part_bureau = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+
+    # Prix de vente (DH/m²)
+    prix_vente_appartement = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    prix_vente_commerce = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    prix_vente_bureau = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
+    # Coûts de construction (DH/m²)
+    cout_construction_appartement = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    cout_construction_commerce = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    cout_construction_bureau = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
+    # Charges
+    taux_etudes_honoraires = models.DecimalField(max_digits=5, decimal_places=2, default=10)
+    taux_imprevus = models.DecimalField(max_digits=5, decimal_places=2, default=5)
+    taux_commercialisation = models.DecimalField(max_digits=5, decimal_places=2, default=3)
+
+    # Paramètres temporels
+    duree_construction = models.IntegerField(default=2)
+    duree_commercialisation = models.IntegerField(default=3)
+    taux_actualisation = models.DecimalField(max_digits=5, decimal_places=2, default=8)
+
+    # Échelonnement (JSON)
+    repartition_construction = models.JSONField(null=True, blank=True)
+    repartition_ventes = models.JSONField(null=True, blank=True)
+
     class Meta:
         db_table = 'projet'
         ordering = ['-date_creation']
 
     def __str__(self) -> str:
         return self.nom
-
-    def calculer_rentabilite(self) -> dict:
-        """Calcule les indicateurs de rentabilité du projet."""
-        return calculer_rentabilite(
-            self.prix_terrain,
-            self.cout_construction,
-            self.autres_charges,
-            self.prix_vente_unitaire,
-            self.nombre_unites,
-            self.revenu_estime,
-            self.budget_total,
-        )
 
 
 class Terrain(models.Model):

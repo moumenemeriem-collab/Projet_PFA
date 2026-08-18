@@ -152,6 +152,20 @@ class ProjetDetailView(APIView):
         return Response({'message': 'Projet supprimé avec succès.'}, status=status.HTTP_200_OK)
 
 
+class ProjetRentabilitePreviewView(APIView):
+    authentication_classes = [JWTOptionalAuthentication]
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        from .profitability import calculer_rentabilite_projet
+        serializer = ProjetCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        type_id = serializer.validated_data.pop('id_type')
+        projet = Projet(id_type_id=type_id, **serializer.validated_data)
+        result = calculer_rentabilite_projet(projet)
+        return Response(result)
+
+
 class AnalyseTerrainView(APIView):
     authentication_classes = [JWTOptionalAuthentication]
     permission_classes = [AllowAny]

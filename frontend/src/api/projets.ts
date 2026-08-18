@@ -11,14 +11,55 @@ export interface TypeProjet {
 }
 
 export interface Rentabilite {
-  investissement_total: number | null
-  revenu_total: number | null
-  benefice_net: number | null
-  roi: number | null
-  marge: number | null
-  seuil_unites: number | null
-  budget_respecte: boolean | null
-  complete: boolean
+  ok: boolean
+  error?: string
+  surfaces?: {
+    terrain_m2: number
+    cos: number
+    cus: number
+    shob_m2: number
+    charge_utile_appartement_m2: number
+    charge_utile_commerce_m2: number
+    charge_utile_bureau_m2: number
+    superficie_appartement_m2: number
+    superficie_commerce_m2: number
+    superficie_bureau_m2: number
+    superficie_totale_m2: number
+  }
+  ca_total?: number
+  ca_details?: Record<string, number>
+  couts_projet?: {
+    terrain_total: number
+    travaux: number
+    etudes_honoraires: number
+    imprevus: number
+    frais_financement: number
+    taxe_amenagement: number
+    cout_total: number
+  }
+  charges_projet?: {
+    assurance_rc: number
+    copropriete_annuelle: number
+    impotsfonciers: number
+    vacance_locative: number
+    total_charges_hors_travaux: number
+  }
+  flux_annuels?: Array<{
+    annee: number
+    label: string
+    vendeur: number
+    bailleur: number
+    autofinanceur: number
+  }>
+  van?: number
+  irr?: number
+  roi?: number
+  cout_total_projet?: number
+  resultats?: {
+    rendement_brut: number
+    rendement_net: number
+    ratio_ca_investissement: number
+  }
 }
 
 export interface Projet {
@@ -41,6 +82,31 @@ export interface Projet {
   date_creation: string
   investisseur: number
   rentabilite?: Rentabilite | null
+  prix_foncier_m2?: string | null
+  frais_acquisition?: string
+  taux_chute?: string
+  cos?: string | null
+  cus?: string | null
+  has_appartement?: boolean
+  has_commerce?: boolean
+  has_bureau?: boolean
+  quote_part_appartement?: string
+  quote_part_commerce?: string
+  quote_part_bureau?: string
+  prix_vente_appartement?: string | null
+  prix_vente_commerce?: string | null
+  prix_vente_bureau?: string | null
+  cout_construction_appartement?: string | null
+  cout_construction_commerce?: string | null
+  cout_construction_bureau?: string | null
+  taux_etudes_honoraires?: string
+  taux_imprevus?: string
+  taux_commercialisation?: string
+  duree_construction?: number
+  duree_commercialisation?: number
+  taux_actualisation?: string
+  repartition_construction?: number[] | null
+  repartition_ventes?: number[] | null
 }
 
 export interface ProjetListResponse {
@@ -54,14 +120,39 @@ export interface ProjetPayload {
   id_type: number
   surface_souhaitee: number
   budget_total: number
-  prix_terrain?: number | null
-  nombre_unites?: number | null
-  surface_construite?: number | null
-  cout_construction?: number | null
-  autres_charges?: number | null
-  prix_vente_unitaire?: number | null
-  revenu_estime?: number | null
+  prix_terrain?: number
+  nombre_unites?: number
+  surface_construite?: number
+  cout_construction?: number
+  autres_charges?: number
+  prix_vente_unitaire?: number
+  revenu_estime?: number
   image?: string
+  prix_foncier_m2?: number
+  frais_acquisition?: number
+  taux_chute?: number
+  cos?: number
+  cus?: number
+  has_appartement?: boolean
+  has_commerce?: boolean
+  has_bureau?: boolean
+  quote_part_appartement?: number
+  quote_part_commerce?: number
+  quote_part_bureau?: number
+  prix_vente_appartement?: number
+  prix_vente_commerce?: number
+  prix_vente_bureau?: number
+  cout_construction_appartement?: number
+  cout_construction_commerce?: number
+  cout_construction_bureau?: number
+  taux_etudes_honoraires?: number
+  taux_imprevus?: number
+  taux_commercialisation?: number
+  duree_construction?: number
+  duree_commercialisation?: number
+  taux_actualisation?: number
+  repartition_construction?: number[]
+  repartition_ventes?: number[]
 }
 
 export async function fetchTypesProjet(): Promise<TypeProjet[]> {
@@ -112,6 +203,14 @@ export async function deleteProjet(id: number): Promise<void> {
     const data = await res.json().catch(() => ({}))
     throw new Error(data.detail || 'Erreur lors de la suppression.')
   }
+}
+
+export async function previewRentabilite(payload: ProjetPayload): Promise<Rentabilite> {
+  const res = await apiFetch(`${API_BASE}/rentabilite/preview/`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+  return parseResponse<Rentabilite>(res)
 }
 
 async function parseResponse<T>(res: Response): Promise<T> {

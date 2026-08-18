@@ -392,6 +392,107 @@
   to { transform: rotate(360deg); }
 }
 
+/* Destination toggles */
+.cp-dest-toggles {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cp-dest-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--input-bg);
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.cp-dest-toggle input[type="checkbox"] {
+  display: none;
+}
+
+.cp-dest-toggle.active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.cp-dest-toggle:hover {
+  border-color: var(--primary);
+}
+
+/* Repartition row */
+.cp-repart-row {
+  display: flex;
+  gap: 12px;
+}
+
+/* Calculate button */
+.btn-calc {
+  padding: 12px 24px;
+  font-size: 15px;
+  border-radius: var(--radius-md);
+  border: 1px solid #059669;
+  background: #059669;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-calc:hover:not(:disabled) {
+  background: #047857;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+}
+
+.btn-calc:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Results card */
+.cp-results-card {
+  border-color: #059669;
+  border-width: 2px;
+}
+
+.cp-results-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.cp-result-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  background: var(--input-bg);
+  border-radius: var(--radius-sm);
+}
+
+.cp-result-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.cp-result-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-heading);
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .cp-grid {

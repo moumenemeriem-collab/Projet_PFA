@@ -11,6 +11,7 @@ from .views import (
     CoucheList,
     ProjetDetailView,
     ProjetListView,
+    ProjetRentabilitePreviewView,
     TerrainDetailView,
     TerrainListView,
     TypeProjetListView,
@@ -25,6 +26,7 @@ from .views import (
 
 urlpatterns = [
     path('types/', TypeProjetListView.as_view(), name='projets-types'),
+    path('rentabilite/preview/', ProjetRentabilitePreviewView.as_view(), name='projets-rentabilite-preview'),
     path('investor-dashboard/', InvestorDashboardView.as_view(), name='investor-dashboard'),
     path('', ProjetListView.as_view(), name='projets-list'),
     path('<int:pk>/', ProjetDetailView.as_view(), name='projets-detail'),
