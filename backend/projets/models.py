@@ -1,3 +1,4 @@
+from django.contrib.gis.db.models import PolygonField
 from django.db import models
 
 from accounts.models import Utilisateur
@@ -109,6 +110,21 @@ class Projet(models.Model):
 class Terrain(models.Model):
     SCORE_CHOICES = [(i, str(i)) for i in range(1, 11)]
 
+    STATUT_JURIDIQUE_CHOICES = [
+        ('titre', 'Titré'),
+        ('requisition', 'Réquisition en cours'),
+        ('non_immatricule', 'Non immatriculé'),
+        ('collectif', 'Collectif'),
+    ]
+
+    ZONAGE_CHOICES = [
+        ('residentiel', 'Résidentiel'),
+        ('commercial', 'Commercial'),
+        ('industriel', 'Industriel'),
+        ('agricole', 'Agricole'),
+        ('mixte', 'Mixte'),
+    ]
+
     projet = models.ForeignKey(
         Projet,
         on_delete=models.CASCADE,
@@ -128,14 +144,26 @@ class Terrain(models.Model):
     lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     lng = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
 
-    # Attributs de la table plan cadastrale (couche cadastre)
+    # Informations descriptives saisies dans le formulaire « Ajouter un terrain »
+    num_titre_foncier = models.CharField(max_length=255, blank=True, default='')
+    statut_juridique = models.CharField(
+        max_length=30, choices=STATUT_JURIDIQUE_CHOICES, blank=True, default=''
+    )
+    prix_demande = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    zonage = models.CharField(max_length=20, choices=ZONAGE_CHOICES, blank=True, default='')
+    cos = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    cus = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    hauteur_maximale = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
+    equipements = models.JSONField(default=list, blank=True)
+
+    # Attributs hérités de la table plan cadastrale (couche cadastre)
     fid = models.BigIntegerField(null=True, blank=True)
     indice = models.CharField(max_length=255, blank=True, default='')
     complement = models.CharField(max_length=255, blank=True, default='')
     consistance = models.CharField(max_length=255, blank=True, default='')
     num_parcelle = models.CharField(max_length=255, blank=True, default='')
-    # Polygone du terrain dessiné sur le géoportail (GeoJSON)
-    geometry = models.TextField(blank=True, default='')
+    # Polygone du terrain (PostGIS, EPSG:4326)
+    geometry = PolygonField(srid=4326, spatial_index=True, null=True, blank=True)
 
     accessibilite = models.IntegerField(choices=SCORE_CHOICES, default=5)
     positionnement = models.IntegerField(choices=SCORE_CHOICES, default=5)

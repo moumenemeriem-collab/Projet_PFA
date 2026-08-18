@@ -3057,3 +3057,317 @@
     width: 130px;
   }
 }
+
+/* ── Éditeur de géométrie du formulaire « Ajouter un terrain » (polygone) ── */
+
+.geo-terrain-geom-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.geo-terrain-geom-section > .geo-layers-popup-label + .geo-terrain-geom {
+  margin-top: 2px;
+}
+
+.geo-terrain-geom,
+.geo-terrain-calc {
+  width: 100%;
+}
+
+.geo-terrain-geom-modes {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.geo-terrain-geom-mode {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #d6dde6;
+  border-radius: 8px;
+  background: #fff;
+  color: #44566c;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.geo-terrain-geom-mode:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.geo-terrain-geom-mode.is-active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+
+.geo-terrain-geom-map {
+  width: 100%;
+  height: 220px;
+  border-radius: 10px;
+  border: 1px solid #d6dde6;
+  overflow: hidden;
+  background: #eef2f6;
+  z-index: 0;
+}
+
+.geo-terrain-geom-hint {
+  margin: 8px 0 4px;
+  font-size: 0.78rem;
+  color: #6b7c90;
+}
+
+.geo-terrain-geom-vertices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.geo-terrain-geom-vertex {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.geo-terrain-geom-vertex-index {
+  min-width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.geo-terrain-geom-vertex-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.geo-terrain-geom-vertex-field > span {
+  font-size: 0.68rem;
+  color: #6b7c90;
+}
+
+.geo-terrain-geom-vertex-remove {
+  flex-shrink: 0;
+  border: 1px solid #ef4444;
+  color: #dc2626;
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 9px;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.geo-terrain-geom-vertex-remove:hover {
+  background: #fef2f2;
+}
+
+.geo-terrain-geom-manual-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+  margin-top: 8px;
+}
+
+.geo-terrain-geom-min-points {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  color: #b45309;
+}
+
+.geo-terrain-geom-geojson-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.geo-terrain-geom-geojson-text {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid #d6dde6;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 0.78rem;
+  box-sizing: border-box;
+}
+
+.geo-terrain-geom-geojson-text:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.geo-terrain-geom-error {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  color: #dc2626;
+}
+
+.geo-terrain-geom-ok {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  color: #15803d;
+}
+
+/* Onglet Mode 1 mis en avant (sélection cadastrale recommandée) */
+.geo-terrain-geom-mode--recommended {
+  border-color: #16a34a;
+  color: #15803d;
+}
+
+.geo-terrain-geom-mode--recommended.is-active {
+  border-color: #16a34a;
+  background: #16a34a;
+  color: #fff;
+}
+
+.geo-terrain-geom-mode.is-active .geo-terrain-geom-mode-badge {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.geo-terrain-geom-mode-badge {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #15803d;
+}
+
+.geo-terrain-geom-mode-badge--warn {
+  color: #b45309;
+}
+
+.geo-terrain-geom-mode--recommended .geo-terrain-geom-mode-badge {
+  color: #16a34a;
+}
+
+.geo-terrain-geom-mode--recommended.is-active .geo-terrain-geom-mode-badge {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Mode 1 — recherche cadastre + sélection */
+.geo-terrain-geom-cadastre-search {
+  display: flex;
+  gap: 8px;
+  margin: 6px 0 4px;
+}
+
+.geo-terrain-geom-cadastre-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.geo-terrain-geom-cadastre-selected {
+  margin: 6px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  color: #15803d;
+}
+
+.geo-terrain-geom-cadastre-clear {
+  border: 1px solid #d6dde6;
+  border-radius: 8px;
+  background: #fff;
+  color: #6b7c90;
+  font-size: 0.72rem;
+  padding: 4px 9px;
+  cursor: pointer;
+}
+
+.geo-terrain-geom-cadastre-clear:hover {
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
+/* Mode 3 — dessin manuel (dernier recours) */
+.geo-terrain-geom-manual-warning {
+  margin: 8px 0 6px;
+  padding: 8px 10px;
+  border: 1px solid #f59e0b;
+  border-left: 4px solid #f59e0b;
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.geo-terrain-geom-manual-zoom {
+  margin: 6px 0 0;
+  font-size: 0.75rem;
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+/* Marqueurs numérotés du dessin manuel */
+.geo-draw-vertex-marker.leaflet-div-icon,
+.geo-draw-vertex-marker {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #dc2626;
+  border: 2px solid #fff;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.geo-draw-vertex-marker > span {
+  line-height: 1;
+}
+
+/* Bloc des valeurs calculées en lecture seule */
+.geo-terrain-calc {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+  padding: 10px 12px;
+  border: 1px dashed #b7c4d3;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.geo-terrain-calc-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.8rem;
+  color: #44566c;
+}
+
+.geo-terrain-calc-row strong {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.geo-terrain-equips {
+  max-height: 160px;
+}

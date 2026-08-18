@@ -12,11 +12,19 @@ export interface Terrain {
   score: string
   projet: number
   utilisateur: number | null
-  fid: number | null
-  indice: string
-  complement: string
-  consistance: string
-  num_parcelle: string
+  fid?: number | null
+  indice?: string
+  complement?: string
+  consistance?: string
+  num_parcelle?: string
+  num_titre_foncier: string
+  statut_juridique: string
+  prix_demande: string | null
+  zonage: string
+  cos: string | null
+  cus: string | null
+  hauteur_maximale: string | null
+  equipements: string[]
   geometry: string
   date_creation: string
 }
@@ -27,12 +35,15 @@ export interface TerrainListResponse {
 }
 
 export interface TerrainPayload {
-  num: string
-  fid: number | null
-  indice: string
-  complement: string
-  consistance: string
-  superficie: number
+  num_titre_foncier: string
+  statut_juridique: string
+  prix_demande: number | null
+  zonage: string
+  cos: number | null
+  cus: number | null
+  hauteur_maximale: number | null
+  equipements: string[]
+  superficie: number | null
   lat: number | null
   lng: number | null
   geometry: string

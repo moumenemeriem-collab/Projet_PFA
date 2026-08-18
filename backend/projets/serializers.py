@@ -1,3 +1,4 @@
+from django.contrib.gis.geos import GEOSGeometry
 from rest_framework import serializers
 
 from .models import Analyse, Couche, Projet, ResultatAnalyse, Terrain, TypeProjet
@@ -108,34 +109,75 @@ class ProjetUpdateSerializer(serializers.Serializer):
 
 
 class TerrainListSerializer(serializers.ModelSerializer):
+    geometry = serializers.SerializerMethodField()
+
     class Meta:
         model = Terrain
         fields = [
             'id', 'nom', 'superficie', 'lat', 'lng',
             'accessibilite', 'positionnement', 'topographie', 'score',
             'projet', 'utilisateur', 'fid', 'indice', 'complement',
-            'consistance', 'num_parcelle', 'geometry', 'date_creation',
+            'consistance', 'num_parcelle',
+            'num_titre_foncier', 'statut_juridique', 'prix_demande',
+            'zonage', 'cos', 'cus', 'hauteur_maximale', 'equipements',
+            'geometry', 'date_creation',
         ]
         read_only_fields = ['id', 'score', 'date_creation']
 
+    def get_geometry(self, obj: Terrain) -> str:
+        if obj.geometry is None:
+            return ''
+        return obj.geometry.geojson
+
 
 class TerrainCreateSerializer(serializers.Serializer):
-    num = serializers.CharField(max_length=150)
-    fid = serializers.IntegerField(required=False, allow_null=True, default=None)
-    indice = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
-    complement = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
-    consistance = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
-    superficie = serializers.DecimalField(max_digits=12, decimal_places=2)
+    num_titre_foncier = serializers.CharField(max_length=255)
+    statut_juridique = serializers.ChoiceField(
+        choices=[c for c, _ in Terrain.STATUT_JURIDIQUE_CHOICES],
+        required=False,
+        allow_blank=True,
+        default='',
+    )
+    prix_demande = serializers.DecimalField(max_digits=15, decimal_places=2, required=False, allow_null=True, default=None)
+    zonage = serializers.ChoiceField(
+        choices=[c for c, _ in Terrain.ZONAGE_CHOICES],
+        required=False,
+        allow_blank=True,
+        default='',
+    )
+    cos = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, allow_null=True, default=None)
+    cus = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, allow_null=True, default=None)
+    hauteur_maximale = serializers.DecimalField(max_digits=6, decimal_places=2, required=False, allow_null=True, default=None)
+    equipements = serializers.ListField(child=serializers.CharField(), required=False, allow_empty=True, default=list)
+    superficie = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=None)
     lat = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True, default=None)
     lng = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True, default=None)
-    geometry = serializers.CharField(required=False, allow_blank=True, default='')
+    geometry = serializers.CharField(required=False, allow_null=True, default='')
     accessibilite = serializers.IntegerField(min_value=1, max_value=10, default=5)
     positionnement = serializers.IntegerField(min_value=1, max_value=10, default=5)
     topographie = serializers.IntegerField(min_value=1, max_value=10, default=5)
 
     def create(self, validated_data: dict) -> Terrain:
-        num = validated_data.pop('num', '')
-        terrain = Terrain(nom=num, num_parcelle=num, **validated_data)
+        geometry_raw = validated_data.pop('geometry', '') or ''
+        geom = None
+        if geometry_raw:
+            try:
+                geom = GEOSGeometry(geometry_raw)
+            except Exception as exc:
+                raise serializers.ValidationError({'geometry': f'Géométrie invalide : {exc}'})
+            if geom is None or geom.geom_type != 'Polygon' or not geom.valid:
+                raise serializers.ValidationError({'geometry': 'Seul un polygone valide est accepté.'})
+            geom.srid = 4326
+        num_titre = validated_data.pop('num_titre_foncier', '')
+        superficie = validated_data.pop('superficie', None)
+        terrain = Terrain(
+            nom=num_titre,
+            num_parcelle=num_titre,
+            num_titre_foncier=num_titre,
+            superficie=superficie if superficie is not None else 0,
+            geometry=geom,
+            **validated_data,
+        )
         terrain.save()
         return terrain
 

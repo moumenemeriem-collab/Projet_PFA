@@ -15,6 +15,8 @@
     "vite": "^8.1.1"
   },
   "dependencies": {
+    "@turf/area": "^7.4.0",
+    "@turf/centroid": "^7.4.0",
     "@turf/intersect": "^7.4.0",
     "@vitejs/plugin-react": "^6.0.5",
     "react": "^19.2.8",

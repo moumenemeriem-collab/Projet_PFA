@@ -3,6 +3,14 @@ Django settings for config project.
 """
 
 import os
+
+os.environ['PATH'] = r'C:\OSGeo4W\bin' + os.pathsep + os.environ['PATH']
+os.environ['PROJ_LIB'] = r'C:\OSGeo4W\share\proj'
+
+GDAL_LIBRARY_PATH = r'C:\OSGeo4W\bin\gdal311.dll'
+GEOS_LIBRARY_PATH = r'C:\OSGeo4W\bin\geos_c.dll'
+
+
 from datetime import timedelta
 from pathlib import Path
 
@@ -30,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.gis',
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
@@ -77,6 +86,10 @@ WSGI_APPLICATION = 'config.wsgi.application'
 USE_SQLITE = os.getenv('USE_SQLITE', 'True').lower() in ('true', '1', 'yes')
 DATABASE_URL = os.getenv('DATABASE_URL')
 
+# Le modèle Terrain utilise un PolygonField : les moteurs doivent être des
+# moteurs GeoDjango. Postgres nécessite l'extension `postgis` (voir
+# docker-compose.yml et la migration 0024) ; SpatiaLite est nécessaire pour
+# l'exécution en SQLite de développement.
 if DATABASE_URL:
     DATABASES = {
         'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600),
@@ -84,14 +97,14 @@ if DATABASE_URL:
 elif USE_SQLITE:
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
+            'ENGINE': 'django.contrib.gis.db.backends.spatialite',
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
 else:
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.postgresql',
+            'ENGINE': 'django.contrib.gis.db.backends.postgis',
             'NAME': os.getenv('POSTGRES_DB', 'websig'),
             'USER': os.getenv('POSTGRES_USER', 'websig'),
             'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'websig_secret'),
