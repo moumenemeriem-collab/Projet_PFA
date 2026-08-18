@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { icons } from '../../components/icons'
 import { DashboardLayout } from '../../components/DashboardLayout'
 import { GererLignesModal } from '../../components/GererLignesModal'
+import { VisualiserModal } from '../../components/VisualiserModal'
 import { formatApiErrors } from '../../api/auth'
 import {
   type AttributDefinition,
@@ -62,6 +63,7 @@ export function AdminDataPage(): React.JSX.Element {
   const [importLoading, setImportLoading] = useState<number | null>(null)
   const [detailCouche, setDetailCouche] = useState<Couche | null>(null)
   const [gererCouche, setGererCouche] = useState<Couche | null>(null)
+  const [visualiserOpen, setVisualiserOpen] = useState(false)
   const [initialLoading, setInitialLoading] = useState(true)
   const [initialError, setInitialError] = useState('')
   const [alerts, setAlerts] = useState<Record<string, AlertState>>({})
@@ -239,8 +241,16 @@ export function AdminDataPage(): React.JSX.Element {
         {alerts['page-error']?.message ?? ''}
       </div>
       <div className="data-toolbar">
-        <h2 className="data-page-title">Couches disponibles</h2>
-        <span className="data-count">{couches.length} couche(s)</span>
+        <div>
+          <h2 className="data-page-title">Gestion des données</h2>
+          <p className="data-page-desc">Gérez les couches géospatiales et leurs attributs</p>
+        </div>
+        <div className="data-toolbar-actions">
+          <button type="button" className="data-btn-visualiser" onClick={() => setVisualiserOpen(true)}>
+            {icons.layers} Visualiser
+          </button>
+          <span className="data-count">{couches.length} couche(s)</span>
+        </div>
       </div>
       <table className="data-table">
         <thead>
@@ -292,7 +302,7 @@ export function AdminDataPage(): React.JSX.Element {
                   </button>
                 </td>
                 <td className="data-td-actions">
-                  {c.nom_affichage !== 'MNT' ? (
+                  {c.nom_affichage !== 'MNT' && c.nom !== 'reglement_pa' ? (
                     <button type="button" className="btn btn-sm btn-outline gerer-trigger" onClick={() => { void handleGerer(c.id) }}>
                       {icons.database} Gérer
                     </button>
@@ -339,11 +349,16 @@ export function AdminDataPage(): React.JSX.Element {
     />
   ) : null
 
+  const visualiserModal = visualiserOpen ? (
+    <VisualiserModal onClose={() => setVisualiserOpen(false)} />
+  ) : null
+
   return (
     <DashboardLayout role="admin" activePage="data">
       {content}
       {detailModal}
       {gererModal}
+      {visualiserModal}
     </DashboardLayout>
   )
 }

@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('projets', '0021_supprimer_rentabilite'),
+        ('projets', '0020_terrain_complement_terrain_consistance_terrain_fid_and_more'),
     ]
 
     operations = [

@@ -80,7 +80,7 @@ COUCHES = [
         'categorie': 'topographie',
         'description': "Modèle Numérique de Terrain (MNT) — données altimétriques",
         'type_geometrie': 'MultiPolygon',
-        'attributs': [{'nom': 'altitude_min', 'type': 'number'}, {'nom': 'altitude_max', 'type': 'number'}, {'nom': 'pente_moyenne', 'type': 'number'}],
+        'attributs': [],
         'table_liee': 'couche_mnt',
         'ordre': 7,
     },

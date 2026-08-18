@@ -72,7 +72,7 @@ def annuler(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('projets', '0011_parcellecadastrale'),
+        ('projets', '0010_projet_prix_terrain'),
     ]
 
     operations = [
