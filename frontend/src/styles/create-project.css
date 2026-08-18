@@ -493,6 +493,14 @@
   color: var(--text-heading);
 }
 
+.cp-result-positive {
+  color: #059669;
+}
+
+.cp-result-negative {
+  color: #dc2626;
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
   .cp-grid {

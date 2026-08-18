@@ -269,7 +269,8 @@
     "res_tri": "معدل العائد الداخلي",
     "res_roi": "العائد على الاستثمار",
     "res_rendement_brut": "العائد الإجمالي",
-    "res_rendement_net": "العائد الصافي"
+    "res_rendement_net": "العائد الصافي",
+    "res_benefice": "صافي الربح"
   },
   "profile": {
     "title": "ملفي الشخصي",

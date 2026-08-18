@@ -14,52 +14,53 @@ export interface Rentabilite {
   ok: boolean
   error?: string
   surfaces?: {
-    terrain_m2: number
-    cos: number
-    cus: number
-    shob_m2: number
-    charge_utile_appartement_m2: number
-    charge_utile_commerce_m2: number
-    charge_utile_bureau_m2: number
-    superficie_appartement_m2: number
-    superficie_commerce_m2: number
-    superficie_bureau_m2: number
-    superficie_totale_m2: number
+    surface_brute: number
+    shon: number
+    shob: number
+    surface_vendable: number
+    surface_appartements: number
+    surface_commerces: number
+    surface_bureaux: number
   }
-  ca_total?: number
-  ca_details?: Record<string, number>
-  couts_projet?: {
-    terrain_total: number
-    travaux: number
-    etudes_honoraires: number
-    imprevus: number
-    frais_financement: number
-    taxe_amenagement: number
+  ca?: {
+    ca_appartements: number
+    ca_commerces: number
+    ca_bureaux: number
+    ca_total: number
+  }
+  construction?: {
+    cout_appartements: number
+    cout_commerces: number
+    cout_bureaux: number
     cout_total: number
   }
-  charges_projet?: {
-    assurance_rc: number
-    copropriete_annuelle: number
-    impotsfonciers: number
-    vacance_locative: number
-    total_charges_hors_travaux: number
+  charges?: {
+    frais_etudes: number
+    imprevus: number
+    frais_commercialisation: number
   }
-  flux_annuels?: Array<{
-    annee: number
-    label: string
-    vendeur: number
-    bailleur: number
-    autofinanceur: number
-  }>
-  van?: number
-  irr?: number
-  roi?: number
+  acquisition?: {
+    prix_foncier: number
+    frais_acquisition: number
+    cout_total: number
+  }
   cout_total_projet?: number
-  resultats?: {
-    rendement_brut: number
-    rendement_net: number
-    ratio_ca_investissement: number
-  }
+  benefice_net?: number
+  roi?: number
+  van?: number
+  tri?: number
+  flux?: Array<{
+    annee: number
+    ca: number
+    acquisition: number
+    construction: number
+    etudes_honoraires: number
+    imprevus: number
+    commercialisation: number
+    flux_net: number
+  }>
+  repartition_construction?: number[]
+  repartition_ventes?: number[]
 }
 
 export interface Projet {
