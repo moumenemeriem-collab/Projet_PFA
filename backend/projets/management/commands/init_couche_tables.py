@@ -27,10 +27,24 @@ DATA_FILES = {
 class Command(BaseCommand):
     help = 'Create PostgreSQL tables for each couche based on their attributes'
 
+    def _table_exists(self, cursor, table: str) -> bool:
+        cursor.execute(
+            "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = %s)",
+            [table],
+        )
+        return cursor.fetchone()[0]
+
+    def _table_has_data(self, cursor, table: str) -> bool:
+        try:
+            cursor.execute(f'SELECT COUNT(*) FROM "{table}" LIMIT 1')
+            return (cursor.fetchone()[0] or 0) > 0
+        except Exception:
+            return False
+
     def handle(self, *args, **options):
         couches = Couche.objects.all()
         if not couches:
-            self.stdout.write(self.style.WARNING('Aucune couche trouvée. Exécutez d\'abord seed_couches.'))
+            self.stdout.write(self.style.WARNING("Aucune couche trouvée. Exécutez d'abord seed_couches."))
             return
 
         with connection.cursor() as cur:
@@ -40,26 +54,30 @@ class Command(BaseCommand):
                     self.stdout.write(self.style.WARNING(f'  Pas de table_liee pour {couche.nom}'))
                     continue
 
-                cur.execute(f'DROP TABLE IF EXISTS "{table}"')
+                if self._table_exists(cur, table):
+                    if self._table_has_data(cur, table):
+                        self.stdout.write(self.style.SUCCESS(f'  Table existante avec données : {table} (ignoré)'))
+                        continue
+                    self.stdout.write(self.style.WARNING(f'  Table existante vide : {table} (réimport si données disponibles)'))
+                else:
+                    sql = f'CREATE TABLE "{table}" (id BIGSERIAL PRIMARY KEY, geometry JSONB NOT NULL'
+                    for attr in couche.attributs:
+                        nom = attr['nom']
+                        atype = attr.get('type', 'string')
+                        if atype == 'number':
+                            sql += f', "{nom}" DOUBLE PRECISION'
+                        elif atype == 'integer':
+                            sql += f', "{nom}" INTEGER'
+                        else:
+                            sql += f', "{nom}" TEXT'
+                    sql += ')'
 
-                sql = f'CREATE TABLE "{table}" (id BIGSERIAL PRIMARY KEY, geometry JSONB NOT NULL'
-                for attr in couche.attributs:
-                    nom = attr['nom']
-                    atype = attr.get('type', 'string')
-                    if atype == 'number':
-                        sql += f', "{nom}" DOUBLE PRECISION'
-                    elif atype == 'integer':
-                        sql += f', "{nom}" INTEGER'
-                    else:
-                        sql += f', "{nom}" TEXT'
-                sql += ')'
-
-                try:
-                    cur.execute(sql)
-                    self.stdout.write(self.style.SUCCESS(f'  Table créée : {table}'))
-                except Exception as e:
-                    self.stdout.write(self.style.ERROR(f'  Erreur {table}: {e}'))
-                    continue
+                    try:
+                        cur.execute(sql)
+                        self.stdout.write(self.style.SUCCESS(f'  Table créée : {table}'))
+                    except Exception as e:
+                        self.stdout.write(self.style.ERROR(f'  Erreur {table}: {e}'))
+                        continue
 
                 data_spec = DATA_FILES.get(couche.nom)
                 if not data_spec:
@@ -93,7 +111,8 @@ class Command(BaseCommand):
                     rows.append(tuple(row))
 
                 quoted_cols = ', '.join(f'"{c}"' for c in ['geometry'] + data_spec['cols'])
-                insert_sql = f'INSERT INTO "{table}" ({quoted_cols}) VALUES (%s)'
+                placeholders = ', '.join(['%s'] * (1 + len(data_spec['cols'])))
+                insert_sql = f'INSERT INTO "{table}" ({quoted_cols}) VALUES ({placeholders})'
 
                 try:
                     with connection.cursor() as ins:
