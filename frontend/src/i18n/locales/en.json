@@ -269,7 +269,8 @@
     "res_tri": "IRR",
     "res_roi": "ROI",
     "res_rendement_brut": "Gross Yield",
-    "res_rendement_net": "Net Yield"
+    "res_rendement_net": "Net Yield",
+    "res_benefice": "Net Profit"
   },
   "profile": {
     "title": "My User Profile",

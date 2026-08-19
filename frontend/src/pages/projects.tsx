@@ -564,58 +564,38 @@ export function ProjectsPage(): React.JSX.Element {
                   <div className="project-detail-section">
                     <h4>{t('projects.detail_rentabilite')}</h4>
                     <div className="project-detail-grid">
-                      {rentabilite.surfaces?.superficie_totale_m2 != null ? (
+                      {rentabilite.surfaces?.surface_vendable != null ? (
                         <div className="project-detail-item">
                           <span className="project-detail-label">{t('projects.res_surface')}</span>
-                          <span className="project-detail-value">{Number(rentabilite.surfaces.superficie_totale_m2).toLocaleString()} m²</span>
+                          <span className="project-detail-value">{Number(rentabilite.surfaces.surface_vendable).toLocaleString()} m²</span>
                         </div>
                       ) : null}
-                      {rentabilite.ca_total != null ? (
+                      {rentabilite.ca?.ca_total != null ? (
                         <div className="project-detail-item">
                           <span className="project-detail-label">{t('projects.res_ca')}</span>
-                          <span className="project-detail-value">{formatBudget(String(rentabilite.ca_total))}</span>
+                          <span className="project-detail-value">{formatBudget(String(rentabilite.ca.ca_total))}</span>
                         </div>
                       ) : null}
-                      {rentabilite.couts_projet?.cout_total != null ? (
+                      {rentabilite.cout_total_projet != null ? (
                         <div className="project-detail-item">
                           <span className="project-detail-label">{t('projects.res_cout_total')}</span>
-                          <span className="project-detail-value">{formatBudget(String(rentabilite.couts_projet.cout_total))}</span>
+                          <span className="project-detail-value">{formatBudget(String(rentabilite.cout_total_projet))}</span>
                         </div>
                       ) : null}
-                      {rentabilite.van != null ? (
-                        <div className="project-detail-item">
-                          <span className="project-detail-label">{t('projects.res_van')}</span>
-                          <span className={`project-detail-value ${rentabilite.van >= 0 ? 'text-success' : 'text-error'}`}>
-                            {formatBudget(String(rentabilite.van))}
-                          </span>
-                        </div>
-                      ) : null}
-                      {rentabilite.irr != null ? (
+                      {rentabilite.tri != null ? (
                         <div className="project-detail-item">
                           <span className="project-detail-label">{t('projects.res_tri')}</span>
-                          <span className={`project-detail-value ${rentabilite.irr >= 0 ? 'text-success' : 'text-error'}`}>
-                            {(rentabilite.irr * 100).toFixed(2)}%
+                          <span className={`project-detail-value ${rentabilite.tri >= 0 ? 'text-success' : 'text-error'}`}>
+                            {rentabilite.tri}%
                           </span>
                         </div>
                       ) : null}
-                      {rentabilite.roi != null ? (
+                      {rentabilite.benefice_net != null ? (
                         <div className="project-detail-item">
-                          <span className="project-detail-label">{t('projects.res_roi')}</span>
-                          <span className={`project-detail-value ${rentabilite.roi >= 0 ? 'text-success' : 'text-error'}`}>
-                            {(rentabilite.roi * 100).toFixed(2)}%
+                          <span className="project-detail-label">{t('projects.res_benefice')}</span>
+                          <span className={`project-detail-value ${rentabilite.benefice_net >= 0 ? 'text-success' : 'text-error'}`}>
+                            {formatBudget(String(rentabilite.benefice_net))}
                           </span>
-                        </div>
-                      ) : null}
-                      {rentabilite.resultats?.rendement_brut != null ? (
-                        <div className="project-detail-item">
-                          <span className="project-detail-label">{t('projects.res_rendement_brut')}</span>
-                          <span className="project-detail-value">{(rentabilite.resultats.rendement_brut * 100).toFixed(2)}%</span>
-                        </div>
-                      ) : null}
-                      {rentabilite.resultats?.rendement_net != null ? (
-                        <div className="project-detail-item">
-                          <span className="project-detail-label">{t('projects.res_rendement_net')}</span>
-                          <span className="project-detail-value">{(rentabilite.resultats.rendement_net * 100).toFixed(2)}%</span>
                         </div>
                       ) : null}
                     </div>

@@ -22,6 +22,8 @@ export function CreateProjectPage(): React.JSX.Element {
   const [nom, setNom] = useState('')
   const [description, setDescription] = useState('')
 
+  const [surface, setSurface] = useState('')
+
   const [prixFoncierM2, setPrixFoncierM2] = useState('')
   const [fraisAcquisition, setFraisAcquisition] = useState('7')
   const [tauxChute, setTauxChute] = useState('30')
@@ -60,12 +62,13 @@ export function CreateProjectPage(): React.JSX.Element {
 
   const buildPayload = useCallback((): ProjetPayload | null => {
     const nomVal = nom.trim()
-    if (!nomVal) return null
+    const surfaceVal = num(surface)
+    if (!nomVal || !surfaceVal) return null
     return {
       nom: nomVal,
       description: description.trim(),
       id_type: 1,
-      surface_souhaitee: 0,
+      surface_souhaitee: num(surface) || 0,
       budget_total: 0,
 
       prix_foncier_m2: num(prixFoncierM2),
@@ -98,7 +101,7 @@ export function CreateProjectPage(): React.JSX.Element {
       duree_commercialisation: num(dureeCommercialisation),
       taux_actualisation: num(tauxActualisation),
     }
-  }, [nom, description,
+  }, [nom, description, surface,
     prixFoncierM2, fraisAcquisition, tauxChute, cos, cus,
     hasAppartement, hasCommerce, hasBureau,
     quotePartApp, quotePartCommerce, quotePartBureau,
@@ -116,9 +119,13 @@ export function CreateProjectPage(): React.JSX.Element {
     }
     setAlert(null)
     setCalculating(true)
+    setResult(null)
     try {
       const res = await previewRentabilite(payload)
       setResult(res)
+      if (!res.ok) {
+        setAlert(res.error || 'Erreur de calcul')
+      }
     } catch (err) {
       setAlert(formatApiErrors(err))
     } finally {
@@ -191,6 +198,10 @@ export function CreateProjectPage(): React.JSX.Element {
               </h2>
               <div className="cp-row cp-row-3">
                 <div className="cp-field">
+                  <label className="cp-label">{t('projects.field_surface_label')}</label>
+                  <input type="number" step="0.01" className="cp-input" placeholder="500" value={surface} onChange={e => setSurface(e.target.value)} />
+                </div>
+                <div className="cp-field">
                   <label className="cp-label">{t('projects.field_prix_foncier_m2')}</label>
                   <input type="number" step="0.01" className="cp-input" placeholder="4000" value={prixFoncierM2} onChange={e => setPrixFoncierM2(e.target.value)} />
                 </div>
@@ -198,6 +209,8 @@ export function CreateProjectPage(): React.JSX.Element {
                   <label className="cp-label">{t('projects.field_frais_acquisition')}</label>
                   <input type="number" step="0.01" className="cp-input" value={fraisAcquisition} onChange={e => setFraisAcquisition(e.target.value)} />
                 </div>
+              </div>
+              <div className="cp-row">
                 <div className="cp-field">
                   <label className="cp-label">{t('projects.field_taux_chute')}</label>
                   <input type="number" step="0.01" className="cp-input" value={tauxChute} onChange={e => setTauxChute(e.target.value)} />
@@ -375,35 +388,25 @@ export function CreateProjectPage(): React.JSX.Element {
                 <div className="cp-results-grid">
                   <div className="cp-result-item">
                     <span className="cp-result-label">{t('projects.res_surface')}</span>
-                    <span className="cp-result-value">{fmt(result.surfaces?.superficie_totale_m2)} m²</span>
+                    <span className="cp-result-value">{fmt(result.surfaces?.surface_vendable)} m²</span>
                   </div>
                   <div className="cp-result-item">
                     <span className="cp-result-label">{t('projects.res_ca')}</span>
-                    <span className="cp-result-value">{fmt(result.ca_total)} DH</span>
+                    <span className="cp-result-value">{fmt(result.ca?.ca_total)} DH</span>
                   </div>
                   <div className="cp-result-item">
                     <span className="cp-result-label">{t('projects.res_cout_total')}</span>
-                    <span className="cp-result-value">{fmt(result.couts_projet?.cout_total)} DH</span>
-                  </div>
-                  <div className="cp-result-item">
-                    <span className="cp-result-label">{t('projects.res_van')}</span>
-                    <span className="cp-result-value">{fmt(result.van)} DH</span>
+                    <span className="cp-result-value">{fmt(result.cout_total_projet)} DH</span>
                   </div>
                   <div className="cp-result-item">
                     <span className="cp-result-label">{t('projects.res_tri')}</span>
-                    <span className="cp-result-value">{result.irr != null ? (result.irr * 100).toFixed(2) + '%' : '—'}</span>
+                    <span className="cp-result-value">{result.tri != null ? `${result.tri}%` : '—'}</span>
                   </div>
                   <div className="cp-result-item">
-                    <span className="cp-result-label">{t('projects.res_roi')}</span>
-                    <span className="cp-result-value">{result.roi != null ? (result.roi * 100).toFixed(2) + '%' : '—'}</span>
-                  </div>
-                  <div className="cp-result-item">
-                    <span className="cp-result-label">{t('projects.res_rendement_brut')}</span>
-                    <span className="cp-result-value">{result.resultats?.rendement_brut != null ? (result.resultats.rendement_brut * 100).toFixed(2) + '%' : '—'}</span>
-                  </div>
-                  <div className="cp-result-item">
-                    <span className="cp-result-label">{t('projects.res_rendement_net')}</span>
-                    <span className="cp-result-value">{result.resultats?.rendement_net != null ? (result.resultats.rendement_net * 100).toFixed(2) + '%' : '—'}</span>
+                    <span className="cp-result-label">{t('projects.res_benefice')}</span>
+                    <span className={`cp-result-value ${(result.benefice_net ?? 0) >= 0 ? 'cp-result-positive' : 'cp-result-negative'}`}>
+                      {fmt(result.benefice_net)} DH
+                    </span>
                   </div>
                 </div>
               </section>
@@ -448,7 +451,7 @@ export function CreateProjectPage(): React.JSX.Element {
         <div className="cp-footer">
           <span className="cp-footer-note">{t('common.required_fields')}</span>
           <div className="cp-footer-actions">
-            <button type="button" className="btn btn-outline" disabled={submitting || calculating} onClick={() => { setNom(''); setDescription(''); setResult(null); setAlert(null) }}>
+            <button type="button" className="btn btn-outline" disabled={submitting || calculating} onClick={() => { setNom(''); setDescription(''); setSurface(''); setResult(null); setAlert(null) }}>
               {t('common.reset')}
             </button>
             <button type="button" className="btn btn-calc" disabled={submitting || calculating} onClick={() => { void handleCalculate() }}>

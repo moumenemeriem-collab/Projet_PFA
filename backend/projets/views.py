@@ -158,11 +158,50 @@ class ProjetRentabilitePreviewView(APIView):
 
     def post(self, request):
         from .profitability import calculer_rentabilite_projet
-        serializer = ProjetCreateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        type_id = serializer.validated_data.pop('id_type')
-        projet = Projet(id_type_id=type_id, **serializer.validated_data)
-        result = calculer_rentabilite_projet(projet)
+        from types import SimpleNamespace
+
+        d = request.data if isinstance(request.data, dict) else {}
+
+        def _g(key, default=None):
+            v = d.get(key, default)
+            if v == '' or v is None:
+                return default
+            return v
+
+        projet = SimpleNamespace(
+            surface_souhaitee=_g('surface_souhaitee', 0),
+            prix_foncier_m2=_g('prix_foncier_m2'),
+            frais_acquisition=_g('frais_acquisition', 7),
+            taux_chute=_g('taux_chute', 30),
+            cos=_g('cos'),
+            cus=_g('cus'),
+            has_appartement=_g('has_appartement', True),
+            has_commerce=_g('has_commerce', False),
+            has_bureau=_g('has_bureau', False),
+            quote_part_appartement=_g('quote_part_appartement', 100),
+            quote_part_commerce=_g('quote_part_commerce', 0),
+            quote_part_bureau=_g('quote_part_bureau', 0),
+            prix_vente_appartement=_g('prix_vente_appartement'),
+            prix_vente_commerce=_g('prix_vente_commerce'),
+            prix_vente_bureau=_g('prix_vente_bureau'),
+            cout_construction_appartement=_g('cout_construction_appartement'),
+            cout_construction_commerce=_g('cout_construction_commerce'),
+            cout_construction_bureau=_g('cout_construction_bureau'),
+            taux_etudes_honoraires=_g('taux_etudes_honoraires', 10),
+            taux_imprevus=_g('taux_imprevus', 5),
+            taux_commercialisation=_g('taux_commercialisation', 3),
+            duree_construction=_g('duree_construction', 2),
+            duree_commercialisation=_g('duree_commercialisation', 3),
+            taux_actualisation=_g('taux_actualisation', 8),
+            repartition_construction=_g('repartition_construction'),
+            repartition_ventes=_g('repartition_ventes'),
+        )
+
+        try:
+            result = calculer_rentabilite_projet(projet)
+        except Exception as exc:
+            return Response({'ok': False, 'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
         return Response(result)
 
 

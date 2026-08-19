@@ -6,8 +6,6 @@ surfaces, revenus, coûts, charges, flux annuels, VAN, TRI/IRR et ROI.
 """
 from __future__ import annotations
 
-from .models import SHOB_FACTOR
-
 import math
 
 
@@ -72,8 +70,8 @@ def calculer_rentabilite_projet(projet) -> dict:
 
     # ── 2. Surfaces ──
     shon = surface_brute * cos if cos > 0 else 0
-    shob = shon * SHOB_FACTOR
-    surface_vendable = shon * (1 - taux_chute_pct) if shon > 0 else 0
+    shob = shon * 1.2
+    surface_vendable = shon * 0.9
 
     # ── 3. Répartition par destination ──
     qp_apt = _d(p.quote_part_appartement) / 100.0
@@ -120,12 +118,11 @@ def calculer_rentabilite_projet(projet) -> dict:
         + cout_construction_total
         + frais_etudes
         + imprevus
-        + frais_commercialisation
     )
 
     # ── 9. Paramètres temporels ──
     duree_cons = max(int(p.duree_construction), 1)
-    duree_comm = max(int(p.duree_commercialisation), 1)
+    duree_comm = max(int(p.duree_commercialisation), 2)
     nb_annees = duree_cons + duree_comm
 
     # ── 10. Échelonnement construction (répartition uniforme par défaut) ──
@@ -202,6 +199,7 @@ def calculer_rentabilite_projet(projet) -> dict:
     roi = (benefice_net / cout_total_projet * 100) if cout_total_projet > 0 else None
 
     return {
+        'ok': True,
         'surfaces': {
             'surface_brute': round(surface_brute, 2),
             'shon': round(shon, 2),
