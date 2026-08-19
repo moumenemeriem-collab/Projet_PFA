@@ -9,7 +9,10 @@ def _activer_postgis(apps, schema_editor):
     connection = schema_editor.connection
     if connection.vendor == 'postgresql':
         with connection.cursor() as cur:
-            cur.execute('CREATE EXTENSION IF NOT EXISTS postgis')
+            try:
+                cur.execute('CREATE EXTENSION IF NOT EXISTS postgis')
+            except Exception:
+                pass
 
 
 def _convertir_geometry_avant(apps, schema_editor):

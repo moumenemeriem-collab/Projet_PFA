@@ -100,6 +100,7 @@ if DATABASE_URL:
     DATABASES = {
         'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600),
     }
+    DATABASES['default']['ENGINE'] = 'django.contrib.gis.db.backends.postgis'
 elif USE_SQLITE:
     DATABASES = {
         'default': {
