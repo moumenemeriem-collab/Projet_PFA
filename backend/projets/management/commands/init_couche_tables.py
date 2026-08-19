@@ -21,6 +21,10 @@ DATA_FILES = {
         'filename': 'amenity.geojson',
         'cols': ['full_id', 'osm_id', 'amenity'],
     },
+    'plan_amenagement': {
+        'filename': 'PA-Temara-final.geojson',
+        'cols': ['ville', 'designation', 'definition', 'surface_min', 'largeur_min', 'hauteur_max', 'cos', 'cus', 'type_construction', 'Surface'],
+    },
 }
 
 
