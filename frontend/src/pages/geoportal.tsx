@@ -136,6 +136,13 @@ const centerMapOnPoint = (map: any, latlng: any): void => {
 // en options paddingTopLeft/paddingBottomRight, comprises nativement par Leaflet.
 const overlayFlyToBounds = (map: any, bounds: any, opts: Record<string, unknown> = {}): void => {
   if (!map || !bounds) return
+  try {
+    const sw = bounds.getSouthWest?.()
+    const ne = bounds.getNorthEast?.()
+    if (!sw || !ne || !Number.isFinite(sw.lat) || !Number.isFinite(ne.lat)) return
+  } catch {
+    return
+  }
   const { top, right } = getMapOverlayPadding(map)
   map.flyToBounds(bounds, {
     paddingTopLeft: [0, top],
@@ -1714,6 +1721,7 @@ const bindPopupActionButtons = (popup: any): void => {
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
+    try {
     Object.entries(typeToggles).forEach(([key, checked]) => {
       const existing = typeLayersRef.current[key]
       if (checked && !existing) {
@@ -1736,11 +1744,15 @@ const bindPopupActionButtons = (popup: any): void => {
         delete typeLayersRef.current[key]
       }
     })
+    } catch (err) {
+      console.warn('[couches] typeToggles error:', err)
+    }
   }, [typeToggles, projet])
 
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
+    try {
     const id = couchesDispo.find((c) => c.nom === 'cadastre')?.id
     if (!id) return
     if (cadastreEnabled && !cadastreLayerRef.current) {
@@ -1779,11 +1791,15 @@ const bindPopupActionButtons = (popup: any): void => {
       cadastreLayerRef.current = null
       clearAffectations()
     }
+    } catch (err) {
+      console.warn('[couches] cadastre toggle error:', err)
+    }
   }, [cadastreEnabled, cadastreReady, couchesDispo, projet])
 
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
+    try {
     const id = couchesDispo.find((c) => c.nom === 'plan_amenagement')?.id
     if (!id) return
     if (paEnabled && !paLayerRef.current) {
@@ -1794,6 +1810,9 @@ const bindPopupActionButtons = (popup: any): void => {
     } else if (!paEnabled && paLayerRef.current) {
       map.removeLayer(paLayerRef.current)
       paLayerRef.current = null
+    }
+    } catch (err) {
+      console.warn('[couches] PA toggle error:', err)
     }
   }, [paEnabled, couchesDispo, projet])
 
