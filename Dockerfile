@@ -14,7 +14,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app/backend
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgdal-dev gdal-bin libgeos-dev g++ \
+    build-essential libgdal-dev gdal-bin libgeos-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend/requirements.txt ./
