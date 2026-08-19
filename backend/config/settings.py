@@ -3,20 +3,6 @@ Django settings for config project.
 """
 
 import os
-
-import os
-
-if os.name == 'nt':
-    OSGEO4W = r"C:\Users\hp\AppData\Local\Programs\OSGeo4W"
-    os.environ['OSGEO4W_ROOT'] = OSGEO4W
-    os.environ['GDAL_DATA'] = OSGEO4W + r"\share\gdal"
-    os.environ['PROJ_LIB'] = OSGEO4W + r"\share\proj"
-    os.environ['PATH'] = OSGEO4W + r"\bin;" + os.environ['PATH']
-
-    GDAL_LIBRARY_PATH = r"C:\Users\hp\AppData\Local\Programs\OSGeo4W\bin\gdal313.dll"
-    GEOS_LIBRARY_PATH = r"C:\Users\hp\AppData\Local\Programs\OSGeo4W\bin\geos_c.dll"
-
-
 from datetime import timedelta
 from pathlib import Path
 
@@ -24,6 +10,16 @@ import dj_database_url
 from dotenv import load_dotenv
 
 load_dotenv()
+
+if os.name == 'nt':
+    OSGEO4W = os.environ.get('OSGEO4W_ROOT', r"C:\OSGeo4W")
+    os.environ['OSGEO4W_ROOT'] = OSGEO4W
+    os.environ['GDAL_DATA'] = OSGEO4W + r"\share\gdal"
+    os.environ['PROJ_LIB'] = OSGEO4W + r"\share\proj"
+    os.environ['PATH'] = OSGEO4W + r"\bin;" + os.environ['PATH']
+
+    GDAL_LIBRARY_PATH = os.environ.get('GDAL_LIBRARY_PATH')
+    GEOS_LIBRARY_PATH = os.environ.get('GEOS_LIBRARY_PATH')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
