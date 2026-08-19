@@ -19,7 +19,7 @@ echo "==> Création des tables des couches (PostgreSQL)..."
 python manage.py init_couche_tables
 
 echo "==> Seed des types de projet..."
-python seed_types.py
+python manage.py shell -c "from projets.models import TypeProjet; TypeProjet.objects.get_or_create(nom='Résidentiel', defaults={'code':'residentiel'}); TypeProjet.objects.get_or_create(nom='Commercial', defaults={'code':'commercial'}); TypeProjet.objects.get_or_create(nom='Industriel', defaults={'code':'industriel'}); TypeProjet.objects.get_or_create(nom='Mixte', defaults={'code':'mixte'}); print('Types de projet OK')" || echo "(seed_types ignoré)"
 
 echo "==> Import des données (si fixtures présentes)..."
 python manage.py load_project_data || echo "(load_project_data ignoré)"
