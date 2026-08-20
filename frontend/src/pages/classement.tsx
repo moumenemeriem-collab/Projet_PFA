@@ -353,7 +353,7 @@ export function ClassementPage(): React.JSX.Element {
 
   if (loading && !error) {
     return (
-      <DashboardLayout role="investisseur" activePage="ranking">
+      <DashboardLayout role="investisseur" activePage="ranking" projectContext={projet ? { id: projet.id, name: projet.nom } : null}>
         <div className="admin-loading">
           <div className="admin-loading-spinner"></div>
           <p>{t('ranking.loading')}</p>
@@ -364,7 +364,7 @@ export function ClassementPage(): React.JSX.Element {
 
   if (error || !projet) {
     return (
-      <DashboardLayout role="investisseur" activePage="ranking">
+      <DashboardLayout role="investisseur" activePage="ranking" projectContext={null}>
         <div className="admin-error-state">
           <p>{error ?? t('ranking.loading')}</p>
           <Link to="/projets" className="btn btn-primary">{t('projects.error_login')}</Link>
@@ -385,7 +385,7 @@ export function ClassementPage(): React.JSX.Element {
   const resultatsPagines = resultats.slice(parcellesStart - 1, parcellesEnd)
 
   return (
-    <DashboardLayout role="investisseur" activePage="ranking">
+    <DashboardLayout role="investisseur" activePage="ranking" projectContext={{ id: projet.id, name: projet.nom }}>
       <div className="classement-page">
         <div className="classement-header">
           <div>
