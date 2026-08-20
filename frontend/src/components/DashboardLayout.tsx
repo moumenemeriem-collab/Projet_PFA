@@ -6,7 +6,7 @@ import { t, formatDateTime } from '../i18n/index'
 import { icons } from './icons'
 import { LangSwitcher } from './LangSwitcher'
 
-export type AppPage = 'dashboard' | 'projects' | 'users' | 'messages' | 'data' | 'ranking' | 'profile'
+export type AppPage = 'dashboard' | 'projects' | 'users' | 'messages' | 'data' | 'ranking' | 'geoportail' | 'profile'
 
 interface NavItem {
   id: AppPage
@@ -26,6 +26,7 @@ const investisseurProjectNav: NavItem[] = [
   { id: 'dashboard', labelKey: 'dashboard.sidebar.home', icon: 'dashboard', href: '/investisseur/tableau-de-bord' },
   { id: 'projects', labelKey: 'dashboard.sidebar.projects', icon: 'projects', href: '/projets' },
   { id: 'ranking', labelKey: 'dashboard.sidebar.ranking', icon: 'ranking', href: '' },
+  { id: 'geoportail', labelKey: 'dashboard.sidebar.geoportail', icon: 'globe', href: '' },
   { id: 'messages', labelKey: 'dashboard.sidebar.messages', icon: 'message', href: '/messages' },
   { id: 'profile', labelKey: 'dashboard.sidebar.profile', icon: 'profile', href: '/profil' },
 ]
@@ -181,6 +182,8 @@ export function DashboardLayout({ role, activePage, children, hideSidebar = fals
               {nav.map((item) => {
                 const href = projectContext && item.id === 'ranking'
                   ? `/projets/${projectContext.id}/classement`
+                  : projectContext && item.id === 'geoportail'
+                  ? `/projets/${projectContext.id}/classement/ajouter`
                   : item.href
                 return (
                   <Link

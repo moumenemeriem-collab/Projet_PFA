@@ -2034,7 +2034,7 @@ const bindPopupActionButtons = (popup: any): void => {
 
   if (projetError) {
     return (
-      <DashboardLayout role="investisseur" activePage="ranking" hideSidebar topbarTitle={t('ranking.geoportal_title')} projectContext={projet ? { id: projet.id, name: projet.nom } : null}>
+    <DashboardLayout role="investisseur" activePage="ranking" hideSidebar projectContext={projet ? { id: projet.id, name: projet.nom } : null}>
         <div className="admin-error-state">
           <p>{projetError}</p>
           <Link to="/projets" className="btn btn-primary">{t('projects.error_login')}</Link>
@@ -2045,7 +2045,7 @@ const bindPopupActionButtons = (popup: any): void => {
 
   if (!projet) {
     return (
-      <DashboardLayout role="investisseur" activePage="ranking" hideSidebar topbarTitle={t('ranking.geoportal_title')} projectContext={null}>
+      <DashboardLayout role="investisseur" activePage="ranking" hideSidebar projectContext={null}>
         <div className="admin-loading">
           <div className="admin-loading-spinner"></div>
           <p>{t('ranking.loading')}</p>
