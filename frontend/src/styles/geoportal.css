@@ -1253,6 +1253,42 @@
   font-size: 0.8125rem;
 }
 
+/* Add-terrain form inside the big card */
+.geo-card-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.geo-card-add-form .form-alert {
+  margin-bottom: 10px;
+}
+.geo-card-form-section {
+  margin-bottom: 14px;
+}
+.geo-card-form-section .modal-input {
+  font-size: 0.8125rem;
+}
+.geo-card-form-section .form-label {
+  font-size: 0.6875rem;
+}
+.geo-card-form-section .geo-layers-popup-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #475569;
+  display: block;
+  margin-bottom: 8px;
+}
+.geo-card-form-actions {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+}
+.geo-terrain-card.geo-terrain-card--add {
+  width: 420px;
+}
+
 .geo-top-fab {
   width: 42px;
   height: 42px;
