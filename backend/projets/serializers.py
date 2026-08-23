@@ -211,7 +211,7 @@ class TerrainListSerializer(serializers.ModelSerializer):
             'consistance', 'num_parcelle',
             'num_titre_foncier', 'statut_juridique', 'prix_demande',
             'zonage', 'cos', 'cus', 'hauteur_maximale', 'equipements',
-            'geometry', 'date_creation',
+            'geometry', 'rentabilite_json', 'date_creation',
         ]
         read_only_fields = ['id', 'score', 'date_creation']
 

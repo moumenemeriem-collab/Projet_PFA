@@ -2498,6 +2498,28 @@
   border-color: #071528;
 }
 
+.geo-popup-btn--renta {
+  color: #fff;
+  background: linear-gradient(135deg, #059669, #047857);
+  border-color: #047857;
+}
+.geo-popup-btn--renta:hover {
+  background: linear-gradient(135deg, #047857, #065f46);
+  border-color: #065f46;
+}
+.geo-popup-btn--renta svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.geo-card-renta-results {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 10px;
+}
+
 /* ── Modal « Dimensions du terrain » (plan topographique) ── */
 
 .geo-dims-overlay {
@@ -3406,4 +3428,14 @@
 
 .geo-terrain-equips {
   max-height: 160px;
+}
+
+.renta-modal-content {
+  max-height: 65vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.renta-modal-content .geo-card-form-section {
+  margin-bottom: 12px;
 }
