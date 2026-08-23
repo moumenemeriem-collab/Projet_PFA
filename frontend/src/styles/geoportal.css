@@ -3439,3 +3439,12 @@
 .renta-modal-content .geo-card-form-section {
   margin-bottom: 12px;
 }
+
+.geo-dims-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #eef2f7;
+  margin-top: 8px;
+}
