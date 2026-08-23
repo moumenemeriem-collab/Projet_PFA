@@ -3327,11 +3327,11 @@ const bindPopupActionButtons = (popup: any): void => {
             ) : null}
 
             <div className="geo-dims-actions">
-              <button type="button" className="geo-dims-zoom-btn" style={{ width: 'auto', borderRadius: 8, padding: '0 14px', fontSize: '0.8rem', fontWeight: 600, background: '#6b7280', color: '#fff' }} onClick={() => setRentaModalOpen(false)}>{t('common.cancel')}</button>
-              <button type="button" className="geo-dims-zoom-btn" style={{ width: 'auto', borderRadius: 8, padding: '0 14px', fontSize: '0.8rem', fontWeight: 600 }} disabled={rentaCalculating} onClick={() => { void handleCalculateRentabilite() }}>
+              <button type="button" className="geo-dims-btn geo-dims-btn--ghost" onClick={() => setRentaModalOpen(false)}>{t('common.cancel')}</button>
+              <button type="button" className="geo-dims-btn geo-dims-btn--calc" disabled={rentaCalculating} onClick={() => { void handleCalculateRentabilite() }}>
                 {rentaCalculating ? '...' : t('projects.btn_calculate')}
               </button>
-              <button type="button" className="geo-dims-zoom-btn" style={{ width: 'auto', borderRadius: 8, padding: '0 14px', fontSize: '0.8rem', fontWeight: 600, background: '#1b3a6e', color: '#fff' }} disabled={!rentaResult?.ok || rentaSaving} onClick={() => { void handleSaveRentabiliteTerrain() }}>
+              <button type="button" className="geo-dims-btn geo-dims-btn--primary" disabled={!rentaResult?.ok || rentaSaving} onClick={() => { void handleSaveRentabiliteTerrain() }}>
                 {rentaSaving ? '...' : icons.save} {t('ranking.save_terrain')}
               </button>
             </div>
