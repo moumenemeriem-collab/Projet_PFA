@@ -6,7 +6,7 @@ import { DashboardLayout } from '../components/DashboardLayout'
 import { TerrainGeometryEditor, emptyGeom, type TerrainGeom } from '../components/TerrainGeometryEditor'
 import { formatApiErrors } from '../api/auth'
 import { fetchProjet, previewRentabilite, type Projet, type ProjetPayload, type Rentabilite } from '../api/projets'
-import { createTerrain, computeSurfaceConstructible, fetchAnalyse, fetchSurfaceConstructible, fetchTerrains, saveTerrainRentabilite, type AnalyseFiltres, type AnalyseResultat, type SurfaceConstructibleResponse, type Terrain } from '../api/terrains'
+import { createTerrain, computeSurfaceConstructible, computeSurfaceEquipement, fetchAnalyse, fetchSurfaceConstructible, fetchSurfaceEquipement, fetchTerrains, saveTerrainRentabilite, type AnalyseFiltres, type AnalyseResultat, type SurfaceConstructibleResponse, type SurfaceEquipementResponse, type Terrain } from '../api/terrains'
 import { createAnalyse, fetchAnalyseDetail, type AnalyseDetail, type ResultatAnalyse } from '../api/analyses'
 import { fetchCouches, fetchCoucheGeoJSON, type Couche, type CoucheFeature, type CoucheFeatureCollection } from '../api/couches'
 import { attributeLabel, CADASTRE_ATTRIBUTE_LABELS, PLAN_AMENAGEMENT_ATTRIBUTE_LABELS } from '../utils/attributeLabels'
@@ -696,9 +696,10 @@ export function GeoportalPage(): React.JSX.Element {
   const [rentaForm, setRentaForm] = useState({
     prixFoncierM2: '', fraisAcquisition: '7', tauxChute: '30',
     cos: '', cus: '',
-    hasAppartement: true, hasCommerce: false, hasBureau: false,
+    hasAppartement: true, hasCommerce: false, hasBureau: false, hasEquipement: false,
     quotePartApp: '100', quotePartCommerce: '0', quotePartBureau: '0',
     prixVenteApp: '', prixVenteCommerce: '', prixVenteBureau: '',
+    prixVenteEquipement: '',
     coutConstrApp: '', coutConstrCommerce: '', coutConstrBureau: '',
     tauxEtudes: '10', tauxImprevus: '5', tauxCommercialisation: '3',
     dureeConstruction: '2', dureeCommercialisation: '3', tauxActualisation: '8',
@@ -711,6 +712,7 @@ export function GeoportalPage(): React.JSX.Element {
   const [rentaModalOpen, setRentaModalOpen] = useState(false)
   const [rentaTerrains, setRentaTerrains] = useState<Terrain[]>([])
   const [rentaSurfaceConstructible, setRentaSurfaceConstructible] = useState<SurfaceConstructibleResponse | null>(null)
+  const [rentaSurfaceEquipement, setRentaSurfaceEquipement] = useState<SurfaceEquipementResponse | null>(null)
   const [rentaRing, setRentaRing] = useState<number[][]>([])
 
   useEffect(() => {
@@ -741,6 +743,26 @@ export function GeoportalPage(): React.JSX.Element {
     }
     setRentaSurfaceConstructible(null)
   }, [rentaTerrainId, projetId, rentaRing, rentaParcelInfo])
+
+  useEffect(() => {
+    if (!projetId) { setRentaSurfaceEquipement(null); return }
+    if (rentaTerrainId) {
+      let cancelled = false
+      void fetchSurfaceEquipement(projetId, rentaTerrainId)
+        .then((data) => { if (!cancelled) setRentaSurfaceEquipement(data) })
+        .catch(() => { if (!cancelled) setRentaSurfaceEquipement(null) })
+      return () => { cancelled = true }
+    }
+    if (rentaRing.length >= 3) {
+      const geom = { type: 'Polygon', coordinates: [rentaRing] }
+      let cancelled = false
+      void computeSurfaceEquipement(projetId, geom)
+        .then((data) => { if (!cancelled) setRentaSurfaceEquipement(data) })
+        .catch(() => { if (!cancelled) setRentaSurfaceEquipement(null) })
+      return () => { cancelled = true }
+    }
+    setRentaSurfaceEquipement(null)
+  }, [rentaTerrainId, projetId, rentaRing])
   
   const openPopupRef = useRef<any>(null)
   const popupActionHandlerRef = useRef<(e: MouseEvent) => void>(() => {})
@@ -989,12 +1011,22 @@ export function GeoportalPage(): React.JSX.Element {
       has_appartement: rentaForm.hasAppartement,
       has_commerce: rentaForm.hasCommerce,
       has_bureau: rentaForm.hasBureau,
+      has_equipement: rentaForm.hasEquipement,
       quote_part_appartement: numRenta(rentaForm.quotePartApp),
       quote_part_commerce: numRenta(rentaForm.quotePartCommerce),
       quote_part_bureau: numRenta(rentaForm.quotePartBureau),
+      quote_part_equipement: rentaForm.hasEquipement ? (() => {
+        const surfBrute = Number(projet.surface_souhaitee ?? 0)
+        const cosVal = numRenta(rentaForm.cos) ?? 0
+        const surfaceVendable = surfBrute * cosVal * 0.9
+        const surfEq = rentaSurfaceEquipement?.surface_equipement ?? 0
+        return surfaceVendable > 0 && surfEq > 0 ? Math.round(surfEq / surfaceVendable * 10000) / 100 : 0
+      })() : 0,
       prix_vente_appartement: numRenta(rentaForm.prixVenteApp),
       prix_vente_commerce: numRenta(rentaForm.prixVenteCommerce),
       prix_vente_bureau: numRenta(rentaForm.prixVenteBureau),
+      prix_vente_equipement: numRenta(rentaForm.prixVenteEquipement),
+      surface_equipement: rentaForm.hasEquipement ? (rentaSurfaceEquipement?.surface_equipement ?? 0) : 0,
       cout_construction_appartement: numRenta(rentaForm.coutConstrApp),
       cout_construction_commerce: numRenta(rentaForm.coutConstrCommerce),
       cout_construction_bureau: numRenta(rentaForm.coutConstrBureau),
@@ -3205,6 +3237,10 @@ const bindPopupActionButtons = (popup: any): void => {
                     <input type="checkbox" checked={rentaForm.hasBureau} onChange={(e) => setRentaForm((f) => ({ ...f, hasBureau: e.target.checked }))} />
                     {t('projects.dest_bureau')}
                   </label>
+                  <label className={`cp-dest-toggle${rentaForm.hasEquipement ? ' active' : ''}`} style={{ fontSize: '0.85rem' }}>
+                    <input type="checkbox" checked={rentaForm.hasEquipement} onChange={(e) => setRentaForm((f) => ({ ...f, hasEquipement: e.target.checked }))} />
+                    {t('projects.dest_equipement')}
+                  </label>
                 </div>
               </div>
 
@@ -3279,6 +3315,38 @@ const bindPopupActionButtons = (popup: any): void => {
                   )}
                 </div>
               </div>
+
+              {rentaForm.hasEquipement && (
+                <div className="geo-card-form-section">
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
+                    <div>
+                      <span className="geo-layers-popup-label" style={{ marginBottom: 10, display: 'block' }}>{t('projects.field_quote_part_equipement')}</span>
+                      <div className="modal-input" style={{ background: '#f3f4f6', cursor: 'default' }}>
+                        {(() => {
+                          const surfBrute = Number(projet?.surface_souhaitee ?? 0)
+                          const cosVal = numRenta(rentaForm.cos) ?? 0
+                          const surfaceVendable = surfBrute * cosVal * 0.9
+                          const surfEq = rentaSurfaceEquipement?.surface_equipement ?? 0
+                          const pct = surfaceVendable > 0 && surfEq > 0 ? Math.round(surfEq / surfaceVendable * 10000) / 100 : 0
+                          return `${pct.toLocaleString('fr-FR', { maximumFractionDigits: 2 })}%`
+                        })()}
+                      </div>
+                    </div>
+                    <div style={{ borderLeft: '1px solid #e5e7eb', paddingLeft: 20 }}>
+                      <span className="geo-layers-popup-label" style={{ marginBottom: 10, display: 'block' }}>{t('projects.field_surface_equipement')}</span>
+                      <div className="modal-input" style={{ background: '#f3f4f6', cursor: 'default' }}>
+                        {rentaSurfaceEquipement?.surface_equipement != null
+                          ? `${Number(rentaSurfaceEquipement.surface_equipement).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m²`
+                          : '—'}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="geo-layers-popup-label" style={{ marginBottom: 10, display: 'block' }}>{t('projects.field_prix_vente_equipement')}</span>
+                      <input type="number" step="0.01" className="modal-input" placeholder="Prix unitaire (DH/m²)" value={rentaForm.prixVenteEquipement} onChange={(e) => setRentaForm((f) => ({ ...f, prixVenteEquipement: e.target.value }))} />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="geo-card-form-section">
                 <span className="geo-layers-popup-label">{t('projects.section_charges')}</span>

@@ -64,21 +64,28 @@ class Projet(models.Model):
     has_appartement = models.BooleanField(default=True)
     has_commerce = models.BooleanField(default=False)
     has_bureau = models.BooleanField(default=False)
+    has_equipement = models.BooleanField(default=False)
 
     # Quote-parts (%)
     quote_part_appartement = models.DecimalField(max_digits=5, decimal_places=2, default=100)
     quote_part_commerce = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     quote_part_bureau = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    quote_part_equipement = models.DecimalField(max_digits=5, decimal_places=2, default=0)
 
     # Prix de vente (DH/m²)
     prix_vente_appartement = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     prix_vente_commerce = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     prix_vente_bureau = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
+    # Équipement : surface calculée (plan d'aménagement) + prix unitaire
+    surface_equipement = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    prix_vente_equipement = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
     # Coûts de construction (DH/m²)
     cout_construction_appartement = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     cout_construction_commerce = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     cout_construction_bureau = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    cout_construction_equipement = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
 
     # Charges
     taux_etudes_honoraires = models.DecimalField(max_digits=5, decimal_places=2, default=10)

@@ -178,15 +178,20 @@ class ProjetRentabilitePreviewView(APIView):
             has_appartement=_g('has_appartement', True),
             has_commerce=_g('has_commerce', False),
             has_bureau=_g('has_bureau', False),
+            has_equipement=_g('has_equipement', False),
             quote_part_appartement=_g('quote_part_appartement', 100),
             quote_part_commerce=_g('quote_part_commerce', 0),
             quote_part_bureau=_g('quote_part_bureau', 0),
+            quote_part_equipement=_g('quote_part_equipement', 0),
             prix_vente_appartement=_g('prix_vente_appartement'),
             prix_vente_commerce=_g('prix_vente_commerce'),
             prix_vente_bureau=_g('prix_vente_bureau'),
+            surface_equipement=_g('surface_equipement'),
+            prix_vente_equipement=_g('prix_vente_equipement'),
             cout_construction_appartement=_g('cout_construction_appartement'),
             cout_construction_commerce=_g('cout_construction_commerce'),
             cout_construction_bureau=_g('cout_construction_bureau'),
+            cout_construction_equipement=_g('cout_construction_equipement'),
             taux_etudes_honoraires=_g('taux_etudes_honoraires', 10),
             taux_imprevus=_g('taux_imprevus', 5),
             taux_commercialisation=_g('taux_commercialisation', 3),
@@ -743,6 +748,8 @@ class SurfaceConstructibleView(APIView):
     authentication_classes = [JWTOptionalAuthentication]
     permission_classes = [AllowAny]
 
+    EQUIPEMENT_DESIGNATIONS = ['ZPI', 'ZS', 'IN2', 'IN3', 'INS', 'DS1', 'D1', 'D5']
+
     def get(self, request, projet_pk: int, terrain_pk: int):
         try:
             terrain = Terrain.objects.get(pk=terrain_pk, projet_id=projet_pk)
@@ -833,6 +840,63 @@ class SurfaceConstructibleView(APIView):
             'non_construable': round(non_constr, 2),
             'affectations': affectations,
         })
+
+    @staticmethod
+    def _compute_equipement(terrain_wkt: str):
+        """Calcule la surface des zones d'équipement (ZPI, ZS, IN2, ...) intersectant le terrain."""
+        sql = """
+            SELECT pa.designation,
+                ST_Area(
+                    ST_Intersection(
+                        ST_GeomFromEWKT(%s),
+                        ST_SetSRID(ST_GeomFromGeoJSON(pa.geometry::text), 4326)
+                    )::geography
+                ) as intersection_area_m2
+            FROM couche_plan_amenagement pa
+            WHERE pa.designation IS NOT NULL
+            AND TRIM(pa.designation) IN ('ZPI', 'ZS', 'IN2', 'IN3', 'INS', 'DS1', 'D1', 'D5')
+            AND ST_Intersects(
+                ST_GeomFromEWKT(%s),
+                ST_SetSRID(ST_GeomFromGeoJSON(pa.geometry::text), 4326)
+            )
+        """
+        try:
+            with connection.cursor() as cur:
+                cur.execute(sql, [terrain_wkt, terrain_wkt])
+                rows = cur.fetchall()
+        except Exception as exc:
+            return 0.0
+
+        total = sum(float(area) for _, area in rows if float(area) > 0)
+        return round(total, 2)
+
+
+class SurfaceEquipementView(APIView):
+    """Calcule la surface d'équipement pour un terrain donné."""
+    authentication_classes = [JWTOptionalAuthentication]
+    permission_classes = [AllowAny]
+
+    def get(self, request, projet_pk: int, terrain_pk: int):
+        try:
+            terrain = Terrain.objects.get(pk=terrain_pk, projet_id=projet_pk)
+        except Terrain.DoesNotExist:
+            return Response({'detail': 'Terrain introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        if not terrain.geometry:
+            return Response({'surface_equipement': 0})
+        surface = SurfaceConstructibleView._compute_equipement(terrain.geometry.wkt)
+        return Response({'surface_equipement': surface})
+
+    def post(self, request, projet_pk: int):
+        geometry = request.data.get('geometry')
+        if not geometry:
+            return Response({'detail': 'geometry requise.'}, status=status.HTTP_400_BAD_REQUEST)
+        from django.contrib.gis.geos import GEOSException, fromstr
+        try:
+            geom = fromstr(json.dumps(geometry)) if isinstance(geometry, dict) else fromstr(geometry)
+        except (GEOSException, TypeError, ValueError) as exc:
+            return Response({'detail': f'Géométrie invalide : {exc}'}, status=status.HTTP_400_BAD_REQUEST)
+        surface = SurfaceConstructibleView._compute_equipement(geom.wkt)
+        return Response({'surface_equipement': surface})
 
 
 class CoucheList(APIView):

@@ -77,26 +77,31 @@ def calculer_rentabilite_projet(projet) -> dict:
     qp_apt = _d(p.quote_part_appartement) / 100.0
     qp_com = _d(p.quote_part_commerce) / 100.0
     qp_bur = _d(p.quote_part_bureau) / 100.0
+    qp_eq = _d(getattr(p, 'quote_part_equipement', None)) / 100.0
 
     surf_apt = surface_vendable * qp_apt
     surf_com = surface_vendable * qp_com
     surf_bur = surface_vendable * qp_bur
+    surf_eq = surface_vendable * qp_eq
 
     # ── 4. Chiffre d'affaires ──
     px_vente_apt = _d(p.prix_vente_appartement)
     px_vente_com = _d(p.prix_vente_commerce)
     px_vente_bur = _d(p.prix_vente_bureau)
+    px_vente_eq = _d(getattr(p, 'prix_vente_equipement', None))
 
     ca_apt = surf_apt * px_vente_apt
     ca_com = surf_com * px_vente_com
     ca_bur = surf_bur * px_vente_bur
-    ca_total = ca_apt + ca_com + ca_bur
+    ca_eq = surf_eq * px_vente_eq
+    ca_total = ca_apt + ca_com + ca_bur + ca_eq
 
     # ── 5. Coûts de construction ──
     cout_apt = surf_apt * _d(p.cout_construction_appartement)
     cout_com = surf_com * _d(p.cout_construction_commerce)
     cout_bur = surf_bur * _d(p.cout_construction_bureau)
-    cout_construction_total = cout_apt + cout_com + cout_bur
+    cout_eq = surf_eq * _d(getattr(p, 'cout_construction_equipement', None))
+    cout_construction_total = cout_apt + cout_com + cout_bur + cout_eq
 
     # ── 6. Charges ──
     taux_etudes = _d(p.taux_etudes_honoraires) / 100.0
@@ -208,17 +213,20 @@ def calculer_rentabilite_projet(projet) -> dict:
             'surface_appartements': round(surf_apt, 2),
             'surface_commerces': round(surf_com, 2),
             'surface_bureaux': round(surf_bur, 2),
+            'surface_equipements': round(surf_eq, 2),
         },
         'ca': {
             'ca_appartements': round(ca_apt, 2),
             'ca_commerces': round(ca_com, 2),
             'ca_bureaux': round(ca_bur, 2),
+            'ca_equipements': round(ca_eq, 2),
             'ca_total': round(ca_total, 2),
         },
         'construction': {
             'cout_appartements': round(cout_apt, 2),
             'cout_commerces': round(cout_com, 2),
             'cout_bureaux': round(cout_bur, 2),
+            'cout_equipements': round(cout_eq, 2),
             'cout_total': round(cout_construction_total, 2),
         },
         'charges': {

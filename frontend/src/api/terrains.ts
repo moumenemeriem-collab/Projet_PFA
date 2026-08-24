@@ -209,6 +209,23 @@ export async function computeSurfaceConstructible(projetId: number, geometry: Re
   return parseResponse<SurfaceConstructibleResponse>(res)
 }
 
+export interface SurfaceEquipementResponse {
+  surface_equipement: number
+}
+
+export async function fetchSurfaceEquipement(projetId: number, terrainId: number): Promise<SurfaceEquipementResponse> {
+  const res = await apiFetch(`/api/projets/${projetId}/terrains/${terrainId}/surface-equipement/`)
+  return parseResponse<SurfaceEquipementResponse>(res)
+}
+
+export async function computeSurfaceEquipement(projetId: number, geometry: Record<string, unknown>): Promise<SurfaceEquipementResponse> {
+  const res = await apiFetch(`/api/projets/${projetId}/surface-equipement/`, {
+    method: 'POST',
+    body: JSON.stringify({ geometry }),
+  })
+  return parseResponse<SurfaceEquipementResponse>(res)
+}
+
 export interface BulkImportResponse {
   message: string
   nb_importes: number

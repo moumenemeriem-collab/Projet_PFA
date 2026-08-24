@@ -26,10 +26,11 @@ class ProjetListSerializer(serializers.ModelSerializer):
             'autres_charges', 'prix_vente_unitaire', 'revenu_estime',
             'image', 'date_creation', 'investisseur', 'rentabilite',
             'prix_foncier_m2', 'frais_acquisition', 'taux_chute', 'cos', 'cus',
-            'has_appartement', 'has_commerce', 'has_bureau',
-            'quote_part_appartement', 'quote_part_commerce', 'quote_part_bureau',
+            'has_appartement', 'has_commerce', 'has_bureau', 'has_equipement',
+            'quote_part_appartement', 'quote_part_commerce', 'quote_part_bureau', 'quote_part_equipement',
             'prix_vente_appartement', 'prix_vente_commerce', 'prix_vente_bureau',
-            'cout_construction_appartement', 'cout_construction_commerce', 'cout_construction_bureau',
+            'surface_equipement', 'prix_vente_equipement',
+            'cout_construction_appartement', 'cout_construction_commerce', 'cout_construction_bureau', 'cout_construction_equipement',
             'taux_etudes_honoraires', 'taux_imprevus', 'taux_commercialisation',
             'duree_construction', 'duree_commercialisation', 'taux_actualisation',
             'repartition_construction', 'repartition_ventes',
@@ -57,10 +58,11 @@ class ProjetDetailSerializer(serializers.ModelSerializer):
             'autres_charges', 'prix_vente_unitaire', 'revenu_estime',
             'image', 'date_creation', 'investisseur', 'rentabilite',
             'prix_foncier_m2', 'frais_acquisition', 'taux_chute', 'cos', 'cus',
-            'has_appartement', 'has_commerce', 'has_bureau',
-            'quote_part_appartement', 'quote_part_commerce', 'quote_part_bureau',
+            'has_appartement', 'has_commerce', 'has_bureau', 'has_equipement',
+            'quote_part_appartement', 'quote_part_commerce', 'quote_part_bureau', 'quote_part_equipement',
             'prix_vente_appartement', 'prix_vente_commerce', 'prix_vente_bureau',
-            'cout_construction_appartement', 'cout_construction_commerce', 'cout_construction_bureau',
+            'surface_equipement', 'prix_vente_equipement',
+            'cout_construction_appartement', 'cout_construction_commerce', 'cout_construction_bureau', 'cout_construction_equipement',
             'taux_etudes_honoraires', 'taux_imprevus', 'taux_commercialisation',
             'duree_construction', 'duree_commercialisation', 'taux_actualisation',
             'repartition_construction', 'repartition_ventes',
@@ -99,18 +101,24 @@ class ProjetCreateSerializer(serializers.Serializer):
     has_appartement = serializers.BooleanField(required=False, default=True)
     has_commerce = serializers.BooleanField(required=False, default=False)
     has_bureau = serializers.BooleanField(required=False, default=False)
+    has_equipement = serializers.BooleanField(required=False, default=False)
 
     quote_part_appartement = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default=100)
     quote_part_commerce = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default=0)
     quote_part_bureau = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default=0)
+    quote_part_equipement = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default=0)
 
     prix_vente_appartement = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=None)
     prix_vente_commerce = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=None)
     prix_vente_bureau = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=None)
 
+    surface_equipement = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=None)
+    prix_vente_equipement = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=None)
+
     cout_construction_appartement = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=None)
     cout_construction_commerce = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=None)
     cout_construction_bureau = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=None)
+    cout_construction_equipement = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=None)
 
     taux_etudes_honoraires = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default=10)
     taux_imprevus = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, default=5)
@@ -160,14 +168,24 @@ class ProjetUpdateSerializer(serializers.Serializer):
     has_appartement = serializers.BooleanField(required=False)
     has_commerce = serializers.BooleanField(required=False)
     has_bureau = serializers.BooleanField(required=False)
+    has_equipement = serializers.BooleanField(required=False)
 
     quote_part_appartement = serializers.DecimalField(max_digits=5, decimal_places=2, required=False)
     quote_part_commerce = serializers.DecimalField(max_digits=5, decimal_places=2, required=False)
     quote_part_bureau = serializers.DecimalField(max_digits=5, decimal_places=2, required=False)
+    quote_part_equipement = serializers.DecimalField(max_digits=5, decimal_places=2, required=False)
 
     prix_vente_appartement = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
     prix_vente_commerce = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
     prix_vente_bureau = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+
+    surface_equipement = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+    prix_vente_equipement = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+    cout_construction_equipement = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+
+    cout_construction_appartement = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+    cout_construction_commerce = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
+    cout_construction_bureau = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
 
     cout_construction_appartement = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
     cout_construction_commerce = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)

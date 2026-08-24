@@ -21,17 +21,20 @@ export interface Rentabilite {
     surface_appartements: number
     surface_commerces: number
     surface_bureaux: number
+    surface_equipements: number
   }
   ca?: {
     ca_appartements: number
     ca_commerces: number
     ca_bureaux: number
+    ca_equipements: number
     ca_total: number
   }
   construction?: {
     cout_appartements: number
     cout_commerces: number
     cout_bureaux: number
+    cout_equipements: number
     cout_total: number
   }
   charges?: {
@@ -91,15 +94,20 @@ export interface Projet {
   has_appartement?: boolean
   has_commerce?: boolean
   has_bureau?: boolean
+  has_equipement?: boolean
   quote_part_appartement?: string
   quote_part_commerce?: string
   quote_part_bureau?: string
+  quote_part_equipement?: string
   prix_vente_appartement?: string | null
   prix_vente_commerce?: string | null
   prix_vente_bureau?: string | null
+  surface_equipement?: string | null
+  prix_vente_equipement?: string | null
   cout_construction_appartement?: string | null
   cout_construction_commerce?: string | null
   cout_construction_bureau?: string | null
+  cout_construction_equipement?: string | null
   taux_etudes_honoraires?: string
   taux_imprevus?: string
   taux_commercialisation?: string
@@ -137,15 +145,20 @@ export interface ProjetPayload {
   has_appartement?: boolean
   has_commerce?: boolean
   has_bureau?: boolean
+  has_equipement?: boolean
   quote_part_appartement?: number
   quote_part_commerce?: number
   quote_part_bureau?: number
+  quote_part_equipement?: number
   prix_vente_appartement?: number
   prix_vente_commerce?: number
   prix_vente_bureau?: number
+  surface_equipement?: number
+  prix_vente_equipement?: number
   cout_construction_appartement?: number
   cout_construction_commerce?: number
   cout_construction_bureau?: number
+  cout_construction_equipement?: number
   taux_etudes_honoraires?: number
   taux_imprevus?: number
   taux_commercialisation?: number
