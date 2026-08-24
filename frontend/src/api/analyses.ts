@@ -1,5 +1,5 @@
 import { apiFetch } from './auth.ts'
-import type { AnalyseCriteres, AnalyseFiltres } from './terrains.ts'
+import type { AnalyseCriteres, AnalyseFiltres, CritereConformite } from './terrains.ts'
 
 export interface ResultatAnalyse {
   id: number
@@ -25,6 +25,7 @@ export interface ResultatAnalyse {
   nombre_criteres_satisfaits: number
   total_criteres: number
   criteres: AnalyseCriteres[] | null
+  criteres_conformite: CritereConformite[] | null
   points_forts: string[] | null
   points_faibles: string[] | null
 }

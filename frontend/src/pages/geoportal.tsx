@@ -460,18 +460,6 @@ function resetFilterDom(): void {
   document.querySelectorAll<HTMLInputElement>('#filter-accordion input.geo-distance-input').forEach((inp) => { inp.hidden = true; inp.value = '' })
 }
 
-function scoreRow(label: string, score: number, color: string): React.JSX.Element {
-  const pct = Math.min(score, 100)
-  return (
-    <div className="geo-sr-score-row">
-      <span className="geo-sr-score-label">{label}</span>
-      <div className="geo-sr-score-bar-wrap">
-        <div className="geo-sr-score-bar" style={{ width: `${pct}%`, background: color }}></div>
-      </div>
-      <span className="geo-sr-score-value">{score.toFixed(0)}</span>
-    </div>
-  )
-}
 
 function renderInfoGenerale(tr: AnalyseResultat): React.JSX.Element {
   const info = tr.infos_generales
@@ -488,32 +476,12 @@ function renderInfoGenerale(tr: AnalyseResultat): React.JSX.Element {
             <span className="geo-sr-info-value">{info.reference_cadastrale}</span>
           </div>
           <div className="geo-sr-info-item">
-            <span className="geo-sr-info-label">{t('ranking.terrain_commune')}</span>
-            <span className="geo-sr-info-value">{info.commune}</span>
-          </div>
-          <div className="geo-sr-info-item">
-            <span className="geo-sr-info-label">{t('ranking.terrain_province')}</span>
-            <span className="geo-sr-info-value">{info.province}</span>
-          </div>
-          <div className="geo-sr-info-item">
-            <span className="geo-sr-info-label">{t('ranking.terrain_region')}</span>
-            <span className="geo-sr-info-value">{info.region}</span>
-          </div>
-          <div className="geo-sr-info-item">
             <span className="geo-sr-info-label">{t('ranking.terrain_surface')}</span>
             <span className="geo-sr-info-value">{info.superficie}</span>
-          </div>
-          <div className="geo-sr-info-item">
-            <span className="geo-sr-info-label">{t('ranking.terrain_perimetre')}</span>
-            <span className="geo-sr-info-value">{info.perimetre}</span>
           </div>
           <div className="geo-sr-info-item geo-sr-info-item--full">
             <span className="geo-sr-info-label">{t('ranking.terrain_centre')}</span>
             <span className="geo-sr-info-value">{info.latitude.toFixed(6)}, {info.longitude.toFixed(6)}</span>
-          </div>
-          <div className="geo-sr-info-item geo-sr-info-item--full">
-            <span className="geo-sr-info-label">{t('ranking.terrain_zone')}</span>
-            <span className="geo-sr-info-value">{info.zone_amenagement}</span>
           </div>
         </div>
       </div>
@@ -522,29 +490,58 @@ function renderInfoGenerale(tr: AnalyseResultat): React.JSX.Element {
 }
 
 function renderDetailCriteres(tr: AnalyseResultat): React.JSX.Element | null {
-  if (!tr.criteres || tr.criteres.length === 0) return null
+  const cc = tr.criteres_conformite ?? []
+  if (cc.length === 0) return null
+  const ok = cc.filter(c => c.pct >= 50).length
   return (
     <div className="geo-sr-card">
       <div className="geo-sr-card-header">
         <span className="geo-sr-card-header-icon">{icons.layers}</span>
-        <h4 className="geo-sr-card-title">{t('ranking.resultats_criteres')}</h4>
+        <h4 className="geo-sr-card-title">Détail des critères</h4>
       </div>
-      {tr.criteres.map((c) => (
-        <div className="geo-sr-criteria" key={c.id}>
-          <div className="geo-sr-criteria-name">{c.critere}</div>
-          <div className="geo-sr-criteria-details">
-            <span className="geo-sr-criteria-dt">{t('ranking.critere_demande')}</span>
-            <span className="geo-sr-criteria-dd">{c.critere_demande}</span>
-            <span className="geo-sr-criteria-dt">{t('ranking.valeur_mesuree')}</span>
-            <span className="geo-sr-criteria-dd">{c.valeur_mesuree}</span>
-            <span className="geo-sr-criteria-dt">{t('ranking.point_interet')}</span>
-            <span className="geo-sr-criteria-dd">{c.point_interet}</span>
-          </div>
-          <div className={`geo-sr-criteria-status ${c.conforme ? 'geo-sr-criteria-status--ok' : 'geo-sr-criteria-status--ko'}`}>
-            {c.conforme ? '✅ ' + t('ranking.conforme') : '❌ ' + t('ranking.non_conforme')}
-          </div>
+      <div className="geo-sr-card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {cc.map(c => {
+          const isOk = c.pct >= 50
+          const icon = isOk ? '✓' : '✗'
+          const iconColor = isOk ? '#16a34a' : '#dc2626'
+          const bgColor = isOk ? '#f0fdf4' : '#fef2f2'
+          const borderColor = isOk ? '#bbf7d0' : '#fecaca'
+          const isDist = c.unite === 'm'
+          const isSurf = c.unite === 'm²'
+          const isPente = c.unite === '%'
+          return (
+            <div key={c.cle} style={{ display: 'flex', alignItems: 'stretch', gap: 10, background: bgColor, border: `1px solid ${borderColor}`, borderRadius: 10, overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, fontSize: '1.2rem', fontWeight: 800, color: iconColor, flexShrink: 0 }}>
+                {icon}
+              </div>
+              <div style={{ flex: 1, padding: '10px 12px 10px 0', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e293b' }}>{c.label}</div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                  {isDist ? (
+                    <>
+                      <span>Distance mesurée : <strong style={{ color: '#334155' }}>{c.valeur.toLocaleString('fr-FR')} m</strong></span>
+                      <span>Distance souhaitée : <strong style={{ color: '#334155' }}>≤ {Number(c.cible).toLocaleString('fr-FR')} m</strong></span>
+                    </>
+                  ) : isSurf ? (
+                    <>
+                      <span>Surface du terrain : <strong style={{ color: '#334155' }}>{c.valeur.toLocaleString('fr-FR')} m²</strong></span>
+                      <span>Surface souhaitée : <strong style={{ color: '#334155' }}>{Number(c.cible).toLocaleString('fr-FR')} m²</strong></span>
+                    </>
+                  ) : isPente ? (
+                    <>
+                      <span>Pente mesurée : <strong style={{ color: '#334155' }}>{c.valeur.toFixed(1)}%</strong></span>
+                      <span>Pente souhaitée : <strong style={{ color: '#334155' }}>{Array.isArray(c.cible) ? c.cible.join(', ') : c.cible}</strong></span>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+        <div style={{ fontSize: '0.8rem', color: '#64748b', textAlign: 'center', paddingTop: 4 }}>
+          {t('ranking.conclusion_conforme').replace('{s}', String(ok)).replace('{t}', String(cc.length))}
         </div>
-      ))}
+      </div>
     </div>
   )
 }
@@ -559,9 +556,9 @@ function toAnalyseResultat(r: ResultatAnalyse): AnalyseResultat {
     score_global: r.score_final ?? 0,
     score_final: r.score_final ?? 0,
     score_amc: r.score_amc ?? 0,
-    score_accessibilite: r.score_accessibilite ?? 0,
-    score_positionnement: r.score_positionnement ?? 0,
-    score_topographie: r.score_topographie ?? 0,
+    score_accessibilite: r.score_accessibilite ?? null,
+    score_positionnement: r.score_positionnement ?? null,
+    score_topographie: r.score_topographie ?? null,
     score_superficie: r.score_superficie,
     roi: r.roi,
     marge: r.marge,
@@ -583,6 +580,7 @@ function toAnalyseResultat(r: ResultatAnalyse): AnalyseResultat {
     criteres: r.criteres ?? [],
     criteres_satisfaits: r.nombre_criteres_satisfaits,
     criteres_total: r.total_criteres,
+    criteres_conformite: (r as any).criteres_conformite ?? [],
     classement: r.rang ?? 0,
     points_forts: r.points_forts ?? [],
     points_faibles: r.points_faibles ?? [],
@@ -590,124 +588,25 @@ function toAnalyseResultat(r: ResultatAnalyse): AnalyseResultat {
 }
 
 function renderScoreSummary(tr: AnalyseResultat): React.JSX.Element {
+  const cc = tr.criteres_conformite ?? []
+  const ok = cc.filter(c => c.pct >= 50).length
   return (
     <div className="geo-score-summary">
-      <div className="geo-score-summary-item geo-score-summary-item--amc">
-        <span className="geo-score-summary-label">{t('ranking.score_amc')}</span>
-        <strong className="geo-score-summary-value">{tr.score_amc != null ? tr.score_amc.toFixed(1) : '—'}</strong>
-      </div>
-      <div className="geo-score-summary-item geo-score-summary-item--renta">
-        <span className="geo-score-summary-label">{t('ranking.score_rentabilite')}</span>
-        <strong className="geo-score-summary-value">{tr.score_rentabilite != null ? tr.score_rentabilite.toFixed(1) : '—'}</strong>
-      </div>
-      <div className="geo-score-summary-item geo-score-summary-item--final">
-        <span className="geo-score-summary-label">{t('ranking.score_final')}</span>
-        <strong className="geo-score-summary-value">{tr.score_final != null ? tr.score_final.toFixed(1) : '—'}</strong>
-      </div>
       <div className="geo-score-summary-item geo-score-summary-item--rang">
         <span className="geo-score-summary-label">{t('ranking.rang')}</span>
         <strong className="geo-score-summary-value">#{tr.classement}</strong>
       </div>
-      {tr.score_rentabilite == null ? (
-        <div className="geo-score-summary-note">{t('ranking.rentabilite_non_disponible')}</div>
+      {cc.length > 0 ? (
+        <div className="geo-score-summary-item">
+          <span className="geo-score-summary-label">Critères respectés</span>
+          <strong className="geo-score-summary-value">{ok} / {cc.length}</strong>
+        </div>
       ) : null}
     </div>
   )
 }
 
-function renderScores(tr: AnalyseResultat, total: number): React.JSX.Element {
-  return (
-    <div className="geo-sr-card">
-      <div className="geo-sr-card-header">
-        <span className="geo-sr-card-header-icon">{icons.ranking}</span>
-        <h4 className="geo-sr-card-title">{t('ranking.scores_title')}</h4>
-      </div>
-      <div className="geo-sr-card-body">
-        <div className="geo-sr-scores">
-          {scoreRow(t('ranking.score_accessibilite'), tr.score_accessibilite, '#1b3a6e')}
-          {scoreRow(t('ranking.score_positionnement'), tr.score_positionnement, '#22c55e')}
-          {scoreRow(t('ranking.score_topographie'), tr.score_topographie, '#eab308')}
-          {tr.score_superficie != null ? scoreRow(t('ranking.score_superficie'), tr.score_superficie, '#14b8a6') : null}
-          <div className="geo-sr-score-separator"></div>
-          {scoreRow(t('ranking.score_amc'), tr.score_amc, '#ec4899')}
-          {tr.score_rentabilite != null ? scoreRow(t('ranking.score_rentabilite'), tr.score_rentabilite, '#f97316') : null}
-          {scoreRow(t('ranking.score_final'), tr.score_final, '#8b5cf6')}
-        </div>
-        <div className="geo-sr-classement">
-          {t('ranking.classement_sur')} : <strong>{tr.classement}<sup>{ordinalSuffix(tr.classement)}</sup></strong> / {total}
-        </div>
-      </div>
-    </div>
-  )
-}
 
-function renderRentabilite(tr: AnalyseResultat): React.JSX.Element {
-  const sourceLabel = {
-    personnalisee: t('ranking.rentabilite_personnalisee'),
-    benchmark: t('ranking.rentabilite_benchmark'),
-    indisponible: t('ranking.rentabilite_indisponible'),
-  }[tr.type_rentabilite]
-  return (
-    <div className="geo-sr-card">
-      <div className="geo-sr-card-header">
-        <span className="geo-sr-card-header-icon">{icons.euro}</span>
-        <h4 className="geo-sr-card-title">{t('ranking.rentabilite')}</h4>
-      </div>
-      <div className="geo-sr-card-body">
-        <div className="geo-sr-info-grid">
-          <div className="geo-sr-info-item">
-            <span className="geo-sr-info-label">{t('ranking.roi')}</span>
-            <span className="geo-sr-info-value">{tr.roi != null ? `${tr.roi.toFixed(1)} %` : '—'}</span>
-          </div>
-          <div className="geo-sr-info-item">
-            <span className="geo-sr-info-label">{t('ranking.score_rentabilite')}</span>
-            <span className="geo-sr-info-value">{tr.score_rentabilite != null ? `${tr.score_rentabilite.toFixed(1)}/100` : '—'}</span>
-          </div>
-          <div className="geo-sr-info-item">
-            <span className="geo-sr-info-label">{t('ranking.prix_terrain')}</span>
-            <span className="geo-sr-info-value">{tr.prix_terrain != null ? `${Number(tr.prix_terrain).toLocaleString()} DH` : '—'}</span>
-          </div>
-          <div className="geo-sr-info-item geo-sr-info-item--full">
-            <span className="geo-sr-info-label">{t('ranking.source')}</span>
-            <span className="geo-sr-info-value">{sourceLabel}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function renderConclusion(tr: AnalyseResultat): React.JSX.Element {
-  const s = tr.criteres_satisfaits
-  const totalCriteres = tr.criteres_total
-  return (
-    <div className="geo-sr-card">
-      <div className="geo-sr-card-header">
-        <span className="geo-sr-card-header-icon">{icons.search}</span>
-        <h4 className="geo-sr-card-title">{t('ranking.conclusion_title')}</h4>
-      </div>
-      <div className="geo-sr-conclusion">
-        <p className="geo-sr-conclusion-text">{t('ranking.conclusion_conforme').replace('{s}', String(s)).replace('{t}', String(totalCriteres))}</p>
-        {tr.points_forts.length > 0 ? (
-          <>
-            <p className="geo-sr-conclusion-sub">{t('ranking.points_forts')}</p>
-            <ul className="geo-sr-conclusion-list geo-sr-conclusion-list--forts">
-              {tr.points_forts.map((pf) => <li key={pf}>{pf.charAt(0).toUpperCase() + pf.slice(1)}</li>)}
-            </ul>
-          </>
-        ) : null}
-        {tr.points_faibles.length > 0 ? (
-          <>
-            <p className="geo-sr-conclusion-sub">{t('ranking.points_faibles')}</p>
-            <ul className="geo-sr-conclusion-list geo-sr-conclusion-list--faibles">
-              {tr.points_faibles.map((pf) => <li key={pf}>{pf.charAt(0).toUpperCase() + pf.slice(1)}</li>)}
-            </ul>
-          </>
-        ) : null}
-      </div>
-    </div>
-  )
-}
 
 export function GeoportalPage(): React.JSX.Element {
   const navigate = useNavigate()
@@ -1707,10 +1606,6 @@ const bindPopupActionButtons = (popup: any): void => {
     }).addTo(map)
 
   const buildParcellePopup = (tr: AnalyseResultat, p: Record<string, unknown>, ring?: number[][] | null, terrainId?: number): string => {
-    const color = getScoreColor(tr.score_final)
-    const rentaRow = tr.score_rentabilite != null
-      ? `<div class="geoportal-popup-row"><span>${t('ranking.rentabilite')}</span><strong>${tr.score_rentabilite.toFixed(1)}/100</strong></div>`
-      : ''
     const center = ring ? ringCenter(ring) : { lat: NaN, lng: NaN }
     const title = p.num != null ? `Parcelle ${p.num}` : tr.nom
     const num = p.num != null ? String(p.num) : ''
@@ -1720,12 +1615,10 @@ const bindPopupActionButtons = (popup: any): void => {
     return `<div class="geoportal-popup">
         <div class="geoportal-popup-title">${escapeHtml(tr.nom)}</div>
         <div class="geoportal-popup-classement">
-          <span class="geoportal-popup-badge" style="background:${color}">${tr.score_final.toFixed(1)}/100</span>
-          <span class="geoportal-popup-rank">${t('ranking.classement_sur')} <strong>${tr.classement}${ordinalSuffix(tr.classement)}</strong></span>
+          <span class="geoportal-popup-rank">${t('ranking.classement_sur')} <strong>#${tr.classement}${ordinalSuffix(tr.classement)}</strong></span>
         </div>
         <div class="geoportal-popup-scores">
-          <div class="geoportal-popup-row"><span>${t('ranking.score_amc')}</span><strong>${tr.score_amc.toFixed(1)}/100</strong></div>
-          ${rentaRow}
+          ${(tr.criteres_conformite ?? []).map(c => `<div class="geoportal-popup-row"><span>${escapeHtml(c.label)}</span><strong>${c.pct >= 50 ? '✓' : '✗'}</strong></div>`).join('')}
         </div>
         <div class="geoportal-popup-coords">${propsToHtml(p, CADASTRE_ATTRIBUTE_LABELS)}</div>
         ${buildPopupActions(center.lat, center.lng, ring, title, affOpts, { terrainId, nom: tr.nom, superficie: tr.superficie, lat: center.lat, lng: center.lng, ref: String(p.num ?? '') })}
@@ -3105,7 +2998,7 @@ const bindPopupActionButtons = (popup: any): void => {
                       ) : cardMode === 'terrainList' ? (
                         (() => {
                           const sorted = [...analyseResultatsRef.current].sort((a, b) => {
-                            if (b.score_amc !== a.score_amc) return b.score_amc - a.score_amc
+                            if (b.score_final !== a.score_final) return b.score_final - a.score_final
                             return b.superficie - a.superficie
                           })
                           return (
@@ -3123,9 +3016,7 @@ const bindPopupActionButtons = (popup: any): void => {
                                   {saving ? '...' : icons.save} {savedAnalyse ? 'Sauvegarde ✓' : 'Sauvegarder'}
                                 </button>
                               </div>
-                              {sorted.map((tr, i) => {
-                                const color = getScoreColor(tr.score_final)
-                                return (
+                              {sorted.map((tr, i) => (
                                   <button
                                     key={tr.id}
                                     type="button"
@@ -3133,7 +3024,7 @@ const bindPopupActionButtons = (popup: any): void => {
                                     onClick={() => selectTerrain(tr.id)}
                                   >
                                     <div className="geo-terrain-list-rank">
-                                      <span className="geo-terrain-list-rank-num" style={{ background: color }}>#{i + 1}</span>
+                                      <span className="geo-terrain-list-rank-num">#{i + 1}</span>
                                     </div>
                                     <div className="geo-terrain-list-info">
                                       <div className="geo-terrain-list-name">{tr.infos_generales.reference_cadastrale || tr.nom}</div>
@@ -3141,20 +3032,9 @@ const bindPopupActionButtons = (popup: any): void => {
                                         {tr.infos_generales.commune} &middot; {tr.superficie.toLocaleString('fr-FR')} m&sup2;
                                       </div>
                                     </div>
-                                    <div className="geo-terrain-list-scores">
-                                      <div className="geo-terrain-list-score-item">
-                                        <span className="geo-terrain-list-score-label">AMC</span>
-                                        <strong>{tr.score_amc.toFixed(1)}</strong>
-                                      </div>
-                                      <div className="geo-terrain-list-score-item">
-                                        <span className="geo-terrain-list-score-label">Score</span>
-                                        <strong style={{ color }}>{tr.score_final.toFixed(1)}</strong>
-                                      </div>
-                                    </div>
                                     <div className="geo-terrain-list-arrow">{icons.chevron}</div>
                                   </button>
-                                )
-                              })}
+                              ))}
                             </div>
                           )
                         })()
@@ -3168,9 +3048,6 @@ const bindPopupActionButtons = (popup: any): void => {
                           {renderScoreSummary(selectedTerrain)}
                           {renderInfoGenerale(selectedTerrain)}
                           {renderDetailCriteres(selectedTerrain)}
-                          {renderScores(selectedTerrain, analyseResultatsRef.current.length)}
-                          {renderRentabilite(selectedTerrain)}
-                          {renderConclusion(selectedTerrain)}
                         </>
                       ) : (
                         <div className="geo-sr-empty">

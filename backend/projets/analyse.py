@@ -404,12 +404,14 @@ def _score_superficie(superficie_m2, souhaitee):
 
 
 # ---------------------------------------------------------------------------
-# Rentabilité — pondération du score final
+# Classement par critères — 25 % Accessibilité, 25 % Positionnement,
+# 25 % Topographie (pente), 25 % Surface
+# Seuls les critères définis par l'utilisateur sont considérés.
 # ---------------------------------------------------------------------------
 
-POIDS_RENTABILITE = 0.40
-POIDS_AMC = 0.30
-POIDS_SURFACE = 0.30
+POIDS_RENTABILITE = 0.0
+POIDS_AMC = 0.0
+POIDS_SURFACE = 0.0
 
 ROI_MIN, ROI_MAX = -100.0, 100.0
 
@@ -425,6 +427,45 @@ def _normaliser_roi(roi):
     if roi <= 0.0:
         return 50.0 * (roi - ROI_MIN) / (0.0 - ROI_MIN)
     return 50.0 + 50.0 * roi / ROI_MAX
+
+
+def _match_distance(actual: float | None, target: float) -> float:
+    """Pourcentage de conformité distance (0-100).
+    100 % si actual == target, 0 % si actual >= 2× target."""
+    if actual is None or target <= 0:
+        return None
+    ratio = min(actual / target, 2.0)
+    return round(max(0.0, (1.0 - ratio / 2.0) * 100.0), 1)
+
+
+def _match_pente(actual: float | None, cibles: list[str]) -> float:
+    """Pourcentage de conformité pente (0-100).
+    100 % si la pente tombe dans la plage choisie, dégression si hors plage."""
+    if actual is None or not cibles:
+        return None
+    plages = {
+        '0_5': (0, 5), '5_10': (5, 10),
+        '10_15': (10, 15), 'gt15': (15, 100),
+    }
+    dans_plage = False
+    for v in cibles:
+        lo, hi = plages.get(v, (0, 100))
+        if lo <= actual <= hi:
+            dans_plage = True
+            break
+    if dans_plage:
+        return 100.0
+    min_dist = min(abs(actual - lo) for v, (lo, hi) in plages.items() if v in cibles)
+    return round(max(0.0, 100.0 - min_dist * 5.0), 1)
+
+
+def _match_superficie(actual: float | None, souhaitee: float) -> float:
+    """Pourcentage de conformité superficie (0-100).
+    100 % si ratio = 1.0, dégradation symétrique."""
+    if not actual or not souhaitee or souhaitee <= 0:
+        return None
+    ratio = actual / souhaitee
+    return round(min(1.0, 1.0 / max(ratio, 1.0 / ratio)) * 100.0, 1)
 
 
 def _charger_criteres_projet(projet_pk: int) -> dict:
@@ -605,7 +646,7 @@ def analyser_parcelles(projet_pk: int, filtres: dict) -> dict:
             group_scores.append(_distance_score(min(dist_by_amenity[k] for k in present)))
         score_pos = round(sum(group_scores) / len(group_scores)) if group_scores else 0.0
 
-        # --- topographie (MNT) --------------------------------------------------------
+        # --- topographie (MNT) — pente uniquement -----------------------------------
         altitude = pente = denivele = None
         if mnt_index is not None:
             samples = {}
@@ -621,25 +662,102 @@ def analyser_parcelles(projet_pk: int, filtres: dict) -> dict:
             if len(samples) >= 2:
                 vals = list(samples.values())
                 denivele = max(vals) - min(vals)
-            # pente : gradient est/nord
             if (0.0, 0.0) in samples and ((1, 0) in samples or (0, 1) in samples):
                 gx = (samples.get((0, 1), samples[(0.0, 0.0)]) - samples[(0.0, 0.0)]) / 110.0
                 gy = (samples.get((1, 0), samples[(0.0, 0.0)]) - samples[(0.0, 0.0)]) / 110.0
                 pente = math.sqrt(gx * gx + gy * gy) * 100.0
-        score_topo = _pente_score(pente if pente is not None else None)
 
-        score_superf = _score_superficie(parcelle.get('surface'), surface_souhaitee)
+        # --- Scores de conformité par critère (0-100) -------------------------------
+        # On ne considère que les critères que l'utilisateur a définis dans les filtres.
+        criteres_conformite = []
 
-        score_amc = round(0.40 * score_access + 0.40 * score_pos + 0.20 * score_topo, 1)
+        # 1) Accessibilité : distance cible à la route
+        dist_route_cible = int(filtres.get('distance_route') or 0)
+        route_type_sel = filtres.get('route_type', [])
+        if dist_route_cible > 0 and route_type_sel:
+            for rtype in route_type_sel:
+                actual = dist_routes.get(rtype)
+                if actual is not None:
+                    pct = _match_distance(actual, dist_route_cible)
+                    if pct is not None:
+                        criteres_conformite.append({
+                            'cle': f'access_{rtype}',
+                            'poids': 0.25,
+                            'pct': pct,
+                            'label': f"Accessibilité → {CLASSE_LABEL.get(rtype, rtype)}",
+                            'valeur': actual,
+                            'cible': dist_route_cible,
+                            'unite': 'm',
+                        })
+
+        # 2) Positionnement : distance cible aux équipements
+        for groupe, mapping in FILTRE_AMENITY.items():
+            distance_key = {
+                'health': 'distance_health', 'education': 'distance_education',
+                'commerce': 'distance_commerce', 'transport': 'distance_transport',
+                'admin': 'distance_admin',
+            }[groupe]
+            seuil = int(filtres.get(distance_key) or 0)
+            if seuil <= 0:
+                continue
+            for ftype in filtres.get(groupe, []):
+                keys = mapping.get(ftype, [])
+                present = [k for k in keys if k in dist_by_amenity]
+                if not present:
+                    continue
+                actual = min(dist_by_amenity[k] for k in present)
+                pct = _match_distance(actual, seuil)
+                if pct is not None:
+                    criteres_conformite.append({
+                        'cle': f'pos_{groupe}_{ftype}',
+                        'poids': 0.25,
+                        'pct': pct,
+                        'label': f"Positionnement → {FILTRE_LABEL.get(groupe, {}).get(ftype, ftype)}",
+                        'valeur': actual,
+                        'cible': seuil,
+                        'unite': 'm',
+                    })
+
+        # 3) Topographie : pente
+        pente_sel = filtres.get('pente', [])
+        if pente_sel and pente is not None:
+            pct = _match_pente(pente, pente_sel)
+            if pct is not None:
+                criteres_conformite.append({
+                    'cle': 'topo_pente',
+                    'poids': 0.25,
+                    'pct': pct,
+                    'label': 'Topographie → Pente',
+                    'valeur': pente,
+                    'cible': pente_sel,
+                    'unite': '%',
+                })
+
+        # 4) Surface souhaitée
+        if surface_souhaitee > 0:
+            pct = _match_superficie(parcelle.get('surface'), surface_souhaitee)
+            if pct is not None:
+                criteres_conformite.append({
+                    'cle': 'surface',
+                    'poids': 0.25,
+                    'pct': pct,
+                    'label': f"Surface → {surface_souhaitee:.0f} m²",
+                    'valeur': float(parcelle.get('surface') or 0),
+                    'cible': surface_souhaitee,
+                    'unite': 'm²',
+                })
+
+        # Score final = moyenne des pourcentages de conformité définis
+        n_criteres = len(criteres_conformite) or 1
+        score_final = round(sum(c['pct'] for c in criteres_conformite) / n_criteres, 1)
+        score_amc = score_final
+        score_superf = next((c['pct'] for c in criteres_conformite if c['cle'] == 'surface'), None)
+        score_access_final = next((c['pct'] for c in criteres_conformite if c['cle'].startswith('access_')), None)
+        score_pos_final = next((c['pct'] for c in criteres_conformite if c['cle'].startswith('pos_')), None)
+        score_topo_final = next((c['pct'] for c in criteres_conformite if c['cle'] == 'topo_pente'), None)
 
         roi, marge, benefice_net, score_rentabilite, type_rentabilite = None, None, None, None, 'indisponible'
         prix_terrain = None
-
-        if score_superf is not None:
-            score_final = round(
-                POIDS_RENTABILITE * 0 + POIDS_AMC * score_amc + POIDS_SURFACE * score_superf, 1)
-        else:
-            score_final = round(POIDS_AMC * score_amc, 1)
 
         infos = {
             'reference_cadastrale': parcelle.get('num') or f"P-{parcelle['id']}",
@@ -673,9 +791,9 @@ def analyser_parcelles(projet_pk: int, filtres: dict) -> dict:
             'score_global': score_final,
             'score_final': score_final,
             'score_amc': score_amc,
-            'score_accessibilite': round(score_access),
-            'score_positionnement': round(score_pos),
-            'score_topographie': round(score_topo),
+            'score_accessibilite': round(score_access_final) if score_access_final is not None else None,
+            'score_positionnement': round(score_pos_final) if score_pos_final is not None else None,
+            'score_topographie': round(score_topo_final) if score_topo_final is not None else None,
             'score_superficie': round(score_superf) if score_superf is not None else None,
             'roi': roi,
             'marge': marge,
@@ -687,6 +805,7 @@ def analyser_parcelles(projet_pk: int, filtres: dict) -> dict:
             'criteres': criteres,
             'criteres_satisfaits': conforme_count,
             'criteres_total': total_criteres,
+            'criteres_conformite': criteres_conformite,
             'points_forts': [c['critere'] for c in criteres if c['conforme']][:3],
             'points_faibles': [c['critere'] for c in criteres if not c['conforme']][:3],
         })

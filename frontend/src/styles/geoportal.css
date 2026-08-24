@@ -3689,30 +3689,29 @@
 
 .renta-sidebar-header {
   flex-shrink: 0;
-  padding: 20px 20px 16px;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 18px 20px 12px;
   background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
 }
 
 .renta-sidebar-header h4 {
   margin: 0 0 4px;
-  font-size: 0.875rem;
-  font-weight: 700;
+  font-size: 1.1rem;
+  font-weight: 800;
   color: #1e293b;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .renta-sidebar-header h4 svg {
-  width: 16px;
-  height: 16px;
-  opacity: 0.7;
+  width: 20px;
+  height: 20px;
+  opacity: 0.8;
 }
 
 .renta-sidebar-header span {
-  font-size: 0.7rem;
+  font-size: 0.825rem;
   color: #64748b;
   font-weight: 500;
 }
