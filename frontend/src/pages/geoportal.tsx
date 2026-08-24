@@ -3098,9 +3098,11 @@ const bindPopupActionButtons = (popup: any): void => {
                                 </div>
                               ) : null}
                               <div className="geo-terrain-list-header">
-                                <span className="geo-terrain-list-count">{sorted.length} parcelles classees</span>
+                                <div>
+                                  <span className="geo-terrain-list-count">{sorted.length} {sorted.length > 1 ? 'parcelles' : 'parcelle'} classees</span>
+                                </div>
                                 <button type="button" className="geo-terrain-list-save" disabled={saving || !!savedAnalyse} onClick={() => { void handleSaveClassement() }}>
-                                  {saving ? '...' : icons.save} {savedAnalyse ? 'Sauvegarde' : 'Sauvegarder'}
+                                  {saving ? '...' : icons.save} {savedAnalyse ? 'Sauvegarde ✓' : 'Sauvegarder'}
                                 </button>
                               </div>
                               {sorted.map((tr, i) => {
@@ -3118,7 +3120,7 @@ const bindPopupActionButtons = (popup: any): void => {
                                     <div className="geo-terrain-list-info">
                                       <div className="geo-terrain-list-name">{tr.infos_generales.reference_cadastrale || tr.nom}</div>
                                       <div className="geo-terrain-list-meta">
-                                        {tr.infos_generales.commune} · {tr.superficie.toLocaleString('fr-FR')} m²
+                                        {tr.infos_generales.commune} &middot; {tr.superficie.toLocaleString('fr-FR')} m&sup2;
                                       </div>
                                     </div>
                                     <div className="geo-terrain-list-scores">
