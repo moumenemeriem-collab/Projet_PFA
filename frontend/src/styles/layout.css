@@ -97,6 +97,28 @@
   height: 100%;
 }
 
+.app-sidebar-quit {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  margin-top: 8px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.app-sidebar-quit:hover {
+  color: #ffffff;
+  background: rgba(239, 68, 68, 0.25);
+}
+
 .app-body {
   flex: 1;
   display: flex;

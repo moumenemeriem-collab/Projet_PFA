@@ -279,7 +279,10 @@ export function ProjectsPage(): React.JSX.Element {
           </div>
           <div className="project-card-actions">
             <Link to={`/projets/${projet.id}/classement`} className="project-classement-link">
-              {icons.ranking} {t('projects.view_ranking')} {icons.chevron}
+              {icons.ranking} {t('ranking.title')} {icons.chevron}
+            </Link>
+            <Link to={`/projets/${projet.id}/classement/ajouter`} className="project-classement-link project-classement-link--primary">
+              {icons.search} {t('projects.view_ranking')} {icons.chevron}
             </Link>
           </div>
         </div>
@@ -521,45 +524,151 @@ export function ProjectsPage(): React.JSX.Element {
                     ) : null}
                   </div>
                 </div>
+
                 <div className="project-detail-section">
-                  <h4>{t('projects.detail_finance')}</h4>
+                  <h4>{t('projects.detail_section_land')}</h4>
                   <div className="project-detail-grid">
-                    <div className="project-detail-item">
-                      <span className="project-detail-label">{t('projects.budget')}</span>
-                      <span className="project-detail-value">{formatBudget(detailProjet.budget_total)}</span>
-                    </div>
-                    {detailProjet.prix_terrain ? (
+                    {detailProjet.prix_foncier_m2 ? (
                       <div className="project-detail-item">
-                        <span className="project-detail-label">{t('projects.field_prix_terrain')}</span>
-                        <span className="project-detail-value">{formatBudget(detailProjet.prix_terrain)}</span>
+                        <span className="project-detail-label">{t('projects.field_prix_foncier_m2')}</span>
+                        <span className="project-detail-value">{formatBudget(detailProjet.prix_foncier_m2)}</span>
                       </div>
                     ) : null}
-                    {detailProjet.cout_construction ? (
+                    {detailProjet.frais_acquisition ? (
                       <div className="project-detail-item">
-                        <span className="project-detail-label">{t('projects.field_cout_construction')}</span>
-                        <span className="project-detail-value">{formatBudget(detailProjet.cout_construction)}</span>
+                        <span className="project-detail-label">{t('projects.field_frais_acquisition')}</span>
+                        <span className="project-detail-value">{detailProjet.frais_acquisition}%</span>
                       </div>
                     ) : null}
-                    {detailProjet.autres_charges ? (
+                    {detailProjet.taux_chute ? (
                       <div className="project-detail-item">
-                        <span className="project-detail-label">{t('projects.field_autres_charges')}</span>
-                        <span className="project-detail-value">{formatBudget(detailProjet.autres_charges)}</span>
+                        <span className="project-detail-label">{t('projects.field_taux_chute')}</span>
+                        <span className="project-detail-value">{detailProjet.taux_chute}%</span>
                       </div>
                     ) : null}
-                    {detailProjet.prix_vente_unitaire ? (
+                    {detailProjet.cos ? (
                       <div className="project-detail-item">
-                        <span className="project-detail-label">{t('projects.field_prix_vente')}</span>
-                        <span className="project-detail-value">{formatBudget(detailProjet.prix_vente_unitaire)}</span>
+                        <span className="project-detail-label">{t('projects.field_cos')}</span>
+                        <span className="project-detail-value">{detailProjet.cos}</span>
                       </div>
                     ) : null}
-                    {detailProjet.revenu_estime ? (
+                    {detailProjet.cus ? (
                       <div className="project-detail-item">
-                        <span className="project-detail-label">{t('projects.revenu_estime')}</span>
-                        <span className="project-detail-value">{formatBudget(detailProjet.revenu_estime)}</span>
+                        <span className="project-detail-label">{t('projects.field_cus')}</span>
+                        <span className="project-detail-value">{detailProjet.cus}</span>
                       </div>
                     ) : null}
                   </div>
                 </div>
+
+                <div className="project-detail-section">
+                  <h4>{t('projects.detail_section_destinations')}</h4>
+                  <div className="project-detail-grid">
+                    {detailProjet.has_appartement ? (
+                      <>
+                        <div className="project-detail-item">
+                          <span className="project-detail-label">{t('projects.dest_appartement')}</span>
+                          <span className="project-detail-value">{detailProjet.quote_part_appartement ?? 0}%</span>
+                        </div>
+                        {detailProjet.prix_vente_appartement ? (
+                          <div className="project-detail-item">
+                            <span className="project-detail-label">{t('projects.field_prix_vente_app')}</span>
+                            <span className="project-detail-value">{formatBudget(detailProjet.prix_vente_appartement)}</span>
+                          </div>
+                        ) : null}
+                        {detailProjet.cout_construction_appartement ? (
+                          <div className="project-detail-item">
+                            <span className="project-detail-label">{t('projects.field_cout_constr_app')}</span>
+                            <span className="project-detail-value">{formatBudget(detailProjet.cout_construction_appartement)}</span>
+                          </div>
+                        ) : null}
+                      </>
+                    ) : null}
+                    {detailProjet.has_commerce ? (
+                      <>
+                        <div className="project-detail-item">
+                          <span className="project-detail-label">{t('projects.dest_commerce')}</span>
+                          <span className="project-detail-value">{detailProjet.quote_part_commerce ?? 0}%</span>
+                        </div>
+                        {detailProjet.prix_vente_commerce ? (
+                          <div className="project-detail-item">
+                            <span className="project-detail-label">{t('projects.field_prix_vente_commerce')}</span>
+                            <span className="project-detail-value">{formatBudget(detailProjet.prix_vente_commerce)}</span>
+                          </div>
+                        ) : null}
+                        {detailProjet.cout_construction_commerce ? (
+                          <div className="project-detail-item">
+                            <span className="project-detail-label">{t('projects.field_cout_constr_commerce')}</span>
+                            <span className="project-detail-value">{formatBudget(detailProjet.cout_construction_commerce)}</span>
+                          </div>
+                        ) : null}
+                      </>
+                    ) : null}
+                    {detailProjet.has_bureau ? (
+                      <>
+                        <div className="project-detail-item">
+                          <span className="project-detail-label">{t('projects.dest_bureau')}</span>
+                          <span className="project-detail-value">{detailProjet.quote_part_bureau ?? 0}%</span>
+                        </div>
+                        {detailProjet.prix_vente_bureau ? (
+                          <div className="project-detail-item">
+                            <span className="project-detail-label">{t('projects.field_prix_vente_bureau')}</span>
+                            <span className="project-detail-value">{formatBudget(detailProjet.prix_vente_bureau)}</span>
+                          </div>
+                        ) : null}
+                        {detailProjet.cout_construction_bureau ? (
+                          <div className="project-detail-item">
+                            <span className="project-detail-label">{t('projects.field_cout_constr_bureau')}</span>
+                            <span className="project-detail-value">{formatBudget(detailProjet.cout_construction_bureau)}</span>
+                          </div>
+                        ) : null}
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="project-detail-section">
+                  <h4>{t('projects.detail_section_charges')}</h4>
+                  <div className="project-detail-grid">
+                    {detailProjet.taux_etudes_honoraires ? (
+                      <div className="project-detail-item">
+                        <span className="project-detail-label">{t('projects.field_taux_etudes')}</span>
+                        <span className="project-detail-value">{detailProjet.taux_etudes_honoraires}%</span>
+                      </div>
+                    ) : null}
+                    {detailProjet.taux_imprevus ? (
+                      <div className="project-detail-item">
+                        <span className="project-detail-label">{t('projects.field_taux_imprevus')}</span>
+                        <span className="project-detail-value">{detailProjet.taux_imprevus}%</span>
+                      </div>
+                    ) : null}
+                    {detailProjet.taux_commercialisation ? (
+                      <div className="project-detail-item">
+                        <span className="project-detail-label">{t('projects.field_taux_commercialisation')}</span>
+                        <span className="project-detail-value">{detailProjet.taux_commercialisation}%</span>
+                      </div>
+                    ) : null}
+                    {detailProjet.duree_construction ? (
+                      <div className="project-detail-item">
+                        <span className="project-detail-label">{t('projects.field_duree_construction')}</span>
+                        <span className="project-detail-value">{detailProjet.duree_construction} ans</span>
+                      </div>
+                    ) : null}
+                    {detailProjet.duree_commercialisation ? (
+                      <div className="project-detail-item">
+                        <span className="project-detail-label">{t('projects.field_duree_commercialisation')}</span>
+                        <span className="project-detail-value">{detailProjet.duree_commercialisation} ans</span>
+                      </div>
+                    ) : null}
+                    {detailProjet.taux_actualisation ? (
+                      <div className="project-detail-item">
+                        <span className="project-detail-label">{t('projects.field_taux_actualisation')}</span>
+                        <span className="project-detail-value">{detailProjet.taux_actualisation}%</span>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
                 {rentabilite && rentabilite.ok ? (
                   <div className="project-detail-section">
                     <h4>{t('projects.detail_rentabilite')}</h4>

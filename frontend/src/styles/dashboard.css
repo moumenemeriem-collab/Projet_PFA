@@ -948,21 +948,60 @@
 .project-classement-link {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--primary);
+  gap: 8px;
+  padding: 10px 20px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #1b3a6e;
   text-decoration: none;
-  transition: opacity 0.15s;
+  border: 1.5px solid #d1dce8;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f0f4fa 100%);
+  box-shadow: 0 1px 3px rgba(27, 58, 110, 0.06);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .project-classement-link svg {
   width: 16px;
   height: 16px;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .project-classement-link:hover {
-  opacity: 0.8;
+  border-color: #1b3a6e;
+  background: linear-gradient(135deg, #eef3fb 0%, #dce6f5 100%);
+  box-shadow: 0 4px 14px rgba(27, 58, 110, 0.15);
+  transform: translateY(-2px);
+  color: #1b3a6e;
+}
+
+.project-classement-link:hover svg {
+  transform: translateX(2px);
+}
+
+.project-classement-link--primary {
+  background: linear-gradient(135deg, #1b3a6e 0%, #2558a6 50%, #0f3d6e 100%);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 2px 8px rgba(27, 58, 110, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.project-classement-link--primary:hover {
+  background: linear-gradient(135deg, #0f3d6e 0%, #1b4a8a 50%, #0a2a52 100%);
+  box-shadow: 0 6px 20px rgba(27, 58, 110, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.project-classement-link--primary:hover svg {
+  transform: translateX(2px);
+}
+
+.project-card-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .projects-grid--empty {

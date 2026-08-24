@@ -6,7 +6,7 @@ import { t, formatDateTime } from '../i18n/index'
 import { icons } from './icons'
 import { LangSwitcher } from './LangSwitcher'
 
-export type AppPage = 'dashboard' | 'projects' | 'users' | 'messages' | 'data' | 'ranking' | 'profile'
+export type AppPage = 'dashboard' | 'projects' | 'users' | 'messages' | 'data' | 'ranking' | 'geoportail' | 'profile'
 
 interface NavItem {
   id: AppPage
@@ -19,8 +19,13 @@ const investisseurNav: NavItem[] = [
   { id: 'dashboard', labelKey: 'dashboard.sidebar.home', icon: 'dashboard', href: '/investisseur/tableau-de-bord' },
   { id: 'projects', labelKey: 'dashboard.sidebar.projects', icon: 'projects', href: '/projets' },
   { id: 'messages', labelKey: 'dashboard.sidebar.messages', icon: 'message', href: '/messages' },
-  { id: 'ranking', labelKey: 'dashboard.sidebar.ranking', icon: 'ranking', href: '/classement' },
   { id: 'profile', labelKey: 'dashboard.sidebar.profile', icon: 'profile', href: '/profil' },
+]
+
+const investisseurProjectNav: NavItem[] = [
+  { id: 'projects', labelKey: 'dashboard.sidebar.projects', icon: 'projects', href: '/projets' },
+  { id: 'ranking', labelKey: 'dashboard.sidebar.ranking', icon: 'ranking', href: '' },
+  { id: 'geoportail', labelKey: 'dashboard.sidebar.geoportail', icon: 'globe', href: '' },
 ]
 
 const adminNav: NavItem[] = [
@@ -37,9 +42,10 @@ interface DashboardLayoutProps {
   children: React.ReactNode
   hideSidebar?: boolean
   topbarTitle?: string
+  projectContext?: { id: number; name: string } | null
 }
 
-export function DashboardLayout({ role, activePage, children, hideSidebar = false, topbarTitle }: DashboardLayoutProps): React.JSX.Element | null {
+export function DashboardLayout({ role, activePage, children, hideSidebar = false, topbarTitle, projectContext }: DashboardLayoutProps): React.JSX.Element | null {
   const navigate = useNavigate()
   const user = getStoredUser()
   const [notifOpen, setNotifOpen] = useState(false)
@@ -93,9 +99,10 @@ export function DashboardLayout({ role, activePage, children, hideSidebar = fals
 
   if (!user) return null
 
-  const nav = role === 'admin' ? adminNav : investisseurNav
+  const nav = role === 'admin' ? adminNav : projectContext ? investisseurProjectNav : investisseurNav
   const profileUrl = role === 'admin' ? '/admin/profil' : '/profil'
-  const spaceTitle = topbarTitle ?? t(role === 'admin' ? 'admin.topbar.space' : 'dashboard.topbar.space')
+  const defaultTitle = projectContext ? `${t('dashboard.topbar.space')} : ${projectContext.name}` : t(role === 'admin' ? 'admin.topbar.space' : 'dashboard.topbar.space')
+  const spaceTitle = topbarTitle ?? defaultTitle
 
   return (
     <div className={hideSidebar ? 'app-shell app-shell--full' : 'app-shell'}>
@@ -169,17 +176,30 @@ export function DashboardLayout({ role, activePage, children, hideSidebar = fals
         {hideSidebar ? null : (
           <aside className="app-sidebar">
             <nav className="app-sidebar-nav">
-              {nav.map((item) => (
-                <Link
-                  to={item.href}
-                  className={`app-sidebar-link${activePage === item.id ? ' app-sidebar-link--active' : ''}`}
-                  key={item.id}
-                >
-                  <span className="app-sidebar-link-icon">{icons[item.icon]}</span>
-                  {t(item.labelKey)}
-                </Link>
-              ))}
+              {nav.map((item) => {
+                const href = projectContext && item.id === 'ranking'
+                  ? `/projets/${projectContext.id}/classement`
+                  : projectContext && item.id === 'geoportail'
+                  ? `/projets/${projectContext.id}/classement/ajouter`
+                  : item.href
+                return (
+                  <Link
+                    to={href}
+                    className={`app-sidebar-link${activePage === item.id ? ' app-sidebar-link--active' : ''}`}
+                    key={item.id}
+                  >
+                    <span className="app-sidebar-link-icon">{icons[item.icon]}</span>
+                    {t(item.labelKey)}
+                  </Link>
+                )
+              })}
             </nav>
+            {projectContext ? (
+              <button type="button" className="app-sidebar-quit" onClick={() => navigate('/projets')}>
+                <span className="app-sidebar-logout-icon">{icons.close}</span>
+                {t('dashboard.sidebar.quit')}
+              </button>
+            ) : null}
             <button type="button" className="app-sidebar-logout" onClick={handleLogout}>
               <span className="app-sidebar-logout-icon">{icons.logout}</span>
               {t(role === 'admin' ? 'admin.sidebar.logout' : 'dashboard.sidebar.logout')}

@@ -27,6 +27,7 @@ export interface Terrain {
   equipements: string[]
   geometry: string
   date_creation: string
+  rentabilite_json?: Record<string, unknown> | null
 }
 
 export interface TerrainListResponse {
@@ -160,6 +161,14 @@ export async function deleteTerrain(projetId: number, terrainId: number): Promis
     const data = await res.json().catch(() => ({}))
     throw new Error(data.detail || 'Erreur lors de la suppression.')
   }
+}
+
+export async function saveTerrainRentabilite(projetId: number, terrainId: number, rentabiliteJson: Record<string, unknown>): Promise<Terrain> {
+  const res = await apiFetch(`/api/projets/${projetId}/terrains/${terrainId}/`, {
+    method: 'PATCH',
+    body: JSON.stringify({ rentabilite_json: rentabiliteJson }),
+  })
+  return parseResponse<Terrain>(res)
 }
 
 async function parseResponse<T>(res: Response): Promise<T> {

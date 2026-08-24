@@ -585,6 +585,21 @@ class TerrainDetailView(APIView):
     authentication_classes = [JWTOptionalAuthentication]
     permission_classes = [AllowAny]
 
+    def patch(self, request, projet_pk: int, pk: int):
+        if not request.user or not request.user.is_authenticated:
+            return Response({'detail': 'Authentification requise.'}, status=status.HTTP_401_UNAUTHORIZED)
+        try:
+            terrain = Terrain.objects.get(pk=pk, projet_id=projet_pk)
+        except Terrain.DoesNotExist:
+            return Response({'detail': 'Terrain introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        rentabilite_data = request.data.get('rentabilite_json')
+        if rentabilite_data is None:
+            return Response({'detail': 'rentabilite_json requis.'}, status=status.HTTP_400_BAD_REQUEST)
+        terrain.rentabilite_json = rentabilite_data
+        terrain.save(update_fields=['rentabilite_json'])
+        from .serializers import TerrainListSerializer
+        return Response(TerrainListSerializer(terrain).data)
+
     def delete(self, request, projet_pk: int, pk: int):
         if not request.user or not request.user.is_authenticated:
             return Response({'detail': 'Authentification requise.'}, status=status.HTTP_401_UNAUTHORIZED)

@@ -185,11 +185,106 @@ function DetailModal({ resultat, cadastre, onClose }: { resultat: ResultatAnalys
   )
 }
 
+function RentabiliteTab({ projetId }: { projetId: number }): React.JSX.Element {
+  const [terrains, setTerrains] = useState<Terrain[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    fetchTerrains(projetId, { page_size: 200 })
+      .then((data) => {
+        if (cancelled) return
+        setTerrains(data.results.filter((t_) => t_.rentabilite_json))
+        setLoading(false)
+      })
+      .catch(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [projetId])
+
+  const sorted = [...terrains].sort((a, b) => {
+    const aBenefice = (a.rentabilite_json as Record<string, unknown>)?.benefice_net as number ?? -Infinity
+    const bBenefice = (b.rentabilite_json as Record<string, unknown>)?.benefice_net as number ?? -Infinity
+    return bBenefice - aBenefice
+  })
+
+  const fmtMAD = (v: number | null | undefined): string => {
+    if (v == null) return '—'
+    return `${Number(v).toLocaleString('fr-FR', { maximumFractionDigits: 0 })} MAD`
+  }
+
+  if (loading) {
+    return (
+      <div className="classement-empty">
+        <div className="admin-loading-spinner"></div>
+        <p>{t('ranking.loading')}</p>
+      </div>
+    )
+  }
+
+  if (sorted.length === 0) {
+    return (
+      <div className="classement-empty">
+        <div className="classement-empty-icon">{icons.euro}</div>
+        <h3 className="classement-empty-title">{t('ranking.no_rentabilite_title')}</h3>
+        <p className="classement-empty-desc">{t('ranking.no_rentabilite_desc')}</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="classement-table-wrapper">
+      <table className="classement-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>{t('ranking.col_name')}</th>
+            <th>{t('ranking.col_surface')}</th>
+            <th>{t('ranking.res_ca')}</th>
+            <th>{t('ranking.res_cout_total')}</th>
+            <th>{t('ranking.res_benefice')}</th>
+            <th>{t('ranking.res_tri')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((t_, i) => {
+            const r = t_.rentabilite_json as Record<string, unknown> | null
+            const ca = r?.ca_total as number ?? null
+            const cout = r?.cout_total_projet as number ?? null
+            const benefice = r?.benefice_net as number ?? null
+            const tri = r?.tri as number ?? null
+            return (
+              <tr key={t_.id}>
+                <td><span className="classement-rank">#{i + 1}</span></td>
+                <td>
+                  <div className="classement-parcelle">
+                    <strong>{t_.nom}</strong>
+                    <span className="classement-ref">{t_.num_titre_foncier || '—'}</span>
+                  </div>
+                </td>
+                <td>{Number(t_.superficie).toLocaleString()} m²</td>
+                <td>{fmtMAD(ca)}</td>
+                <td>{fmtMAD(cout)}</td>
+                <td>
+                  <span className={benefice != null && benefice >= 0 ? 'text-success' : 'text-error'}>
+                    {fmtMAD(benefice)}
+                  </span>
+                </td>
+                <td>{tri != null ? `${tri.toFixed(1)}%` : '—'}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export function ClassementPage(): React.JSX.Element {
   const navigate = useNavigate()
   const { id } = useParams()
   const projetId = Number(id)
-  const [tab, setTab] = useState<'parcelles' | 'terrains'>('parcelles')
+  const [tab, setTab] = useState<'parcelles' | 'terrains' | 'rentabilite'>('parcelles')
   const [parcellesPage, setParcellesPage] = useState(1)
   const [projet, setProjet] = useState<Projet | null>(null)
   const [analyses, setAnalyses] = useState<Analyse[]>([])
@@ -353,7 +448,7 @@ export function ClassementPage(): React.JSX.Element {
 
   if (loading && !error) {
     return (
-      <DashboardLayout role="investisseur" activePage="ranking">
+      <DashboardLayout role="investisseur" activePage="ranking" projectContext={projet ? { id: projet.id, name: projet.nom } : null}>
         <div className="admin-loading">
           <div className="admin-loading-spinner"></div>
           <p>{t('ranking.loading')}</p>
@@ -364,7 +459,7 @@ export function ClassementPage(): React.JSX.Element {
 
   if (error || !projet) {
     return (
-      <DashboardLayout role="investisseur" activePage="ranking">
+      <DashboardLayout role="investisseur" activePage="ranking" projectContext={null}>
         <div className="admin-error-state">
           <p>{error ?? t('ranking.loading')}</p>
           <Link to="/projets" className="btn btn-primary">{t('projects.error_login')}</Link>
@@ -385,7 +480,7 @@ export function ClassementPage(): React.JSX.Element {
   const resultatsPagines = resultats.slice(parcellesStart - 1, parcellesEnd)
 
   return (
-    <DashboardLayout role="investisseur" activePage="ranking">
+    <DashboardLayout role="investisseur" activePage="ranking" projectContext={{ id: projet.id, name: projet.nom }}>
       <div className="classement-page">
         <div className="classement-header">
           <div>
@@ -408,6 +503,9 @@ export function ClassementPage(): React.JSX.Element {
           </button>
           <button type="button" className={`classement-tab${tab === 'terrains' ? ' classement-tab--active' : ''}`} onClick={() => setTab('terrains')}>
             {t('ranking.tab_terrains')}
+          </button>
+          <button type="button" className={`classement-tab${tab === 'rentabilite' ? ' classement-tab--active' : ''}`} onClick={() => setTab('rentabilite')}>
+            {t('ranking.tab_rentabilite')}
           </button>
         </div>
 
@@ -437,9 +535,7 @@ export function ClassementPage(): React.JSX.Element {
                       <th>{t('ranking.col_parcelle')}</th>
                       <th>{t('ranking.col_surface')}</th>
                       <th>{t('ranking.col_amc')}</th>
-                      <th>{t('ranking.col_roi')}</th>
                       <th>{t('ranking.col_score_final')}</th>
-                      <th>{t('ranking.col_conformite')}</th>
                       <th>{t('ranking.col_actions')}</th>
                     </tr>
                   </thead>
@@ -455,9 +551,7 @@ export function ClassementPage(): React.JSX.Element {
                         </td>
                         <td>{formatSurface(r.superficie)}</td>
                         <td>{r.score_amc != null ? r.score_amc.toFixed(1) : '—'}</td>
-                        <td>{r.roi != null ? `${r.roi.toFixed(1)} %` : '—'}</td>
                         <td>{scoreBadge(r)}</td>
-                        <td>{confBadge(r)}</td>
                         <td>
                           <div className="classement-table-actions">
                             <button type="button" className="table-action-btn" title={t('ranking.view_details')} onClick={() => setDetail(r)}>{icons.eye}</button>
@@ -516,7 +610,7 @@ export function ClassementPage(): React.JSX.Element {
               </Link>
             </div>
           )
-        ) : (
+        ) : tab === 'terrains' ? (
           <>
             <div className="classement-toolbar">
               <div className="classement-search">
@@ -587,7 +681,9 @@ export function ClassementPage(): React.JSX.Element {
               </div>
             ) : null}
           </>
-        )}
+        ) : tab === 'rentabilite' ? (
+          <RentabiliteTab projetId={projetId} />
+        ) : null}
       </div>
 
       {detail ? <DetailModal resultat={detail} cadastre={cadastreAttrs[String(detail.reference_cadastrale || detail.id_parcelle)] || null} onClose={() => setDetail(null)} /> : null}

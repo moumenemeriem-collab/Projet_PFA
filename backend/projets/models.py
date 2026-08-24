@@ -165,6 +165,9 @@ class Terrain(models.Model):
     topographie = models.IntegerField(choices=SCORE_CHOICES, default=5)
     score = models.DecimalField(max_digits=5, decimal_places=2, default=0)
 
+    # Champs rentabilité (remplis quand l'utilisateur calcule/édite la rentabilité)
+    rentabilite_json = models.JSONField(null=True, blank=True)
+
     date_creation = models.DateTimeField(auto_now_add=True)
 
     class Meta:
