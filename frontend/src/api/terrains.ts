@@ -102,9 +102,9 @@ export interface AnalyseResultat {
   score_global: number
   score_final: number
   score_amc: number
-  score_accessibilite: number
-  score_positionnement: number
-  score_topographie: number
+  score_accessibilite: number | null
+  score_positionnement: number | null
+  score_topographie: number | null
   score_superficie: number | null
   roi: number | null
   marge: number | null
@@ -126,9 +126,20 @@ export interface AnalyseResultat {
   criteres: AnalyseCriteres[]
   criteres_satisfaits: number
   criteres_total: number
+  criteres_conformite?: CritereConformite[]
   classement: number
   points_forts: string[]
   points_faibles: string[]
+}
+
+export interface CritereConformite {
+  cle: string
+  poids: number
+  pct: number
+  label: string
+  valeur: number
+  cible: number | number[]
+  unite: string
 }
 
 export interface AnalyseCriteres {

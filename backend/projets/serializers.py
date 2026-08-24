@@ -323,7 +323,7 @@ class ResultatAnalyseSerializer(serializers.ModelSerializer):
             'score_rentabilite', 'type_rentabilite',
             'score_final', 'rang',
             'nombre_criteres_satisfaits', 'total_criteres',
-            'criteres', 'points_forts', 'points_faibles',
+            'criteres', 'criteres_conformite', 'points_forts', 'points_faibles',
         ]
         read_only_fields = fields
 
@@ -390,6 +390,7 @@ class AnalyseCreateSerializer(serializers.Serializer):
                 nombre_criteres_satisfaits=p.get('criteres_satisfaits', 0) or 0,
                 total_criteres=p.get('criteres_total', 0) or 0,
                 criteres=p.get('criteres'),
+                criteres_conformite=p.get('criteres_conformite'),
                 points_forts=p.get('points_forts'),
                 points_faibles=p.get('points_faibles'),
             )

@@ -23,11 +23,6 @@ interface AlertState {
   message: string
 }
 
-function scoreClass(score: number): string {
-  if (score >= 70) return 'classement-score--high'
-  if (score >= 40) return 'classement-score--mid'
-  return 'classement-score--low'
-}
 
 function formatDate(iso: string): string {
   try {
@@ -50,13 +45,6 @@ function statusLabel(status: string): string {
   return t(map[status] ?? 'ranking.status_complete')
 }
 
-function scoreBadge(r: ResultatAnalyse): React.JSX.Element {
-  return (
-    <span className={`classement-score ${scoreClass(r.score_final ?? 0)}`}>
-      {r.score_final != null ? r.score_final.toFixed(1) : '—'}
-    </span>
-  )
-}
 
 function confBadge(r: ResultatAnalyse): React.JSX.Element {
   const ok = r.nombre_criteres_satisfaits
@@ -106,20 +94,8 @@ function DetailModal({ resultat, cadastre, onClose }: { resultat: ResultatAnalys
               <span className="classement-detail-value">{formatSurface(resultat.superficie)}</span>
             </div>
             <div className="classement-detail-item">
-              <span className="classement-detail-label">{t('ranking.score_amc')}</span>
-              <span className="classement-detail-value">{resultat.score_amc != null ? resultat.score_amc.toFixed(1) : '—'}</span>
-            </div>
-            <div className="classement-detail-item">
-              <span className="classement-detail-label">{t('ranking.roi')}</span>
-              <span className="classement-detail-value">{resultat.roi != null ? `${resultat.roi.toFixed(1)} %` : '—'}</span>
-            </div>
-            <div className="classement-detail-item">
-              <span className="classement-detail-label">{t('ranking.score_rentabilite')}</span>
-              <span className="classement-detail-value">{resultat.score_rentabilite != null ? resultat.score_rentabilite.toFixed(1) : '—'}</span>
-            </div>
-            <div className="classement-detail-item">
-              <span className="classement-detail-label">{t('ranking.score_final')}</span>
-              <span className="classement-detail-value">{resultat.score_final != null ? resultat.score_final.toFixed(1) : '—'}</span>
+              <span className="classement-detail-label">{t('ranking.col_conformite')}</span>
+              <span className="classement-detail-value">{confBadge(resultat)}</span>
             </div>
             <div className="classement-detail-item">
               <span className="classement-detail-label">{t('ranking.col_conformite')}</span>
@@ -534,8 +510,6 @@ export function ClassementPage(): React.JSX.Element {
                       <th>{t('ranking.col_rang')}</th>
                       <th>{t('ranking.col_parcelle')}</th>
                       <th>{t('ranking.col_surface')}</th>
-                      <th>{t('ranking.col_amc')}</th>
-                      <th>{t('ranking.col_score_final')}</th>
                       <th>{t('ranking.col_actions')}</th>
                     </tr>
                   </thead>
@@ -550,8 +524,6 @@ export function ClassementPage(): React.JSX.Element {
                           </div>
                         </td>
                         <td>{formatSurface(r.superficie)}</td>
-                        <td>{r.score_amc != null ? r.score_amc.toFixed(1) : '—'}</td>
-                        <td>{scoreBadge(r)}</td>
                         <td>
                           <div className="classement-table-actions">
                             <button type="button" className="table-action-btn" title={t('ranking.view_details')} onClick={() => setDetail(r)}>{icons.eye}</button>

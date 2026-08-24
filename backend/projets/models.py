@@ -247,6 +247,7 @@ class ResultatAnalyse(models.Model):
     nombre_criteres_satisfaits = models.IntegerField(default=0)
     total_criteres = models.IntegerField(default=0)
     criteres = models.JSONField(blank=True, null=True)
+    criteres_conformite = models.JSONField(blank=True, null=True)
     points_forts = models.JSONField(blank=True, null=True)
     points_faibles = models.JSONField(blank=True, null=True)
 
