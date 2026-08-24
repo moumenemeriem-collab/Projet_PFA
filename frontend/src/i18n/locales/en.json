@@ -105,12 +105,19 @@
       "ranking": "Ranking",
       "geoportail": "Geoportal",
       "profile": "Profile",
+      "project_details": "Project details",
       "quit": "Exit project",
       "logout": "Log out"
     },
     "topbar": {
-      "space": "Investor Space"
+      "space": "Investor Space",
+      "menu": "Menu"
     }
+  },
+  "pdetails": {
+    "created": "Created on",
+    "retry": "Retry",
+    "renta_empty": "No profitability analysis available for this project yet."
   },
   "admin": {
     "sidebar": {

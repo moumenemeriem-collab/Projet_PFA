@@ -105,12 +105,19 @@
       "ranking": "Classement",
       "geoportail": "Géoportail",
       "profile": "Profil",
+      "project_details": "Détails de projet",
       "quit": "Quitter le projet",
       "logout": "Déconnexion"
     },
     "topbar": {
-      "space": "Espace Investisseur"
+      "space": "Espace Investisseur",
+      "menu": "Menu"
     }
+  },
+  "pdetails": {
+    "created": "Créé le",
+    "retry": "Réessayer",
+    "renta_empty": "Aucune analyse de rentabilité disponible pour ce projet pour le moment."
   },
   "admin": {
     "sidebar": {

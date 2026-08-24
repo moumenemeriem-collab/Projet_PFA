@@ -266,3 +266,659 @@
     padding: 20px 16px 32px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   Espace projet (projectContext) : navbar horizontale
+   glassmorphism bleu ciel — n'affecte pas la sidebar générale
+   ═══════════════════════════════════════════════════════════ */
+
+.app-shell--project {
+  background: #fafafa;
+}
+
+.app-pnav {
+  position: sticky;
+  top: 0;
+  z-index: 1200;
+  width: 100%;
+  height: 70px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 32px;
+  background: linear-gradient(90deg, rgba(173, 216, 230, 0.4) 0%, rgba(200, 230, 245, 0.5) 100%);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 12px 28px -14px rgba(79, 184, 219, 0.5);
+}
+
+.app-pnav::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 30px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(173, 216, 230, 0.25), rgba(173, 216, 230, 0));
+}
+
+.app-pnav-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.app-pnav-logo {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+}
+
+.app-pnav-logo svg {
+  width: 26px;
+  height: 26px;
+}
+
+.app-pnav-logo svg rect {
+  fill: transparent;
+}
+
+.app-pnav-logo svg path {
+  fill: #3b5bdb;
+}
+
+.app-pnav-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-dark, #1e293b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Liens horizontaux ── */
+
+.app-pnav-links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.app-pnav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #64748b;
+}
+
+.app-pnav-link:hover {
+  color: #1d7fa6;
+  background: rgba(125, 211, 232, 0.16);
+}
+
+.app-pnav-link--active,
+.app-shell--project .app-pnav-link--active {
+  background: linear-gradient(135deg, #7dd3e8, #4fb8db);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 3px 12px -4px rgba(79, 184, 219, 0.6);
+}
+
+.app-pnav-link-icon {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.app-pnav-link-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Bouton « Quitter le projet » fixé en bas de la page ── */
+
+.app-pnav-quitfab {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border: none;
+  border-radius: 100px;
+  background: rgba(239, 68, 68, 0.92);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.35);
+  transition: all 0.2s ease;
+}
+
+.app-pnav-quitfab:hover {
+  background: #dc2626;
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow: 0 12px 28px rgba(239, 68, 68, 0.45);
+}
+
+.app-pnav-quitfab .app-pnav-link-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ── Zone utilisateur ── */
+
+.app-pnav-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.app-pnav-logout {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.app-pnav-logout svg {
+  width: 18px;
+  height: 18px;
+}
+
+.app-pnav-logout:hover {
+  color: #dc2626;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.app-pnav-burger {
+  display: none;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #334155;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.app-pnav-burger svg {
+  width: 22px;
+  height: 22px;
+}
+
+.app-pnav-burger:hover {
+  background: rgba(125, 211, 232, 0.18);
+}
+
+/* ── Responsive : menu hamburger ── */
+
+@media (max-width: 900px) {
+  .app-shell--project .app-pnav {
+    padding: 0 16px;
+    gap: 12px;
+  }
+
+  .app-pnav-brand {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .app-pnav-links {
+    display: none;
+  }
+
+  .app-pnav-links--open {
+    display: flex;
+    position: absolute;
+    top: 70px;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 12px 16px 16px;
+    background: linear-gradient(180deg, rgba(214, 238, 248, 0.92) 0%, rgba(226, 243, 250, 0.95) 100%);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 18px 30px -16px rgba(79, 184, 219, 0.5);
+  }
+
+  .app-pnav-links--open .app-pnav-link {
+    width: 100%;
+  }
+
+  .app-pnav-burger {
+    display: flex;
+  }
+
+  .dashboard-topbar-user-info {
+    display: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Espace projet : palette bleu ciel unifiée (boutons, focus,
+   badges, accents) — scopé à .app-shell--project uniquement
+   ═══════════════════════════════════════════════════════════ */
+
+.app-shell--project {
+  --sky: #4fb8db;
+  --sky-light: #7dd3e8;
+  --sky-deep: #1d7fa6;
+  --grad-sky: linear-gradient(135deg, #7dd3e8, #4fb8db);
+  --grad-sky-hover: linear-gradient(135deg, #5fc8e2, #3aa9cf);
+}
+
+/* ── Boutons primaires ── */
+
+.app-shell--project .btn-primary {
+  background: var(--grad-sky);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 3px 12px -4px rgba(79, 184, 219, 0.55);
+}
+
+.app-shell--project .btn-primary:hover {
+  background: var(--grad-sky-hover);
+  box-shadow: 0 5px 16px -4px rgba(79, 184, 219, 0.65);
+}
+
+.app-shell--project .btn-primary:disabled {
+  background: var(--grad-sky);
+  opacity: 0.55;
+}
+
+/* ── Boutons secondaires (actions classement) ── */
+
+.app-shell--project .classement-actions .btn-secondary,
+.app-shell--project .btn.btn-secondary {
+  background: linear-gradient(135deg, #eaf8fc, #c9edf8);
+  border: 1.5px solid rgba(79, 184, 219, 0.45);
+  color: var(--sky-deep);
+  box-shadow: none;
+}
+
+.app-shell--project .classement-actions .btn-secondary:hover,
+.app-shell--project .btn.btn-secondary:hover:not(:disabled) {
+  background: var(--grad-sky);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+/* ── États de focus ── */
+
+.app-shell--project .btn:focus-visible,
+.app-shell--project .pagination-btn:focus-visible,
+.app-shell--project .table-action-btn:focus-visible,
+.app-shell--project .app-pnav-quitfab:focus-visible,
+.app-shell--project .app-pnav-link:focus-visible {
+  outline: 2px solid var(--sky);
+  outline-offset: 2px;
+}
+
+.app-shell--project .classement-search:focus-within {
+  border-color: var(--sky);
+  box-shadow: 0 0 0 3px rgba(79, 184, 219, 0.18);
+}
+
+/* ── Onglets ── */
+
+.app-shell--project .classement-tab:hover {
+  color: var(--sky-deep);
+}
+
+.app-shell--project .classement-tab--active {
+  color: var(--sky-deep);
+  border-bottom-color: var(--sky);
+}
+
+/* ── Badges & pastilles ── */
+
+.app-shell--project .classement-rank {
+  background: var(--grad-sky);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.app-shell--project .pagination-btn--active {
+  background: var(--grad-sky);
+  border-color: transparent;
+  color: #ffffff;
+  box-shadow: 0 2px 8px -2px rgba(79, 184, 219, 0.55);
+}
+
+.app-shell--project .notification-badge {
+  background: var(--grad-sky);
+}
+
+/* ── Tableaux & listes ── */
+
+.app-shell--project .classement-table tbody tr:hover {
+  background: rgba(125, 211, 232, 0.1);
+}
+
+.app-shell--project .classement-history-item--active {
+  border-color: var(--sky);
+  background: rgba(125, 211, 232, 0.08);
+}
+
+.app-shell--project .table-action-btn:not(.table-action-btn--danger) {
+  color: var(--sky-deep);
+}
+
+.app-shell--project .table-action-btn:not(.table-action-btn--danger):hover {
+  color: #ffffff;
+  background: var(--sky);
+}
+
+/* ── États vides ── */
+
+.app-shell--project .classement-empty-icon {
+  color: var(--sky);
+  opacity: 0.75;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Page « Détails de projet » (/projets/:id/details)
+   ═══════════════════════════════════════════════════════════ */
+
+.pd-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px 24px 110px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Bandeau héro ── */
+
+.pd-hero {
+  position: relative;
+  min-height: 230px;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 16px 36px -18px rgba(29, 127, 166, 0.55);
+}
+
+.pd-hero-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pd-hero-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 26px 28px;
+  background: linear-gradient(200deg, rgba(15, 23, 42, 0.05) 30%, rgba(15, 23, 42, 0.72) 100%);
+}
+
+.project-type-tag--overlay {
+  background: rgba(255, 255, 255, 0.18);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+}
+
+.pd-hero-title {
+  margin: 0;
+  color: #ffffff;
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 10px rgba(15, 23, 42, 0.4);
+}
+
+.pd-hero-desc {
+  margin: 0;
+  max-width: 680px;
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pd-hero-date {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.8rem;
+}
+
+/* ── Cartes KPI ── */
+
+.pd-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+}
+
+.pd-kpi {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #ffffff;
+  border: 1px solid rgba(79, 184, 219, 0.22);
+  border-radius: 14px;
+  padding: 16px 18px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pd-kpi:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -14px rgba(79, 184, 219, 0.65);
+}
+
+.pd-kpi-icon {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(125, 211, 232, 0.22), rgba(79, 184, 219, 0.16));
+  color: var(--sky-deep, #1d7fa6);
+}
+
+.pd-kpi-icon svg {
+  width: 21px;
+  height: 21px;
+}
+
+.pd-kpi-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pd-kpi-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pd-kpi-label {
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+/* ── Sections ── */
+
+.pd-section {
+  background: #ffffff;
+  border: 1px solid rgba(79, 184, 219, 0.18);
+  border-radius: 16px;
+  padding: 20px 22px;
+  box-shadow: 0 8px 22px -18px rgba(29, 127, 166, 0.45);
+}
+
+.pd-section-title {
+  margin: 0 0 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--sky-deep, #1d7fa6);
+}
+
+.pd-section-title::before {
+  content: '';
+  width: 4px;
+  height: 15px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #7dd3e8, #4fb8db);
+}
+
+.pd-section-body .project-detail-item {
+  background: #f4fafd;
+  border: 1px solid rgba(79, 184, 219, 0.12);
+  transition: border-color 0.2s ease;
+}
+
+.pd-section-body .project-detail-item:hover {
+  border-color: rgba(79, 184, 219, 0.45);
+}
+
+/* ── Rentabilité vide ── */
+
+.pd-renta-empty {
+  background: rgba(125, 211, 232, 0.07);
+  border: 1.5px dashed rgba(79, 184, 219, 0.4);
+  border-radius: 14px;
+  padding: 22px;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+/* ── Squelettes de chargement ── */
+
+.pd-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #eef6fa;
+  border-radius: 16px;
+}
+
+.pd-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  animation: pd-shimmer 1.4s infinite;
+}
+
+@keyframes pd-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.pd-skeleton--hero {
+  min-height: 230px;
+}
+
+.pd-skeleton--card {
+  height: 78px;
+  border-radius: 14px;
+}
+
+.pd-skeleton--section {
+  height: 170px;
+}
+
+/* ── Responsive ── */
+
+@media (max-width: 700px) {
+  .pd-page {
+    padding: 18px 14px 100px;
+    gap: 14px;
+  }
+
+  .pd-kpis {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .pd-kpi {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .pd-hero-overlay {
+    padding: 18px;
+  }
+
+  .pd-hero-title {
+    font-size: 1.3rem;
+  }
+
+  .pd-section {
+    padding: 16px;
+  }
+}

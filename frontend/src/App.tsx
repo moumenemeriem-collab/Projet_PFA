@@ -8,6 +8,7 @@ import { RegisterPage } from './pages/register'
 import { ProjectsPage } from './pages/projects'
 import { CreateProjectPage } from './pages/create-project'
 import { ClassementPage } from './pages/classement'
+import { ProjectDetailsPage } from './pages/project-details'
 import { GeoportalPage } from './pages/geoportal'
 import { MessagesPage } from './pages/messages'
 import { ProfilePage } from './pages/profile'
@@ -64,6 +65,7 @@ export default function App(): React.JSX.Element {
         <Route path="/investisseur/tableau-de-bord" element={<AuthGuard role="investisseur"><InvestorDashboardPage /></AuthGuard>} />
         <Route path="/projets/nouveau" element={<AuthGuard role="investisseur"><CreateProjectPage /></AuthGuard>} />
         <Route path="/projets/:id/classement" element={<AuthGuard role="investisseur"><ClassementPage /></AuthGuard>} />
+        <Route path="/projets/:id/details" element={<AuthGuard role="investisseur"><ProjectDetailsPage /></AuthGuard>} />
         <Route path="/projets/:id/classement/ajouter" element={<AuthGuard role="investisseur"><GeoportalPage /></AuthGuard>} />
         <Route path="/messages" element={<AuthGuard role="investisseur"><MessagesPage /></AuthGuard>} />
         <Route path="/profil" element={<AuthGuard role="investisseur"><ProfilePage /></AuthGuard>} />

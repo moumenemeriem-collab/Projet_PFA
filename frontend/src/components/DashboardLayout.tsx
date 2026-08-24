@@ -6,7 +6,7 @@ import { t, formatDateTime } from '../i18n/index'
 import { icons } from './icons'
 import { LangSwitcher } from './LangSwitcher'
 
-export type AppPage = 'dashboard' | 'projects' | 'users' | 'messages' | 'data' | 'ranking' | 'geoportail' | 'profile'
+export type AppPage = 'dashboard' | 'projects' | 'users' | 'messages' | 'data' | 'ranking' | 'geoportail' | 'profile' | 'project_details'
 
 interface NavItem {
   id: AppPage
@@ -23,7 +23,7 @@ const investisseurNav: NavItem[] = [
 ]
 
 const investisseurProjectNav: NavItem[] = [
-  { id: 'projects', labelKey: 'dashboard.sidebar.projects', icon: 'projects', href: '/projets' },
+  { id: 'project_details', labelKey: 'dashboard.sidebar.project_details', icon: 'folder', href: '' },
   { id: 'ranking', labelKey: 'dashboard.sidebar.ranking', icon: 'ranking', href: '' },
   { id: 'geoportail', labelKey: 'dashboard.sidebar.geoportail', icon: 'globe', href: '' },
 ]
@@ -49,6 +49,7 @@ export function DashboardLayout({ role, activePage, children, hideSidebar = fals
   const navigate = useNavigate()
   const user = getStoredUser()
   const [notifOpen, setNotifOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [nonLues, setNonLues] = useState(0)
   const [notifs, setNotifs] = useState<Notification[]>([])
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -103,6 +104,127 @@ export function DashboardLayout({ role, activePage, children, hideSidebar = fals
   const profileUrl = role === 'admin' ? '/admin/profil' : '/profil'
   const defaultTitle = projectContext ? `${t('dashboard.topbar.space')} : ${projectContext.name}` : t(role === 'admin' ? 'admin.topbar.space' : 'dashboard.topbar.space')
   const spaceTitle = topbarTitle ?? defaultTitle
+
+  // ── Espace projet : navbar horizontale glassmorphism ──
+  // eslint-disable-next-line prefer-const -- `let` évite la propagation du narrowing TS au bloc sidebar d'origine
+  let ctx = projectContext
+  if (ctx) {
+    return (
+      <div className={hideSidebar ? 'app-shell app-shell--project app-shell--full' : 'app-shell app-shell--project'}>
+        <header className="app-pnav">
+          <div className="app-pnav-brand">
+            <span className="app-pnav-logo">{icons.logo}</span>
+            <span className="app-pnav-title">{spaceTitle}</span>
+          </div>
+          <nav className={`app-pnav-links${menuOpen ? ' app-pnav-links--open' : ''}`}>
+            {nav.map((item) => {
+              const href = item.id === 'project_details'
+                ? `/projets/${ctx.id}/details`
+                : item.id === 'ranking'
+                ? `/projets/${ctx.id}/classement`
+                : item.id === 'geoportail'
+                ? `/projets/${ctx.id}/classement/ajouter`
+                : item.href
+              return (
+                <Link
+                  to={href}
+                  className={`app-pnav-link${activePage === item.id ? ' app-pnav-link--active' : ''}`}
+                  key={item.id}
+                  onClick={() => setMenuOpen(false)}
+                >
+                  <span className="app-pnav-link-icon">{icons[item.icon]}</span>
+                  {t(item.labelKey)}
+                </Link>
+              )
+            })}
+          </nav>
+          <div className="app-pnav-right">
+            <div className="notification-wrapper" ref={wrapperRef}>
+              <button type="button" className="notification-bell" title={t('notif.title')} onClick={(e) => { e.stopPropagation(); void toggleDropdown() }}>
+                {icons.bell}
+                {nonLues > 0 ? <span className="notification-badge">{nonLues}</span> : null}
+              </button>
+              {notifOpen ? (
+                <div className="notification-dropdown">
+                  <div className="notif-header">{t('notif.title')}</div>
+                  <div className="notif-list">
+                    {notifs.length > 0 ? (
+                      notifs.map((n) => (
+                        <div
+                          className={`notif-item${n.lu ? '' : ' notif-item--unread'}`}
+                          key={n.id}
+                          onClick={() => {
+                            setNotifOpen(false)
+                            if (n.message_id != null) {
+                              navigate(role === 'admin' ? `/admin/messages?message=${n.message_id}` : `/messages?message=${n.message_id}`)
+                            } else {
+                              navigate(role === 'admin' ? '/admin/messages' : '/messages')
+                            }
+                          }}
+                        >
+                          <div className="notif-item-body">
+                            <div className="notif-item-title">{n.titre}</div>
+                            <div className="notif-item-content">{n.contenu}</div>
+                            <div className="notif-item-date">{formatDateTime(n.date_creation)}</div>
+                          </div>
+                          <button
+                            type="button"
+                            className="notif-dismiss"
+                            title={t('common.dismiss')}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              void dismissNotif(n.id)
+                            }}
+                          >
+                            {icons.close}
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="notif-empty">{t('notif.empty')}</div>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            <LangSwitcher className="lang-switcher--topbar" />
+            <div className="dashboard-topbar-user">
+              <div className="dashboard-topbar-user-info">
+                <span className="dashboard-topbar-user-name">{user.prenom} {user.nom}</span>
+                <span className="dashboard-topbar-user-email">{user.email}</span>
+              </div>
+              <Link to={profileUrl} className="dashboard-topbar-avatar">
+                {user.prenom.charAt(0)}{user.nom.charAt(0)}
+              </Link>
+            </div>
+            <button
+              type="button"
+              className="app-pnav-logout"
+              title={t(role === 'admin' ? 'admin.sidebar.logout' : 'dashboard.sidebar.logout')}
+              onClick={handleLogout}
+            >
+              {icons.logout}
+            </button>
+            <button
+              type="button"
+              className="app-pnav-burger"
+              title={t('dashboard.topbar.menu')}
+              onClick={() => setMenuOpen((o) => !o)}
+            >
+              {menuOpen ? icons.close : icons.menu}
+            </button>
+          </div>
+        </header>
+        <button type="button" className="app-pnav-quitfab" onClick={() => navigate('/projets')}>
+          <span className="app-pnav-link-icon">{icons.close}</span>
+          {t('dashboard.sidebar.quit')}
+        </button>
+        <main className={hideSidebar ? 'app-content app-content--full' : 'app-content'}>
+          {children}
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div className={hideSidebar ? 'app-shell app-shell--full' : 'app-shell'}>
