@@ -949,11 +949,14 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 1rem;
+  padding: 6px 14px;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--primary);
   text-decoration: none;
-  transition: opacity 0.15s;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
 .project-classement-link svg {
@@ -962,7 +965,25 @@
 }
 
 .project-classement-link:hover {
-  opacity: 0.8;
+  background: var(--primary);
+  color: #fff;
+}
+
+.project-classement-link--primary {
+  background: linear-gradient(135deg, #1b3a6e, #0f3d6e);
+  color: #fff;
+  border-color: #0a1d3d;
+}
+
+.project-classement-link--primary:hover {
+  background: linear-gradient(135deg, #0f3d6e, #0a1d3d);
+  color: #fff;
+}
+
+.project-card-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .projects-grid--empty {

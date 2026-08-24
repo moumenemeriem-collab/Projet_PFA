@@ -279,7 +279,10 @@ export function ProjectsPage(): React.JSX.Element {
           </div>
           <div className="project-card-actions">
             <Link to={`/projets/${projet.id}/classement`} className="project-classement-link">
-              {icons.ranking} {t('projects.view_ranking')} {icons.chevron}
+              {icons.ranking} {t('ranking.title')} {icons.chevron}
+            </Link>
+            <Link to={`/projets/${projet.id}/classement/ajouter`} className="project-classement-link project-classement-link--primary">
+              {icons.search} {t('projects.view_ranking')} {icons.chevron}
             </Link>
           </div>
         </div>
