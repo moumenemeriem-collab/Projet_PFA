@@ -6,7 +6,7 @@ import { DashboardLayout } from '../components/DashboardLayout'
 import { TerrainGeometryEditor, emptyGeom, type TerrainGeom } from '../components/TerrainGeometryEditor'
 import { formatApiErrors } from '../api/auth'
 import { fetchProjet, previewRentabilite, type Projet, type ProjetPayload, type Rentabilite } from '../api/projets'
-import { createTerrain, fetchAnalyse, saveTerrainRentabilite, type AnalyseFiltres, type AnalyseResultat } from '../api/terrains'
+import { createTerrain, fetchAnalyse, fetchTerrains, saveTerrainRentabilite, type AnalyseFiltres, type AnalyseResultat, type Terrain } from '../api/terrains'
 import { createAnalyse, fetchAnalyseDetail, type AnalyseDetail, type ResultatAnalyse } from '../api/analyses'
 import { fetchCouches, fetchCoucheGeoJSON, type Couche, type CoucheFeature, type CoucheFeatureCollection } from '../api/couches'
 import { attributeLabel, CADASTRE_ATTRIBUTE_LABELS, PLAN_AMENAGEMENT_ATTRIBUTE_LABELS } from '../utils/attributeLabels'
@@ -810,6 +810,16 @@ export function GeoportalPage(): React.JSX.Element {
   const [rentaError, setRentaError] = useState<string | null>(null)
   const [rentaNote, setRentaNote] = useState<string | null>(null)
   const [rentaModalOpen, setRentaModalOpen] = useState(false)
+  const [rentaTerrains, setRentaTerrains] = useState<Terrain[]>([])
+
+  useEffect(() => {
+    if (!rentaModalOpen || !projetId) return
+    let cancelled = false
+    void fetchTerrains(projetId, { page_size: 100 })
+      .then((data) => { if (!cancelled) setRentaTerrains(data.results) })
+      .catch(() => { /* ignore */ })
+    return () => { cancelled = true }
+  }, [rentaModalOpen, projetId])
   
   const openPopupRef = useRef<any>(null)
   const popupActionHandlerRef = useRef<(e: MouseEvent) => void>(() => {})
@@ -1092,8 +1102,13 @@ export function GeoportalPage(): React.JSX.Element {
     try {
       let terrainId = rentaTerrainId
       if (!terrainId) {
+        const round6 = (v: number): number | null => {
+          if (!Number.isFinite(v)) return null
+          return Math.round(v * 1e6) / 1e6
+        }
+        const titre = rentaParcelInfo.ref || rentaParcelInfo.nom || `Terrain ${Date.now()}`
         const terrain = await createTerrain(projetId, {
-          num_titre_foncier: rentaParcelInfo.ref || rentaParcelInfo.nom,
+          num_titre_foncier: titre.slice(0, 255),
           statut_juridique: 'titre',
           prix_demande: null,
           zonage: 'residentiel',
@@ -1101,9 +1116,9 @@ export function GeoportalPage(): React.JSX.Element {
           cus: numRenta(rentaForm.cus) ?? null,
           hauteur_maximale: null,
           equipements: [],
-          superficie: Math.round(rentaParcelInfo.superficie),
-          lat: rentaParcelInfo.lat || null,
-          lng: rentaParcelInfo.lng || null,
+          superficie: Number.isFinite(rentaParcelInfo.superficie) ? Math.round(rentaParcelInfo.superficie) : 0,
+          lat: round6(rentaParcelInfo.lat),
+          lng: round6(rentaParcelInfo.lng),
           geometry: '',
         })
         terrainId = terrain.id
@@ -1111,6 +1126,9 @@ export function GeoportalPage(): React.JSX.Element {
       await saveTerrainRentabilite(projetId, terrainId, rentaResult as unknown as Record<string, unknown>)
       setRentaNote('Terrain enregistré avec succès !')
       localStorage.setItem(`terrain_created_${projetId}`, String(Date.now()))
+      void fetchTerrains(projetId, { page_size: 100 })
+        .then((data) => setRentaTerrains(data.results))
+        .catch(() => { /* ignore */ })
       setTimeout(() => setRentaModalOpen(false), 1200)
     } catch (err) {
       setRentaError(formatApiErrors(err))
@@ -3181,215 +3199,276 @@ const bindPopupActionButtons = (popup: any): void => {
     </DashboardLayout>
 
     {rentaModalOpen ? createPortal(
-      <div className="geo-dims-overlay" data-dims-overlay onClick={() => setRentaModalOpen(false)}>
-        <div className="geo-dims-modal" style={{ maxWidth: 640 }} onClick={(e) => e.stopPropagation()}>
+      <div className="geo-dims-overlay renta-modal-overlay" data-dims-overlay onClick={() => setRentaModalOpen(false)}>
+        <div className="geo-dims-modal" style={{ maxWidth: 1600, width: '95vw', height: '94vh' }} onClick={(e) => e.stopPropagation()}>
           <div className="geo-dims-header">
-            <h3>Rentabilite — {rentaTerrainNom || rentaParcelInfo?.nom || ''}</h3>
+            <div>
+              <h3>Calcul de rentabilit&eacute;</h3>
+              <span style={{ fontSize: '0.7rem', opacity: 0.8, fontWeight: 400 }}>{rentaTerrainNom || rentaParcelInfo?.nom || ''}</span>
+            </div>
             <div className="geo-dims-header-actions">
               <button type="button" className="geo-dims-close" data-dims-close aria-label="Fermer" onClick={() => setRentaModalOpen(false)}>&times;</button>
             </div>
           </div>
 
           <div className="geo-dims-body renta-modal-content">
-            {rentaNote ? (
-              <div className="form-alert form-alert--success">{rentaNote}</div>
-            ) : null}
-            {rentaError ? (
-              <div className="form-alert form-alert--error">{rentaError}</div>
-            ) : null}
+            <div className="renta-modal-form">
+              {rentaNote ? (
+                <div className="form-alert form-alert--success">{rentaNote}</div>
+              ) : null}
+              {rentaError ? (
+                <div className="form-alert form-alert--error">{rentaError}</div>
+              ) : null}
 
-            <div className="geo-card-form-section">
-              <span className="geo-layers-popup-label">{t('projects.section_land_data')}</span>
-              <div className="form-row">
-                <div className="form-field form-field--half">
-                  <label className="form-label">{t('projects.field_prix_foncier_m2')}</label>
-                  <input type="number" step="0.01" className="modal-input" placeholder="4000" value={rentaForm.prixFoncierM2} onChange={(e) => setRentaForm((f) => ({ ...f, prixFoncierM2: e.target.value }))} />
+              <div className="geo-card-form-section">
+                <span className="geo-layers-popup-label">{t('projects.section_land_data')}</span>
+                <div className="form-row">
+                  <div className="form-field form-field--half">
+                    <label className="form-label">{t('projects.field_prix_foncier_m2')}</label>
+                    <input type="number" step="0.01" className="modal-input" placeholder="4000" value={rentaForm.prixFoncierM2} onChange={(e) => setRentaForm((f) => ({ ...f, prixFoncierM2: e.target.value }))} />
+                  </div>
+                  <div className="form-field form-field--half">
+                    <label className="form-label">{t('projects.field_frais_acquisition')}</label>
+                    <input type="number" step="0.01" className="modal-input" value={rentaForm.fraisAcquisition} onChange={(e) => setRentaForm((f) => ({ ...f, fraisAcquisition: e.target.value }))} />
+                  </div>
                 </div>
-                <div className="form-field form-field--half">
-                  <label className="form-label">{t('projects.field_frais_acquisition')}</label>
-                  <input type="number" step="0.01" className="modal-input" value={rentaForm.fraisAcquisition} onChange={(e) => setRentaForm((f) => ({ ...f, fraisAcquisition: e.target.value }))} />
+                <div className="form-row">
+                  <div className="form-field form-field--half">
+                    <label className="form-label">{t('projects.field_taux_chute')}</label>
+                    <input type="number" step="0.01" className="modal-input" value={rentaForm.tauxChute} onChange={(e) => setRentaForm((f) => ({ ...f, tauxChute: e.target.value }))} />
+                  </div>
+                  <div className="form-field form-field--half">
+                    <label className="form-label">{t('projects.field_cos')}</label>
+                    <input type="number" step="0.01" className="modal-input" value={rentaForm.cos} onChange={(e) => setRentaForm((f) => ({ ...f, cos: e.target.value }))} />
+                  </div>
                 </div>
-              </div>
-              <div className="form-field">
-                <label className="form-label">{t('projects.field_taux_chute')}</label>
-                <input type="number" step="0.01" className="modal-input" value={rentaForm.tauxChute} onChange={(e) => setRentaForm((f) => ({ ...f, tauxChute: e.target.value }))} />
-              </div>
-              <div className="form-row">
-                <div className="form-field form-field--half">
-                  <label className="form-label">{t('projects.field_cos')}</label>
-                  <input type="number" step="0.01" className="modal-input" value={rentaForm.cos} onChange={(e) => setRentaForm((f) => ({ ...f, cos: e.target.value }))} />
-                </div>
-                <div className="form-field form-field--half">
+                <div className="form-field" style={{ maxWidth: '50%' }}>
                   <label className="form-label">{t('projects.field_cus')}</label>
                   <input type="number" step="0.01" className="modal-input" value={rentaForm.cus} onChange={(e) => setRentaForm((f) => ({ ...f, cus: e.target.value }))} />
                 </div>
               </div>
-            </div>
 
-            <div className="geo-card-form-section">
-              <span className="geo-layers-popup-label">{t('projects.section_destinations')}</span>
-              <div className="cp-dest-toggles" style={{ gap: 6 }}>
-                <label className={`cp-dest-toggle${rentaForm.hasAppartement ? ' active' : ''}`} style={{ fontSize: '0.85rem' }}>
-                  <input type="checkbox" checked={rentaForm.hasAppartement} onChange={(e) => setRentaForm((f) => ({ ...f, hasAppartement: e.target.checked }))} />
-                  {t('projects.dest_appartement')}
-                </label>
-                <label className={`cp-dest-toggle${rentaForm.hasCommerce ? ' active' : ''}`} style={{ fontSize: '0.85rem' }}>
-                  <input type="checkbox" checked={rentaForm.hasCommerce} onChange={(e) => setRentaForm((f) => ({ ...f, hasCommerce: e.target.checked }))} />
-                  {t('projects.dest_commerce')}
-                </label>
-                <label className={`cp-dest-toggle${rentaForm.hasBureau ? ' active' : ''}`} style={{ fontSize: '0.85rem' }}>
-                  <input type="checkbox" checked={rentaForm.hasBureau} onChange={(e) => setRentaForm((f) => ({ ...f, hasBureau: e.target.checked }))} />
-                  {t('projects.dest_bureau')}
-                </label>
-              </div>
-            </div>
-
-            <div className="geo-card-form-section">
-              <span className="geo-layers-popup-label">{t('projects.section_quote_parts')}</span>
-              <div className="form-row">
-                {rentaForm.hasAppartement && (
-                  <div className="form-field form-field--half">
-                    <label className="form-label">{t('projects.field_quote_part_app')}</label>
-                    <input type="number" step="0.01" className="modal-input" value={rentaForm.quotePartApp} onChange={(e) => setRentaForm((f) => ({ ...f, quotePartApp: e.target.value }))} />
-                  </div>
-                )}
-                {rentaForm.hasCommerce && (
-                  <div className="form-field form-field--half">
-                    <label className="form-label">{t('projects.field_quote_part_commerce')}</label>
-                    <input type="number" step="0.01" className="modal-input" value={rentaForm.quotePartCommerce} onChange={(e) => setRentaForm((f) => ({ ...f, quotePartCommerce: e.target.value }))} />
-                  </div>
-                )}
-                {rentaForm.hasBureau && (
-                  <div className="form-field form-field--half">
-                    <label className="form-label">{t('projects.field_quote_part_bureau')}</label>
-                    <input type="number" step="0.01" className="modal-input" value={rentaForm.quotePartBureau} onChange={(e) => setRentaForm((f) => ({ ...f, quotePartBureau: e.target.value }))} />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="geo-card-form-section">
-              <span className="geo-layers-popup-label">{t('projects.section_dest_prices')}</span>
-              <div className="form-row">
-                {rentaForm.hasAppartement && (
-                  <div className="form-field form-field--half">
-                    <label className="form-label">{t('projects.field_prix_vente_app')}</label>
-                    <input type="number" step="0.01" className="modal-input" placeholder="8000" value={rentaForm.prixVenteApp} onChange={(e) => setRentaForm((f) => ({ ...f, prixVenteApp: e.target.value }))} />
-                  </div>
-                )}
-                {rentaForm.hasCommerce && (
-                  <div className="form-field form-field--half">
-                    <label className="form-label">{t('projects.field_prix_vente_commerce')}</label>
-                    <input type="number" step="0.01" className="modal-input" placeholder="12000" value={rentaForm.prixVenteCommerce} onChange={(e) => setRentaForm((f) => ({ ...f, prixVenteCommerce: e.target.value }))} />
-                  </div>
-                )}
-                {rentaForm.hasBureau && (
-                  <div className="form-field form-field--half">
-                    <label className="form-label">{t('projects.field_prix_vente_bureau')}</label>
-                    <input type="number" step="0.01" className="modal-input" placeholder="10000" value={rentaForm.prixVenteBureau} onChange={(e) => setRentaForm((f) => ({ ...f, prixVenteBureau: e.target.value }))} />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="geo-card-form-section">
-              <span className="geo-layers-popup-label">{t('projects.section_dest_costs')}</span>
-              <div className="form-row">
-                {rentaForm.hasAppartement && (
-                  <div className="form-field form-field--half">
-                    <label className="form-label">{t('projects.field_cout_constr_app')}</label>
-                    <input type="number" step="0.01" className="modal-input" placeholder="4500" value={rentaForm.coutConstrApp} onChange={(e) => setRentaForm((f) => ({ ...f, coutConstrApp: e.target.value }))} />
-                  </div>
-                )}
-                {rentaForm.hasCommerce && (
-                  <div className="form-field form-field--half">
-                    <label className="form-label">{t('projects.field_cout_constr_commerce')}</label>
-                    <input type="number" step="0.01" className="modal-input" placeholder="5500" value={rentaForm.coutConstrCommerce} onChange={(e) => setRentaForm((f) => ({ ...f, coutConstrCommerce: e.target.value }))} />
-                  </div>
-                )}
-                {rentaForm.hasBureau && (
-                  <div className="form-field form-field--half">
-                    <label className="form-label">{t('projects.field_cout_constr_bureau')}</label>
-                    <input type="number" step="0.01" className="modal-input" placeholder="5000" value={rentaForm.coutConstrBureau} onChange={(e) => setRentaForm((f) => ({ ...f, coutConstrBureau: e.target.value }))} />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="geo-card-form-section">
-              <span className="geo-layers-popup-label">{t('projects.section_charges')}</span>
-              <div className="form-row">
-                <div className="form-field form-field--half">
-                  <label className="form-label">{t('projects.field_taux_etudes')}</label>
-                  <input type="number" step="0.01" className="modal-input" value={rentaForm.tauxEtudes} onChange={(e) => setRentaForm((f) => ({ ...f, tauxEtudes: e.target.value }))} />
-                </div>
-                <div className="form-field form-field--half">
-                  <label className="form-label">{t('projects.field_taux_imprevus')}</label>
-                  <input type="number" step="0.01" className="modal-input" value={rentaForm.tauxImprevus} onChange={(e) => setRentaForm((f) => ({ ...f, tauxImprevus: e.target.value }))} />
+              <div className="geo-card-form-section">
+                <span className="geo-layers-popup-label">{t('projects.section_destinations')}</span>
+                <div className="cp-dest-toggles" style={{ gap: 6 }}>
+                  <label className={`cp-dest-toggle${rentaForm.hasAppartement ? ' active' : ''}`} style={{ fontSize: '0.85rem' }}>
+                    <input type="checkbox" checked={rentaForm.hasAppartement} onChange={(e) => setRentaForm((f) => ({ ...f, hasAppartement: e.target.checked }))} />
+                    {t('projects.dest_appartement')}
+                  </label>
+                  <label className={`cp-dest-toggle${rentaForm.hasCommerce ? ' active' : ''}`} style={{ fontSize: '0.85rem' }}>
+                    <input type="checkbox" checked={rentaForm.hasCommerce} onChange={(e) => setRentaForm((f) => ({ ...f, hasCommerce: e.target.checked }))} />
+                    {t('projects.dest_commerce')}
+                  </label>
+                  <label className={`cp-dest-toggle${rentaForm.hasBureau ? ' active' : ''}`} style={{ fontSize: '0.85rem' }}>
+                    <input type="checkbox" checked={rentaForm.hasBureau} onChange={(e) => setRentaForm((f) => ({ ...f, hasBureau: e.target.checked }))} />
+                    {t('projects.dest_bureau')}
+                  </label>
                 </div>
               </div>
-              <div className="form-field">
-                <label className="form-label">{t('projects.field_taux_commercialisation')}</label>
-                <input type="number" step="0.01" className="modal-input" value={rentaForm.tauxCommercialisation} onChange={(e) => setRentaForm((f) => ({ ...f, tauxCommercialisation: e.target.value }))} />
+
+              <div className="geo-card-form-section">
+                <span className="geo-layers-popup-label">{t('projects.section_quote_parts')}</span>
+                <div className="form-row">
+                  {rentaForm.hasAppartement && (
+                    <div className="form-field form-field--half">
+                      <label className="form-label">{t('projects.field_quote_part_app')}</label>
+                      <input type="number" step="0.01" className="modal-input" value={rentaForm.quotePartApp} onChange={(e) => setRentaForm((f) => ({ ...f, quotePartApp: e.target.value }))} />
+                    </div>
+                  )}
+                  {rentaForm.hasCommerce && (
+                    <div className="form-field form-field--half">
+                      <label className="form-label">{t('projects.field_quote_part_commerce')}</label>
+                      <input type="number" step="0.01" className="modal-input" value={rentaForm.quotePartCommerce} onChange={(e) => setRentaForm((f) => ({ ...f, quotePartCommerce: e.target.value }))} />
+                    </div>
+                  )}
+                  {rentaForm.hasBureau && (
+                    <div className="form-field form-field--half">
+                      <label className="form-label">{t('projects.field_quote_part_bureau')}</label>
+                      <input type="number" step="0.01" className="modal-input" value={rentaForm.quotePartBureau} onChange={(e) => setRentaForm((f) => ({ ...f, quotePartBureau: e.target.value }))} />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="geo-card-form-section">
+                <span className="geo-layers-popup-label">{t('projects.section_dest_prices')}</span>
+                <div className="form-row">
+                  {rentaForm.hasAppartement && (
+                    <div className="form-field form-field--half">
+                      <label className="form-label">{t('projects.field_prix_vente_app')}</label>
+                      <input type="number" step="0.01" className="modal-input" placeholder="8000" value={rentaForm.prixVenteApp} onChange={(e) => setRentaForm((f) => ({ ...f, prixVenteApp: e.target.value }))} />
+                    </div>
+                  )}
+                  {rentaForm.hasCommerce && (
+                    <div className="form-field form-field--half">
+                      <label className="form-label">{t('projects.field_prix_vente_commerce')}</label>
+                      <input type="number" step="0.01" className="modal-input" placeholder="12000" value={rentaForm.prixVenteCommerce} onChange={(e) => setRentaForm((f) => ({ ...f, prixVenteCommerce: e.target.value }))} />
+                    </div>
+                  )}
+                  {rentaForm.hasBureau && (
+                    <div className="form-field form-field--half">
+                      <label className="form-label">{t('projects.field_prix_vente_bureau')}</label>
+                      <input type="number" step="0.01" className="modal-input" placeholder="10000" value={rentaForm.prixVenteBureau} onChange={(e) => setRentaForm((f) => ({ ...f, prixVenteBureau: e.target.value }))} />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="geo-card-form-section">
+                <span className="geo-layers-popup-label">{t('projects.section_dest_costs')}</span>
+                <div className="form-row">
+                  {rentaForm.hasAppartement && (
+                    <div className="form-field form-field--half">
+                      <label className="form-label">{t('projects.field_cout_constr_app')}</label>
+                      <input type="number" step="0.01" className="modal-input" placeholder="4500" value={rentaForm.coutConstrApp} onChange={(e) => setRentaForm((f) => ({ ...f, coutConstrApp: e.target.value }))} />
+                    </div>
+                  )}
+                  {rentaForm.hasCommerce && (
+                    <div className="form-field form-field--half">
+                      <label className="form-label">{t('projects.field_cout_constr_commerce')}</label>
+                      <input type="number" step="0.01" className="modal-input" placeholder="5500" value={rentaForm.coutConstrCommerce} onChange={(e) => setRentaForm((f) => ({ ...f, coutConstrCommerce: e.target.value }))} />
+                    </div>
+                  )}
+                  {rentaForm.hasBureau && (
+                    <div className="form-field form-field--half">
+                      <label className="form-label">{t('projects.field_cout_constr_bureau')}</label>
+                      <input type="number" step="0.01" className="modal-input" placeholder="5000" value={rentaForm.coutConstrBureau} onChange={(e) => setRentaForm((f) => ({ ...f, coutConstrBureau: e.target.value }))} />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="geo-card-form-section">
+                <span className="geo-layers-popup-label">{t('projects.section_charges')}</span>
+                <div className="form-row">
+                  <div className="form-field form-field--half">
+                    <label className="form-label">{t('projects.field_taux_etudes')}</label>
+                    <input type="number" step="0.01" className="modal-input" value={rentaForm.tauxEtudes} onChange={(e) => setRentaForm((f) => ({ ...f, tauxEtudes: e.target.value }))} />
+                  </div>
+                  <div className="form-field form-field--half">
+                    <label className="form-label">{t('projects.field_taux_imprevus')}</label>
+                    <input type="number" step="0.01" className="modal-input" value={rentaForm.tauxImprevus} onChange={(e) => setRentaForm((f) => ({ ...f, tauxImprevus: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="form-field">
+                  <label className="form-label">{t('projects.field_taux_commercialisation')}</label>
+                  <input type="number" step="0.01" className="modal-input" value={rentaForm.tauxCommercialisation} onChange={(e) => setRentaForm((f) => ({ ...f, tauxCommercialisation: e.target.value }))} />
+                </div>
+              </div>
+
+              <div className="geo-card-form-section">
+                <span className="geo-layers-popup-label">{t('projects.section_scheduling')}</span>
+                <div className="form-row">
+                  <div className="form-field form-field--half">
+                    <label className="form-label">{t('projects.field_duree_construction')}</label>
+                    <input type="number" className="modal-input" value={rentaForm.dureeConstruction} onChange={(e) => setRentaForm((f) => ({ ...f, dureeConstruction: e.target.value }))} />
+                  </div>
+                  <div className="form-field form-field--half">
+                    <label className="form-label">{t('projects.field_duree_commercialisation')}</label>
+                    <input type="number" className="modal-input" value={rentaForm.dureeCommercialisation} onChange={(e) => setRentaForm((f) => ({ ...f, dureeCommercialisation: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="form-field">
+                  <label className="form-label">{t('projects.field_taux_actualisation')}</label>
+                  <input type="number" step="0.01" className="modal-input" value={rentaForm.tauxActualisation} onChange={(e) => setRentaForm((f) => ({ ...f, tauxActualisation: e.target.value }))} />
+                </div>
+              </div>
+
+              {rentaResult && rentaResult.ok ? (
+                <div className="geo-card-form-section geo-card-renta-results">
+                  <span className="geo-layers-popup-label">{t('projects.section_results')}</span>
+                  <div className="renta-results-grid">
+                    <div className="geo-terrain-calc-row">
+                      <span>{t('projects.res_surface')}</span>
+                      <strong>{rentaResult.surfaces?.surface_vendable?.toLocaleString('fr-FR') ?? '—'} m²</strong>
+                    </div>
+                    <div className="geo-terrain-calc-row">
+                      <span>{t('projects.res_ca')}</span>
+                      <strong>{rentaResult.ca?.ca_total?.toLocaleString('fr-FR') ?? '—'} DH</strong>
+                    </div>
+                    <div className="geo-terrain-calc-row">
+                      <span>{t('projects.res_cout_total')}</span>
+                      <strong>{rentaResult.cout_total_projet?.toLocaleString('fr-FR') ?? '—'} DH</strong>
+                    </div>
+                    <div className="geo-terrain-calc-row">
+                      <span>{t('projects.res_tri')}</span>
+                      <strong>{rentaResult.tri != null ? `${rentaResult.tri}%` : '—'}</strong>
+                    </div>
+                    <div className="renta-results-highlight">
+                      <span>{t('projects.res_benefice')}</span>
+                      <strong className={(rentaResult.benefice_net ?? 0) >= 0 ? 'text-success' : 'text-error'}>
+                        {rentaResult.benefice_net?.toLocaleString('fr-FR') ?? '—'} DH
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="geo-dims-actions">
+                <button type="button" className="geo-dims-btn geo-dims-btn--ghost" onClick={() => setRentaModalOpen(false)}>{t('common.cancel')}</button>
+                <button type="button" className="geo-dims-btn geo-dims-btn--calc" disabled={rentaCalculating} onClick={() => { void handleCalculateRentabilite() }}>
+                  {rentaCalculating ? '...' : t('projects.btn_calculate')}
+                </button>
+                <button type="button" className="geo-dims-btn geo-dims-btn--primary" disabled={!rentaResult?.ok || rentaSaving} onClick={() => { void handleSaveRentabiliteTerrain() }}>
+                  {rentaSaving ? '...' : icons.save} {t('ranking.save_terrain')}
+                </button>
               </div>
             </div>
 
-            <div className="geo-card-form-section">
-              <span className="geo-layers-popup-label">{t('projects.section_scheduling')}</span>
-              <div className="form-row">
-                <div className="form-field form-field--half">
-                  <label className="form-label">{t('projects.field_duree_construction')}</label>
-                  <input type="number" className="modal-input" value={rentaForm.dureeConstruction} onChange={(e) => setRentaForm((f) => ({ ...f, dureeConstruction: e.target.value }))} />
+              <div className="renta-modal-sidebar">
+                <div className="renta-sidebar-header">
+                  <h4>{icons.building} Terrains du projet</h4>
+                  <span>{rentaTerrains.length} terrain{rentaTerrains.length !== 1 ? 's' : ''} enregistré{rentaTerrains.length !== 1 ? 's' : ''}</span>
                 </div>
-                <div className="form-field form-field--half">
-                  <label className="form-label">{t('projects.field_duree_commercialisation')}</label>
-                  <input type="number" className="modal-input" value={rentaForm.dureeCommercialisation} onChange={(e) => setRentaForm((f) => ({ ...f, dureeCommercialisation: e.target.value }))} />
+              {rentaTerrains.length === 0 ? (
+                <div className="renta-sidebar-empty">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>
+                  <p>Aucun terrain enregistré pour ce projet.<br/>Calculez la rentabilité d'un terrain puis enregistrez-le.</p>
                 </div>
-              </div>
-              <div className="form-field">
-                <label className="form-label">{t('projects.field_taux_actualisation')}</label>
-                <input type="number" step="0.01" className="modal-input" value={rentaForm.tauxActualisation} onChange={(e) => setRentaForm((f) => ({ ...f, tauxActualisation: e.target.value }))} />
-              </div>
-            </div>
-
-            {rentaResult && rentaResult.ok ? (
-              <div className="geo-card-form-section geo-card-renta-results">
-                <span className="geo-layers-popup-label">{t('projects.section_results')}</span>
-                <div className="geo-terrain-calc">
-                  <div className="geo-terrain-calc-row">
-                    <span>{t('projects.res_surface')}</span>
-                    <strong>{rentaResult.surfaces?.surface_vendable?.toLocaleString('fr-FR') ?? '—'} m²</strong>
-                  </div>
-                  <div className="geo-terrain-calc-row">
-                    <span>{t('projects.res_ca')}</span>
-                    <strong>{rentaResult.ca?.ca_total?.toLocaleString('fr-FR') ?? '—'} DH</strong>
-                  </div>
-                  <div className="geo-terrain-calc-row">
-                    <span>{t('projects.res_cout_total')}</span>
-                    <strong>{rentaResult.cout_total_projet?.toLocaleString('fr-FR') ?? '—'} DH</strong>
-                  </div>
-                  <div className="geo-terrain-calc-row">
-                    <span>{t('projects.res_tri')}</span>
-                    <strong>{rentaResult.tri != null ? `${rentaResult.tri}%` : '—'}</strong>
-                  </div>
-                  <div className="geo-terrain-calc-row">
-                    <span>{t('projects.res_benefice')}</span>
-                    <strong className={(rentaResult.benefice_net ?? 0) >= 0 ? 'text-success' : 'text-error'}>
-                      {rentaResult.benefice_net?.toLocaleString('fr-FR') ?? '—'} DH
-                    </strong>
-                  </div>
+              ) : (
+                <div className="renta-sidebar-list">
+                  {[...rentaTerrains]
+                    .sort((a, b) => {
+                      const triA = a.rentabilite_json ? ((a.rentabilite_json as Record<string, unknown>).tri as number) ?? -Infinity : -Infinity
+                      const triB = b.rentabilite_json ? ((b.rentabilite_json as Record<string, unknown>).tri as number) ?? -Infinity : -Infinity
+                      return triB - triA
+                    })
+                    .map((tr, i) => {
+                      const rj = tr.rentabilite_json as Record<string, unknown> | null
+                      const tri = rj ? (rj.tri as number | undefined) : undefined
+                      const benefice = rj ? (rj.benefice_net as number | undefined) : undefined
+                      const hasRenta = tri != null
+                      return (
+                        <div
+                          key={tr.id}
+                          className={`renta-terrain-card${rentaTerrainId === tr.id ? ' renta-terrain-card--active' : ''}`}
+                          onClick={() => {
+                            setRentaTerrainId(tr.id)
+                            setRentaTerrainNom(tr.nom)
+                            setRentaParcelInfo({ nom: tr.nom, superficie: Number(tr.superficie) || 0, lat: Number(tr.lat) || 0, lng: Number(tr.lng) || 0, ref: tr.num_titre_foncier || tr.num_parcelle || '' })
+                            setRentaResult(tr.rentabilite_json as Rentabilite | null)
+                          }}
+                        >
+                          <div className="renta-terrain-card-top">
+                            <span className="renta-terrain-card-rank">#{i + 1}</span>
+                            <div className="renta-terrain-card-name">{tr.nom || tr.num_titre_foncier || `Terrain #${tr.id}`}</div>
+                          </div>
+                          <div className="renta-terrain-card-surf">{Number(tr.superficie).toLocaleString('fr-FR')} m²</div>
+                          <div className="renta-terrain-card-data">
+                            <div className="renta-terrain-card-datum">
+                              <span>TRI</span>
+                              <strong className={hasRenta ? (tri! >= 0 ? 'text-success' : 'text-error') : 'text-muted'}>{hasRenta ? `${tri!.toFixed(2)}%` : '—'}</strong>
+                            </div>
+                            <div className="renta-terrain-card-datum">
+                              <span>Bénéfice net</span>
+                              <strong className={benefice != null ? (benefice >= 0 ? 'text-success' : 'text-error') : 'text-muted'}>{benefice != null ? `${benefice.toLocaleString('fr-FR')} DH` : '—'}</strong>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
                 </div>
-              </div>
-            ) : null}
-
-            <div className="geo-dims-actions">
-              <button type="button" className="geo-dims-btn geo-dims-btn--ghost" onClick={() => setRentaModalOpen(false)}>{t('common.cancel')}</button>
-              <button type="button" className="geo-dims-btn geo-dims-btn--calc" disabled={rentaCalculating} onClick={() => { void handleCalculateRentabilite() }}>
-                {rentaCalculating ? '...' : t('projects.btn_calculate')}
-              </button>
-              <button type="button" className="geo-dims-btn geo-dims-btn--primary" disabled={!rentaResult?.ok || rentaSaving} onClick={() => { void handleSaveRentabiliteTerrain() }}>
-                {rentaSaving ? '...' : icons.save} {t('ranking.save_terrain')}
-              </button>
+              )}
             </div>
           </div>
         </div>

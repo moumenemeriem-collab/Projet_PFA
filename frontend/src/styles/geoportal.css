@@ -3431,13 +3431,437 @@
 }
 
 .renta-modal-content {
-  max-height: 65vh;
-  overflow-y: auto;
-  padding-right: 4px;
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.renta-modal-content .geo-card-form-section {
+.renta-modal-overlay .geo-dims-modal {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  box-shadow: 0 32px 80px rgba(2, 32, 71, 0.35), 0 0 0 1px rgba(255,255,255,0.08);
+}
+
+.renta-modal-overlay .geo-dims-header {
+  padding: 20px 28px;
+  border-radius: 16px 16px 0 0;
+}
+
+.renta-modal-overlay .geo-dims-header h3 {
+  font-size: 1.125rem;
+  letter-spacing: -0.01em;
+}
+
+.renta-modal-overlay .geo-dims-body {
+  flex-direction: row;
+  overflow: hidden;
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  gap: 0;
+}
+
+/* ── Left: Form ──────────────────────────────────── */
+.renta-modal-form {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 24px 32px 28px;
+  scroll-behavior: smooth;
+}
+
+.renta-modal-form::-webkit-scrollbar {
+  width: 5px;
+}
+.renta-modal-form::-webkit-scrollbar-track {
+  background: transparent;
+}
+.renta-modal-form::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.renta-modal-form::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.renta-modal-form .geo-card-form-section {
+  margin-bottom: 18px;
+  padding: 16px 18px;
+  background: #fff;
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.renta-modal-form .geo-card-form-section:hover {
+  border-color: #dde4ee;
+  box-shadow: 0 2px 8px rgba(2, 32, 71, 0.04);
+}
+
+.renta-modal-form .geo-card-form-section .geo-layers-popup-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.renta-modal-form .form-field {
+  margin-bottom: 10px;
+}
+
+.renta-modal-form .form-field:last-child {
+  margin-bottom: 0;
+}
+
+.renta-modal-form .form-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 0;
+}
+
+.renta-modal-form .form-field--half {
+  flex: 1;
+  min-width: 0;
+}
+
+.renta-modal-form .form-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-label);
+  margin-bottom: 4px;
+  display: block;
+}
+
+.renta-modal-form .modal-input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 0.8125rem;
+  font-family: inherit;
+  color: var(--text-heading);
+  background: var(--input-bg);
+  border: 1.5px solid var(--border-input);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.renta-modal-form .modal-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  background: #fff;
+}
+
+.renta-modal-form .modal-input::placeholder {
+  color: #b0bec5;
+}
+
+/* ── Alert ───────────────────────────────────────── */
+.renta-modal-form .form-alert {
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+
+.renta-modal-form .form-alert--success {
+  background: linear-gradient(135deg, #dcfce7, #d1fae5);
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.renta-modal-form .form-alert--error {
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+}
+
+/* ── Results grid ────────────────────────────────── */
+.renta-results-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.renta-results-grid .geo-terrain-calc-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  border: 1px solid #e8ecf2;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 0.8rem;
+  color: #475569;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.renta-results-grid .geo-terrain-calc-row:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.renta-results-grid .geo-terrain-calc-row strong {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.renta-results-highlight {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #1b3a6e 0%, #0f3d6e 60%, #0a1d3d 100%);
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(27, 58, 110, 0.25);
+}
+
+.renta-results-highlight span {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 0.02em;
+}
+
+.renta-results-highlight strong {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+/* ── Actions bar ─────────────────────────────────── */
+.renta-modal-form .geo-dims-actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 0 4px;
+  background: linear-gradient(to top, #fff 70%, rgba(255,255,255,0));
+  border-top: 1px solid #eef2f7;
+  margin-top: 4px;
+  z-index: 2;
+}
+
+.renta-modal-form .geo-dims-btn {
+  padding: 10px 22px;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.renta-modal-form .geo-dims-btn--calc {
+  box-shadow: 0 3px 12px rgba(5, 150, 105, 0.3);
+}
+
+.renta-modal-form .geo-dims-btn--primary {
+  box-shadow: 0 3px 12px rgba(27, 58, 110, 0.3);
+}
+
+/* ── Right: Sidebar ──────────────────────────────── */
+.renta-modal-sidebar {
+  width: 360px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
+  overflow: hidden;
+  border-left: 1px solid #e8ecf2;
+}
+
+.renta-sidebar-header {
+  flex-shrink: 0;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+}
+
+.renta-sidebar-header h4 {
+  margin: 0 0 4px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.renta-sidebar-header h4 svg {
+  width: 16px;
+  height: 16px;
+  opacity: 0.7;
+}
+
+.renta-sidebar-header span {
+  font-size: 0.7rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.renta-sidebar-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  scroll-behavior: smooth;
+}
+
+.renta-sidebar-list::-webkit-scrollbar {
+  width: 4px;
+}
+.renta-sidebar-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.renta-sidebar-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.renta-terrain-card {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1.5px solid #e8ecf2;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.renta-terrain-card:hover {
+  border-color: var(--primary);
+  box-shadow: 0 4px 14px rgba(27, 58, 110, 0.12);
+  transform: translateY(-2px);
+}
+
+.renta-terrain-card--active {
+  border-color: var(--primary);
+  background: linear-gradient(135deg, #f0f5ff 0%, #e8f0fe 100%);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12), 0 4px 14px rgba(27, 58, 110, 0.08);
+  transform: translateY(-1px);
+}
+
+.renta-terrain-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.renta-terrain-card-rank {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #1b3a6e, #0f3d6e);
+  border-radius: 8px;
+  letter-spacing: -0.02em;
+}
+
+.renta-terrain-card--active .renta-terrain-card-rank {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+}
+
+.renta-terrain-card-name {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.renta-terrain-card-surf {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.renta-terrain-card-data {
+  display: flex;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.renta-terrain-card-datum {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.renta-terrain-card-datum span {
+  font-size: 0.725rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.renta-terrain-card-datum strong {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.text-success { color: #16a34a !important; }
+.text-error { color: #dc2626 !important; }
+.text-muted { color: #94a3b8 !important; }
+
+.renta-sidebar-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.renta-sidebar-empty svg {
+  width: 44px;
+  height: 44px;
+  color: #cbd5e1;
+  opacity: 0.5;
+}
+
+.renta-sidebar-empty p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  line-height: 1.6;
 }
 
 .geo-dims-actions {
