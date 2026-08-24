@@ -23,12 +23,9 @@ const investisseurNav: NavItem[] = [
 ]
 
 const investisseurProjectNav: NavItem[] = [
-  { id: 'dashboard', labelKey: 'dashboard.sidebar.home', icon: 'dashboard', href: '/investisseur/tableau-de-bord' },
   { id: 'projects', labelKey: 'dashboard.sidebar.projects', icon: 'projects', href: '/projets' },
   { id: 'ranking', labelKey: 'dashboard.sidebar.ranking', icon: 'ranking', href: '' },
   { id: 'geoportail', labelKey: 'dashboard.sidebar.geoportail', icon: 'globe', href: '' },
-  { id: 'messages', labelKey: 'dashboard.sidebar.messages', icon: 'message', href: '/messages' },
-  { id: 'profile', labelKey: 'dashboard.sidebar.profile', icon: 'profile', href: '/profil' },
 ]
 
 const adminNav: NavItem[] = [
