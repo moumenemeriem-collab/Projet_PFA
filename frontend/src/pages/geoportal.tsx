@@ -362,7 +362,7 @@ function propsToHtml(props: Record<string, unknown>, labels?: Record<string, str
     .join('')
 }
 
-type CardMode = 'search' | 'loading' | 'results' | 'empty' | 'addTerrain'
+type CardMode = 'search' | 'loading' | 'results' | 'terrainList' | 'empty' | 'addTerrain'
 
 function getScoreColor(score: number): string {
   if (score >= 80) return '#16a34a'
@@ -2083,7 +2083,7 @@ const bindPopupActionButtons = (popup: any): void => {
         analyzePendingRef.current = true
       }
       setCadastreEnabled(true)
-      selectTerrain(analyseResultatsRef.current[0].id, { zoom: false })
+      setCardMode('terrainList')
     } catch (err) {
       setCardError(err instanceof Error ? err.message : String(err))
     }
@@ -2184,7 +2184,7 @@ const bindPopupActionButtons = (popup: any): void => {
   }
 
   const currentBasemap = BASEMAPS.find((b) => b.id === basemapId) ?? BASEMAPS[0]
-  const cardTitle = cardMode === 'search' ? t('ranking.terrain_info') : cardMode === 'addTerrain' ? t('ranking.add_terrain_title') : t('ranking.analyse_title')
+  const cardTitle = cardMode === 'search' ? t('ranking.terrain_info') : cardMode === 'addTerrain' ? t('ranking.add_terrain_title') : cardMode === 'terrainList' ? `Resultats (${analyseResultatsRef.current.length})` : t('ranking.analyse_title')
 
   const BUFFER_LEGEND: { key: string; label: string }[] = [
     { key: 'distance_route', label: t('ranking.filter_max_distance_road') },
@@ -2957,7 +2957,7 @@ const bindPopupActionButtons = (popup: any): void => {
                   <div className="geo-terrain-card-header">
                     <h3 id="card-title">{cardTitle}</h3>
                     <div className="geo-card-header-actions">
-                      <button type="button" className="geo-card-back" id="card-back-btn" hidden={cardMode === 'search'} onClick={() => { setCardMode('search'); if (cardMode === 'addTerrain') setCardHidden(true) }}>{icons.chevronLeft}</button>
+                      <button type="button" className="geo-card-back" id="card-back-btn" hidden={cardMode === 'search' || cardMode === 'terrainList'} onClick={() => { if (cardMode === 'results') { setCardMode('terrainList'); setSelectedTerrain(null) } else if (cardMode === 'addTerrain') { setCardMode('search'); setCardHidden(true) } else { setCardMode('search') } }}>{icons.chevronLeft}</button>
                       <button type="button" className="geo-terrain-card-close" id="terrain-card-toggle" onClick={closeTerrainCard}>
                         {icons.close}
                       </button>
@@ -3084,6 +3084,60 @@ const bindPopupActionButtons = (popup: any): void => {
                           <span className="geo-sr-empty-icon">{icons.search}</span>
                           <p className="geo-sr-empty-text">{t('ranking.no_terrains_found')}</p>
                         </div>
+                      ) : cardMode === 'terrainList' ? (
+                        (() => {
+                          const sorted = [...analyseResultatsRef.current].sort((a, b) => {
+                            if (b.score_amc !== a.score_amc) return b.score_amc - a.score_amc
+                            return b.superficie - a.superficie
+                          })
+                          return (
+                            <div className="geo-terrain-list">
+                              {savedAnalyse && showSavedBanner ? (
+                                <div className="geo-save-banner geo-save-banner--ok geo-save-banner--card">
+                                  ✓ {t('ranking.analyse_saved')}
+                                </div>
+                              ) : null}
+                              <div className="geo-terrain-list-header">
+                                <span className="geo-terrain-list-count">{sorted.length} parcelles classees</span>
+                                <button type="button" className="geo-terrain-list-save" disabled={saving || !!savedAnalyse} onClick={() => { void handleSaveClassement() }}>
+                                  {saving ? '...' : icons.save} {savedAnalyse ? 'Sauvegarde' : 'Sauvegarder'}
+                                </button>
+                              </div>
+                              {sorted.map((tr, i) => {
+                                const color = getScoreColor(tr.score_final)
+                                return (
+                                  <button
+                                    key={tr.id}
+                                    type="button"
+                                    className="geo-terrain-list-item"
+                                    onClick={() => selectTerrain(tr.id)}
+                                  >
+                                    <div className="geo-terrain-list-rank">
+                                      <span className="geo-terrain-list-rank-num" style={{ background: color }}>#{i + 1}</span>
+                                    </div>
+                                    <div className="geo-terrain-list-info">
+                                      <div className="geo-terrain-list-name">{tr.infos_generales.reference_cadastrale || tr.nom}</div>
+                                      <div className="geo-terrain-list-meta">
+                                        {tr.infos_generales.commune} · {tr.superficie.toLocaleString('fr-FR')} m²
+                                      </div>
+                                    </div>
+                                    <div className="geo-terrain-list-scores">
+                                      <div className="geo-terrain-list-score-item">
+                                        <span className="geo-terrain-list-score-label">AMC</span>
+                                        <strong>{tr.score_amc.toFixed(1)}</strong>
+                                      </div>
+                                      <div className="geo-terrain-list-score-item">
+                                        <span className="geo-terrain-list-score-label">Score</span>
+                                        <strong style={{ color }}>{tr.score_final.toFixed(1)}</strong>
+                                      </div>
+                                    </div>
+                                    <div className="geo-terrain-list-arrow">{icons.chevron}</div>
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          )
+                        })()
                       ) : cardMode === 'results' && selectedTerrain ? (
                         <>
                           {savedAnalyse && showSavedBanner ? (

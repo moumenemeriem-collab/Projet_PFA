@@ -3508,3 +3508,143 @@
   box-shadow: none;
   transform: none;
 }
+
+.geo-terrain-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.geo-terrain-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 8px;
+  border-bottom: 1px solid #eef2f7;
+  margin-bottom: 4px;
+}
+
+.geo-terrain-list-count {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.geo-terrain-list-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border: 1px solid #dbe3ef;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #1b3a6e;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.geo-terrain-list-save:hover:not(:disabled) {
+  background: #eef3fb;
+  border-color: #1b3a6e;
+}
+
+.geo-terrain-list-save:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.geo-terrain-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 8px;
+  border: 1px solid #eef2f7;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+  text-align: left;
+}
+
+.geo-terrain-list-item:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(2, 32, 71, 0.08);
+  transform: translateX(2px);
+}
+
+.geo-terrain-list-rank-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.geo-terrain-list-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.geo-terrain-list-name {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.geo-terrain-list-meta {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.geo-terrain-list-scores {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.geo-terrain-list-score-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 40px;
+}
+
+.geo-terrain-list-score-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.geo-terrain-list-score-item strong {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.geo-terrain-list-arrow {
+  flex-shrink: 0;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+}
+
+.geo-terrain-list-arrow svg {
+  width: 16px;
+  height: 16px;
+}
