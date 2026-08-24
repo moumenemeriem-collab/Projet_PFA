@@ -615,6 +615,226 @@ class TerrainDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class TerrainBulkImportView(APIView):
+    """Importe un fichier GeoJSON cadastral en terrains pour un projet."""
+
+    authentication_classes = [JWTOptionalAuthentication]
+    permission_classes = [AllowAny]
+
+    def post(self, request, projet_pk: int):
+        if not request.user or not request.user.is_authenticated:
+            return Response({'detail': 'Authentification requise.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        try:
+            projet = Projet.objects.get(pk=projet_pk)
+        except Projet.DoesNotExist:
+            return Response({'detail': 'Projet introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if projet.investisseur != request.user and request.user.role != 'admin':
+            return Response({'detail': "Vous n'avez pas la permission."}, status=status.HTTP_403_FORBIDDEN)
+
+        fichier = request.FILES.get('fichier')
+        if not fichier:
+            return Response({'detail': 'Aucun fichier fourni.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not fichier.name.endswith('.geojson'):
+            return Response({'detail': 'Format non supporté. Seul le GeoJSON est accepté.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            data = json.loads(fichier.read().decode('utf-8'))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            return Response({'detail': f'GeoJSON invalide : {exc}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        features = data.get('features') or []
+        if not features:
+            return Response({'detail': 'Aucune entité trouvée dans le fichier.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        remplacer = request.data.get('remplacer', 'false') in ('true', '1', 'True')
+        if remplacer:
+            Terrain.objects.filter(projet=projet).delete()
+
+        terrains = []
+        skipped = 0
+        for i, feature in enumerate(features):
+            props = feature.get('properties') or {}
+            geom_data = feature.get('geometry')
+
+            if not geom_data:
+                skipped += 1
+                continue
+
+            try:
+                from django.contrib.gis.geos import GEOSGeometry as GEOSGeom
+                geom = GEOSGeom(json.dumps(geom_data))
+            except Exception:
+                skipped += 1
+                continue
+
+            if geom is None:
+                skipped += 1
+                continue
+
+            if not geom.valid:
+                try:
+                    geom = geom.make_valid()
+                except Exception:
+                    skipped += 1
+                    continue
+
+            geom.srid = 4326
+            centroid = geom.centroid
+
+            num = props.get('num') or ''
+            surface_val = props.get('surface') or 0
+            try:
+                surface_val = round(float(surface_val), 2)
+            except (TypeError, ValueError):
+                surface_val = 0
+
+            nom = f'Parcelle {num}' if num else f'Parcelle {i + 1}'
+
+            terrains.append(Terrain(
+                projet=projet,
+                utilisateur=request.user,
+                nom=nom,
+                superficie=surface_val,
+                lat=round(centroid.y, 6),
+                lng=round(centroid.x, 6),
+                num_parcelle=num,
+                num_titre_foncier=num,
+                fid=props.get('fid'),
+                indice=props.get('indice') or '',
+                complement=props.get('complement') or '',
+                consistance=props.get('Consistance') or '',
+                geometry=geom,
+            ))
+
+        created = Terrain.objects.bulk_create(terrains, batch_size=100)
+        _log(request.user, 'ajout', 'terrain', f'Import de {len(created)} parcelle(s) dans le projet "{projet.nom}"')
+
+        return Response({
+            'message': f'{len(created)} terrain(s) importé(s).',
+            'nb_importes': len(created),
+            'nb_ignores': skipped,
+        }, status=status.HTTP_201_CREATED)
+
+
+ALLOWED_DESIGNATIONS = [
+    'B2', 'B3', 'B4',
+    'SB2', 'SB4', 'SB6',
+    'C2', 'C4',
+    'ZPI', 'ZS',
+    'IN2', 'IN3', 'INS',
+    'DS1', 'D1', 'D5',
+]
+
+
+def _is_parent_of_allowed(designation: str) -> bool:
+    d = designation.strip()
+    if not d:
+        return False
+    for allowed in ALLOWED_DESIGNATIONS:
+        if allowed.startswith(d):
+            return True
+    return False
+
+
+class SurfaceConstructibleView(APIView):
+    authentication_classes = [JWTOptionalAuthentication]
+    permission_classes = [AllowAny]
+
+    def get(self, request, projet_pk: int, terrain_pk: int):
+        try:
+            terrain = Terrain.objects.get(pk=terrain_pk, projet_id=projet_pk)
+        except Terrain.DoesNotExist:
+            return Response({'detail': 'Terrain introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not terrain.geometry:
+            return Response({'surface_constructible': 0, 'superficie': 0, 'taux': 0, 'non_construable': 0, 'affectations': []})
+
+        return self._compute(terrain.geometry.wkt, float(terrain.superficie) if terrain.superficie else 0)
+
+    def post(self, request, projet_pk: int, terrain_pk: int = 0):
+        geometry = request.data.get('geometry')
+        superficie = float(request.data.get('superficie', 0) or 0)
+        if not geometry:
+            return Response({'detail': 'geometry requise.'}, status=status.HTTP_400_BAD_REQUEST)
+        from django.contrib.gis.geos import GEOSException, fromstr
+        try:
+            geom = fromstr(json.dumps(geometry)) if isinstance(geometry, dict) else fromstr(geometry)
+        except (GEOSException, TypeError, ValueError) as exc:
+            return Response({'detail': f'Géométrie invalide : {exc}'}, status=status.HTTP_400_BAD_REQUEST)
+        if superficie <= 0:
+            try:
+                from pyproj import Transformer
+                transformer = Transformer.from_crs('EPSG:4326', 'EPSG:32629', always_xy=True)
+                coords = geom.coords
+                from shapely.geometry import Polygon
+                projected = Polygon([(transformer.transform(x, y)[0], transformer.transform(x, y)[1]) for x, y in coords[0]])
+                superficie = round(projected.area, 2)
+            except Exception:
+                superficie = 0
+        return self._compute(geom.wkt, superficie)
+
+    @staticmethod
+    def _compute(terrain_wkt: str, terrain_superficie: float):
+        sql = """
+            SELECT pa.designation,
+                ST_Area(
+                    ST_Intersection(
+                        ST_GeomFromEWKT(%s),
+                        ST_SetSRID(ST_GeomFromGeoJSON(pa.geometry::text), 4326)
+                    )::geography
+                ) as intersection_area_m2
+            FROM couche_plan_amenagement pa
+            WHERE pa.designation IS NOT NULL
+            AND TRIM(pa.designation) != ''
+            AND pa.designation != 'Affectation non définie'
+            AND ST_Intersects(
+                ST_GeomFromEWKT(%s),
+                ST_SetSRID(ST_GeomFromGeoJSON(pa.geometry::text), 4326)
+            )
+        """
+
+        try:
+            with connection.cursor() as cur:
+                cur.execute(sql, [terrain_wkt, terrain_wkt])
+                rows = cur.fetchall()
+        except Exception as exc:
+            return Response(
+                {'detail': f'Erreur calcul surface constructible : {exc}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        non_constr = 0.0
+        affectations = []
+        for designation, area_m2 in rows:
+            area = round(float(area_m2), 2)
+            if area <= 0:
+                continue
+            d = designation.strip()
+            is_allowed = d in ALLOWED_DESIGNATIONS
+            is_parent = _is_parent_of_allowed(d)
+            if is_allowed:
+                affectations.append({'designation': d, 'surface_m2': area, 'type': 'constructible'})
+            elif is_parent:
+                affectations.append({'designation': d, 'surface_m2': area, 'type': 'parent'})
+            else:
+                non_constr += area
+                affectations.append({'designation': d, 'surface_m2': area, 'type': 'non_constructible'})
+
+        surface_constructible = max(0, terrain_superficie - non_constr)
+        taux = round(surface_constructible / terrain_superficie * 100, 1) if terrain_superficie > 0 else 0
+
+        return Response({
+            'surface_constructible': round(surface_constructible, 2),
+            'superficie': terrain_superficie,
+            'taux': taux,
+            'non_construable': round(non_constr, 2),
+            'affectations': affectations,
+        })
+
+
 class CoucheList(APIView):
     permission_classes = [IsAuthenticated]
 

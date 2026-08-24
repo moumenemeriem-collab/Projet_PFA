@@ -182,6 +182,51 @@ export async function saveTerrainRentabilite(projetId: number, terrainId: number
   return parseResponse<Terrain>(res)
 }
 
+export interface AffectationSurface {
+  designation: string
+  surface_m2: number
+  type: 'constructible' | 'non_constructible' | 'parent'
+}
+
+export interface SurfaceConstructibleResponse {
+  surface_constructible: number
+  superficie: number
+  taux: number
+  non_construable: number
+  affectations: AffectationSurface[]
+}
+
+export async function fetchSurfaceConstructible(projetId: number, terrainId: number): Promise<SurfaceConstructibleResponse> {
+  const res = await apiFetch(`/api/projets/${projetId}/terrains/${terrainId}/surface-constructible/`)
+  return parseResponse<SurfaceConstructibleResponse>(res)
+}
+
+export async function computeSurfaceConstructible(projetId: number, geometry: Record<string, unknown>, superficie: number): Promise<SurfaceConstructibleResponse> {
+  const res = await apiFetch(`/api/projets/${projetId}/surface-constructible/`, {
+    method: 'POST',
+    body: JSON.stringify({ geometry, superficie }),
+  })
+  return parseResponse<SurfaceConstructibleResponse>(res)
+}
+
+export interface BulkImportResponse {
+  message: string
+  nb_importes: number
+  nb_ignores: number
+}
+
+export async function bulkImportCadastre(projetId: number, file: File, remplacer = false): Promise<BulkImportResponse> {
+  const form = new FormData()
+  form.append('fichier', file)
+  form.append('remplacer', String(remplacer))
+  const res = await apiFetch(`/api/projets/${projetId}/terrains/import-cadastre/`, {
+    method: 'POST',
+    body: form,
+    headers: {},
+  })
+  return parseResponse<BulkImportResponse>(res)
+}
+
 async function parseResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
