@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { clearSession, getStoredUser } from '../api/auth'
 import { deleteNotification, fetchNotifications, markNotificationsRead, type Notification } from '../api/messagerie'
@@ -109,6 +109,14 @@ export function DashboardLayout({ role, activePage, children, hideSidebar = fals
   // eslint-disable-next-line prefer-const -- `let` évite la propagation du narrowing TS au bloc sidebar d'origine
   let ctx = projectContext
   if (ctx) {
+    // Géoportail (hideSidebar) : pas de navbar projet — la page a sa propre barre d'outils
+    if (hideSidebar) {
+      return (
+        <div className="app-shell app-shell--project app-shell--full">
+          <main className="app-content app-content--full">{children}</main>
+        </div>
+      )
+    }
     return (
       <div className={hideSidebar ? 'app-shell app-shell--project app-shell--full' : 'app-shell app-shell--project'}>
         <header className="app-pnav">
@@ -126,15 +134,25 @@ export function DashboardLayout({ role, activePage, children, hideSidebar = fals
                 ? `/projets/${ctx.id}/classement/ajouter`
                 : item.href
               return (
-                <Link
-                  to={href}
-                  className={`app-pnav-link${activePage === item.id ? ' app-pnav-link--active' : ''}`}
-                  key={item.id}
-                  onClick={() => setMenuOpen(false)}
-                >
-                  <span className="app-pnav-link-icon">{icons[item.icon]}</span>
-                  {t(item.labelKey)}
-                </Link>
+                <Fragment key={item.id}>
+                  <Link
+                    to={href}
+                    className={`app-pnav-link${activePage === item.id ? ' app-pnav-link--active' : ''}`}
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    {t(item.labelKey)}
+                  </Link>
+                  {item.id === 'geoportail' ? (
+                    <button
+                      type="button"
+                      className="app-pnav-quit"
+                      title={t('dashboard.sidebar.quit')}
+                      onClick={() => navigate('/projets')}
+                    >
+                      {t('dashboard.sidebar.quit')}
+                    </button>
+                  ) : null}
+                </Fragment>
               )
             })}
           </nav>
@@ -215,10 +233,6 @@ export function DashboardLayout({ role, activePage, children, hideSidebar = fals
             </button>
           </div>
         </header>
-        <button type="button" className="app-pnav-quitfab" onClick={() => navigate('/projets')}>
-          <span className="app-pnav-link-icon">{icons.close}</span>
-          {t('dashboard.sidebar.quit')}
-        </button>
         <main className={hideSidebar ? 'app-content app-content--full' : 'app-content'}>
           {children}
         </main>

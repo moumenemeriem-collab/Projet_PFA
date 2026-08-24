@@ -268,8 +268,8 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   Espace projet (projectContext) : navbar horizontale
-   glassmorphism bleu ciel — n'affecte pas la sidebar générale
+   Espace projet (projectContext) : navbar horizontale blanche —
+   n'affecte pas la sidebar générale
    ═══════════════════════════════════════════════════════════ */
 
 .app-shell--project {
@@ -287,21 +287,7 @@
   align-items: center;
   gap: 24px;
   padding: 0 32px;
-  background: linear-gradient(90deg, rgba(173, 216, 230, 0.4) 0%, rgba(200, 230, 245, 0.5) 100%);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 12px 28px -14px rgba(79, 184, 219, 0.5);
-}
-
-.app-pnav::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  height: 30px;
-  pointer-events: none;
-  background: linear-gradient(to bottom, rgba(173, 216, 230, 0.25), rgba(173, 216, 230, 0));
+  background: #ffffff;
 }
 
 .app-pnav-brand {
@@ -375,16 +361,16 @@
 }
 
 .app-pnav-link:hover {
-  color: #1d7fa6;
-  background: rgba(125, 211, 232, 0.16);
+  color: #35658d;
+  background: rgba(142, 177, 209, 0.16);
 }
 
 .app-pnav-link--active,
 .app-shell--project .app-pnav-link--active {
-  background: linear-gradient(135deg, #7dd3e8, #4fb8db);
+  background: linear-gradient(135deg, #5e86a8, #4a7291);
   color: #ffffff;
   font-weight: 600;
-  box-shadow: 0 3px 12px -4px rgba(79, 184, 219, 0.6);
+  box-shadow: 0 3px 12px -4px rgba(142, 177, 209, 0.6);
 }
 
 .app-pnav-link-icon {
@@ -400,42 +386,28 @@
   height: 100%;
 }
 
-/* ── Bouton « Quitter le projet » fixé en bas de la page ── */
+/* ── Bouton « Quitter le projet » dans les liens de la navbar ── */
 
-.app-pnav-quitfab {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1100;
+.app-pnav-quit {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 22px;
+  padding: 9px 16px;
   border: none;
-  border-radius: 100px;
-  background: rgba(239, 68, 68, 0.92);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  color: #ffffff;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.09);
+  color: #b91c1c;
   font-family: inherit;
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: 0.9rem;
+  font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.35);
   transition: all 0.2s ease;
 }
 
-.app-pnav-quitfab:hover {
-  background: #dc2626;
-  transform: translateX(-50%) translateY(-2px);
-  box-shadow: 0 12px 28px rgba(239, 68, 68, 0.45);
-}
-
-.app-pnav-quitfab .app-pnav-link-icon svg {
-  width: 14px;
-  height: 14px;
+.app-pnav-quit:hover {
+  background: rgba(239, 68, 68, 0.92);
+  color: #ffffff;
 }
 
 /* ── Zone utilisateur ── */
@@ -492,7 +464,7 @@
 }
 
 .app-pnav-burger:hover {
-  background: rgba(125, 211, 232, 0.18);
+  background: rgba(142, 177, 209, 0.18);
 }
 
 /* ── Responsive : menu hamburger ── */
@@ -522,10 +494,8 @@
     align-items: stretch;
     gap: 4px;
     padding: 12px 16px 16px;
-    background: linear-gradient(180deg, rgba(214, 238, 248, 0.92) 0%, rgba(226, 243, 250, 0.95) 100%);
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
-    box-shadow: 0 18px 30px -16px rgba(79, 184, 219, 0.5);
+    background: #ffffff;
+    box-shadow: 0 14px 26px -16px rgba(15, 23, 42, 0.18);
   }
 
   .app-pnav-links--open .app-pnav-link {
@@ -534,6 +504,12 @@
 
   .app-pnav-burger {
     display: flex;
+  }
+
+  .app-pnav-links--open .app-pnav-quit {
+    width: 100%;
+    justify-content: flex-start;
+    margin-bottom: 4px;
   }
 
   .dashboard-topbar-user-info {
@@ -547,11 +523,11 @@
    ═══════════════════════════════════════════════════════════ */
 
 .app-shell--project {
-  --sky: #4fb8db;
-  --sky-light: #7dd3e8;
-  --sky-deep: #1d7fa6;
-  --grad-sky: linear-gradient(135deg, #7dd3e8, #4fb8db);
-  --grad-sky-hover: linear-gradient(135deg, #5fc8e2, #3aa9cf);
+  --sky: #5e86a8;
+  --sky-light: #8fb3cf;
+  --sky-deep: #35658d;
+  --grad-sky: linear-gradient(135deg, #5e86a8, #4a7291);
+  --grad-sky-hover: linear-gradient(135deg, #51789b, #3f6584);
 }
 
 /* ── Boutons primaires ── */
@@ -560,12 +536,12 @@
   background: var(--grad-sky);
   border-color: transparent;
   color: #ffffff;
-  box-shadow: 0 3px 12px -4px rgba(79, 184, 219, 0.55);
+  box-shadow: 0 3px 12px -4px rgba(142, 177, 209, 0.55);
 }
 
 .app-shell--project .btn-primary:hover {
   background: var(--grad-sky-hover);
-  box-shadow: 0 5px 16px -4px rgba(79, 184, 219, 0.65);
+  box-shadow: 0 5px 16px -4px rgba(142, 177, 209, 0.65);
 }
 
 .app-shell--project .btn-primary:disabled {
@@ -577,8 +553,8 @@
 
 .app-shell--project .classement-actions .btn-secondary,
 .app-shell--project .btn.btn-secondary {
-  background: linear-gradient(135deg, #eaf8fc, #c9edf8);
-  border: 1.5px solid rgba(79, 184, 219, 0.45);
+  background: linear-gradient(135deg, #eef4f9, #d8e4ef);
+  border: 1.5px solid rgba(142, 177, 209, 0.45);
   color: var(--sky-deep);
   box-shadow: none;
 }
@@ -595,7 +571,7 @@
 .app-shell--project .btn:focus-visible,
 .app-shell--project .pagination-btn:focus-visible,
 .app-shell--project .table-action-btn:focus-visible,
-.app-shell--project .app-pnav-quitfab:focus-visible,
+.app-shell--project .app-pnav-quit:focus-visible,
 .app-shell--project .app-pnav-link:focus-visible {
   outline: 2px solid var(--sky);
   outline-offset: 2px;
@@ -603,7 +579,7 @@
 
 .app-shell--project .classement-search:focus-within {
   border-color: var(--sky);
-  box-shadow: 0 0 0 3px rgba(79, 184, 219, 0.18);
+  box-shadow: 0 0 0 3px rgba(142, 177, 209, 0.18);
 }
 
 /* ── Onglets ── */
@@ -629,7 +605,7 @@
   background: var(--grad-sky);
   border-color: transparent;
   color: #ffffff;
-  box-shadow: 0 2px 8px -2px rgba(79, 184, 219, 0.55);
+  box-shadow: 0 2px 8px -2px rgba(142, 177, 209, 0.55);
 }
 
 .app-shell--project .notification-badge {
@@ -639,12 +615,12 @@
 /* ── Tableaux & listes ── */
 
 .app-shell--project .classement-table tbody tr:hover {
-  background: rgba(125, 211, 232, 0.1);
+  background: rgba(142, 177, 209, 0.1);
 }
 
 .app-shell--project .classement-history-item--active {
   border-color: var(--sky);
-  background: rgba(125, 211, 232, 0.08);
+  background: rgba(142, 177, 209, 0.08);
 }
 
 .app-shell--project .table-action-btn:not(.table-action-btn--danger) {
@@ -683,7 +659,7 @@
   min-height: 230px;
   border-radius: 18px;
   overflow: hidden;
-  box-shadow: 0 16px 36px -18px rgba(29, 127, 166, 0.55);
+  box-shadow: 0 16px 36px -18px rgba(53, 101, 141, 0.5);
 }
 
 .pd-hero-img {
@@ -753,7 +729,7 @@
   align-items: center;
   gap: 14px;
   background: #ffffff;
-  border: 1px solid rgba(79, 184, 219, 0.22);
+  border: 1px solid rgba(142, 177, 209, 0.22);
   border-radius: 14px;
   padding: 16px 18px;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -761,7 +737,7 @@
 
 .pd-kpi:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 24px -14px rgba(79, 184, 219, 0.65);
+  box-shadow: 0 12px 24px -14px rgba(142, 177, 209, 0.65);
 }
 
 .pd-kpi-icon {
@@ -771,8 +747,8 @@
   display: grid;
   place-items: center;
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(125, 211, 232, 0.22), rgba(79, 184, 219, 0.16));
-  color: var(--sky-deep, #1d7fa6);
+  background: linear-gradient(135deg, rgba(142, 177, 209, 0.22), rgba(142, 177, 209, 0.16));
+  color: var(--sky-deep, #35658d);
 }
 
 .pd-kpi-icon svg {
@@ -805,10 +781,10 @@
 
 .pd-section {
   background: #ffffff;
-  border: 1px solid rgba(79, 184, 219, 0.18);
+  border: 1px solid rgba(142, 177, 209, 0.18);
   border-radius: 16px;
   padding: 20px 22px;
-  box-shadow: 0 8px 22px -18px rgba(29, 127, 166, 0.45);
+  box-shadow: 0 8px 22px -18px rgba(53, 101, 141, 0.45);
 }
 
 .pd-section-title {
@@ -820,7 +796,7 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--sky-deep, #1d7fa6);
+  color: var(--sky-deep, #35658d);
 }
 
 .pd-section-title::before {
@@ -828,24 +804,24 @@
   width: 4px;
   height: 15px;
   border-radius: 2px;
-  background: linear-gradient(180deg, #7dd3e8, #4fb8db);
+  background: linear-gradient(180deg, #5e86a8, #4a7291);
 }
 
 .pd-section-body .project-detail-item {
   background: #f4fafd;
-  border: 1px solid rgba(79, 184, 219, 0.12);
+  border: 1px solid rgba(142, 177, 209, 0.12);
   transition: border-color 0.2s ease;
 }
 
 .pd-section-body .project-detail-item:hover {
-  border-color: rgba(79, 184, 219, 0.45);
+  border-color: rgba(142, 177, 209, 0.45);
 }
 
 /* ── Rentabilité vide ── */
 
 .pd-renta-empty {
-  background: rgba(125, 211, 232, 0.07);
-  border: 1.5px dashed rgba(79, 184, 219, 0.4);
+  background: rgba(142, 177, 209, 0.07);
+  border: 1.5px dashed rgba(142, 177, 209, 0.4);
   border-radius: 14px;
   padding: 22px;
   text-align: center;
@@ -858,7 +834,7 @@
 .pd-skeleton {
   position: relative;
   overflow: hidden;
-  background: #eef6fa;
+  background: #f0f4f8;
   border-radius: 16px;
 }
 
