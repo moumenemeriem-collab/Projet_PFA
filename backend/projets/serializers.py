@@ -222,7 +222,7 @@ class TerrainListSerializer(serializers.ModelSerializer):
 
 
 class TerrainCreateSerializer(serializers.Serializer):
-    num_titre_foncier = serializers.CharField(max_length=255)
+    num_titre_foncier = serializers.CharField(max_length=255, allow_blank=True, default='')
     statut_juridique = serializers.ChoiceField(
         choices=[c for c, _ in Terrain.STATUT_JURIDIQUE_CHOICES],
         required=False,
@@ -243,7 +243,7 @@ class TerrainCreateSerializer(serializers.Serializer):
     superficie = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=None)
     lat = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True, default=None)
     lng = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True, default=None)
-    geometry = serializers.CharField(required=False, allow_null=True, default='')
+    geometry = serializers.CharField(required=False, allow_null=True, allow_blank=True, default='')
     accessibilite = serializers.IntegerField(min_value=1, max_value=10, default=5)
     positionnement = serializers.IntegerField(min_value=1, max_value=10, default=5)
     topographie = serializers.IntegerField(min_value=1, max_value=10, default=5)
