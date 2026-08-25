@@ -12,9 +12,11 @@ import { fetchCouches, fetchCoucheGeoJSON, type Couche, type CoucheFeature, type
 import { attributeLabel, CADASTRE_ATTRIBUTE_LABELS, PLAN_AMENAGEMENT_ATTRIBUTE_LABELS } from '../utils/attributeLabels'
 import { t } from '../i18n/index'
 import {
+  closeRing,
   extractRing,
   openGoogleMaps,
   polygonAreaM2,
+  ringAreaM2,
   ringCenter,
   showTerrainDims,
 } from '../utils/terrainDims'
@@ -295,8 +297,10 @@ const buildPopupActions = (lat: number, lng: number, ring?: number[][] | null, t
     : ''
   const renta = ring && ring.length >= 3
     ? (() => {
-        const ri = rentaInfo ?? { nom: title ?? '', superficie: 0, lat, lng, ref: title ?? '', ring }
-        return `<button type="button" class="geo-popup-btn geo-popup-btn--renta" data-action="rentabilite" data-terrain-id="${ri.terrainId ?? ''}" data-terrain-nom="${escapeHtml(ri.nom ?? '')}" data-terrain-surf="${ri.superficie ?? ''}" data-terrain-lat="${ri.lat ?? ''}" data-terrain-lng="${ri.lng ?? ''}" data-terrain-ref="${escapeHtml(ri.ref ?? '')}" data-terrain-ring="${escapeHtml(JSON.stringify(ri.ring ?? []))}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span>Calculer la rentabilit&eacute;</span></button>`
+        const fallbackSurf = Math.round(ringAreaM2(ring))
+        const ri = rentaInfo ?? { nom: title ?? '', superficie: fallbackSurf, lat, lng, ref: title ?? '', ring }
+        const finalSurf = (ri.superficie ?? 0) > 0 ? (ri.superficie ?? 0) : fallbackSurf
+        return `<button type="button" class="geo-popup-btn geo-popup-btn--renta" data-action="rentabilite" data-terrain-id="${ri.terrainId ?? ''}" data-terrain-nom="${escapeHtml(ri.nom ?? '')}" data-terrain-surf="${finalSurf}" data-terrain-lat="${ri.lat ?? ''}" data-terrain-lng="${ri.lng ?? ''}" data-terrain-ref="${escapeHtml(ri.ref ?? '')}" data-terrain-ring="${escapeHtml(JSON.stringify(ri.ring ?? []))}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span>Calculer la rentabilit&eacute;</span></button>`
       })()
     : ''
   if (!gmap && !dims && !aff && !renta) return ''
@@ -692,10 +696,14 @@ export function GeoportalPage(): React.JSX.Element {
         .catch(() => { if (!cancelled) setRentaSurfaceConstructible(null) })
       return () => { cancelled = true }
     }
-    if (rentaRing.length >= 3 && rentaParcelInfo) {
-      const geom = { type: 'Polygon', coordinates: [rentaRing] }
+    if (rentaRing.length >= 3) {
+      const closedRing = closeRing(rentaRing)
+      const geom = { type: 'Polygon', coordinates: [closedRing] }
+      const surf = rentaParcelInfo?.superficie && rentaParcelInfo.superficie > 0
+        ? rentaParcelInfo.superficie
+        : Math.round(ringAreaM2(rentaRing))
       let cancelled = false
-      void computeSurfaceConstructible(projetId, geom, rentaParcelInfo.superficie)
+      void computeSurfaceConstructible(projetId, geom, surf)
         .then((data) => { if (!cancelled) setRentaSurfaceConstructible(data) })
         .catch(() => { if (!cancelled) setRentaSurfaceConstructible(null) })
       return () => { cancelled = true }
@@ -713,7 +721,8 @@ export function GeoportalPage(): React.JSX.Element {
       return () => { cancelled = true }
     }
     if (rentaRing.length >= 3) {
-      const geom = { type: 'Polygon', coordinates: [rentaRing] }
+      const closedRing = closeRing(rentaRing)
+      const geom = { type: 'Polygon', coordinates: [closedRing] }
       let cancelled = false
       void computeSurfaceEquipement(projetId, geom)
         .then((data) => { if (!cancelled) setRentaSurfaceEquipement(data) })
@@ -759,12 +768,14 @@ export function GeoportalPage(): React.JSX.Element {
       const tRing = btn.getAttribute('data-terrain-ring')
       let parsedRing: number[][] = []
       try { parsedRing = tRing ? JSON.parse(tRing) as number[][] : [] } catch { parsedRing = [] }
+      const calculatedSurf = parsedRing.length >= 3 ? Math.round(ringAreaM2(parsedRing)) : 0
+      const parsedSurf = tsurf && Number(tsurf) > 0 ? Number(tsurf) : (calculatedSurf > 0 ? calculatedSurf : Number(projet?.surface_souhaitee ?? 0))
       setRentaTerrainId(tid ? Number(tid) : null)
       setRentaTerrainNom(tnom)
       setRentaRing(parsedRing)
       setRentaParcelInfo({
         nom: tnom,
-        superficie: tsurf ? Number(tsurf) : Number(projet?.surface_souhaitee ?? 0),
+        superficie: parsedSurf,
         lat: tlat ? Number(tlat) : 0,
         lng: tlng ? Number(tlng) : 0,
         ref: tref,
@@ -1151,6 +1162,7 @@ export function GeoportalPage(): React.JSX.Element {
     affectationsResultRef.current = { terrainNum: idParcelle, pieces, title }
     if (popup?.getElement && ring) {
       const center = ringCenter(ring)
+      const surfVal = Number(cadFeat.properties?.surface) || (ring && ring.length >= 3 ? Math.round(ringAreaM2(ring)) : 0)
       const info = pieces.length === 0
         ? '<div class="geoportal-popup-warn">Aucune affectation trouvée pour cette parcelle dans le plan d\'aménagement.</div>'
         : `<div class="geoportal-popup-affcount">${pieces.length} affectation${pieces.length > 1 ? 's' : ''} détectée${pieces.length > 1 ? 's' : ''}</div>`
@@ -1158,7 +1170,7 @@ export function GeoportalPage(): React.JSX.Element {
         `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(title)}</div>` +
         `${info}` +
         `<div class="geoportal-popup-coords">${propsToHtml(cadFeat.properties, CADASTRE_ATTRIBUTE_LABELS)}</div>` +
-        `${buildPopupActions(center.lat, center.lng, ring, title, { idParcelle, computed: pieces.length > 0 })}</div>`
+        `${buildPopupActions(center.lat, center.lng, ring, title, { idParcelle, computed: pieces.length > 0 }, { nom: title, superficie: surfVal, lat: center.lat, lng: center.lng, ref: idParcelle, ring })}</div>`
       )
       bindPopupActionButtons(popup)
     }
@@ -1607,7 +1619,7 @@ const bindPopupActionButtons = (popup: any): void => {
           const center = ring ? ringCenter(ring) : { lat: NaN, lng: NaN }
           const num = p.num != null ? String(p.num) : ''
           const affOpts: PopupAffectationsOpts = { idParcelle: num, computed: num !== '' && affectationsResultRef.current?.terrainNum === num }
-          const parcelSuperficie = Number(p.surface) || 0
+          const parcelSuperficie = Number(p.surface) || (ring && ring.length >= 3 ? Math.round(ringAreaM2(ring)) : 0)
           layerItem.bindPopup(
             `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(idParcelle)}</div><div class="geoportal-popup-coords">${propsToHtml(feature.properties, CADASTRE_ATTRIBUTE_LABELS)}</div>${buildPopupActions(center.lat, center.lng, ring, idParcelle, num ? affOpts : null, ring && ring.length >= 3 ? { nom: idParcelle, superficie: parcelSuperficie, lat: center.lat, lng: center.lng, ref: num, ring } : undefined)}</div>`,
             { autoPan: false }
@@ -1706,7 +1718,9 @@ const bindPopupActionButtons = (popup: any): void => {
     const affOpts: PopupAffectationsOpts | null = num !== ''
       ? { idParcelle: num, computed: affectationsResultRef.current?.terrainNum === num }
       : null
-    return `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(idParcelle)}</div><div class="geoportal-popup-coords">${propsToHtml(props, CADASTRE_ATTRIBUTE_LABELS)}</div>${buildPopupActions(center.lat, center.lng, ring, idParcelle, affOpts)}</div>`
+    const parcelSuperficie = Number(props.surface) || (ring && ring.length >= 3 ? Math.round(ringAreaM2(ring)) : 0)
+    const rentaInfo = ring && ring.length >= 3 ? { nom: idParcelle, superficie: parcelSuperficie, lat: center.lat, lng: center.lng, ref: num, ring } : undefined
+    return `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(idParcelle)}</div><div class="geoportal-popup-coords">${propsToHtml(props, CADASTRE_ATTRIBUTE_LABELS)}</div>${buildPopupActions(center.lat, center.lng, ring, idParcelle, affOpts, rentaInfo)}</div>`
   }
 
   const highlightCadastreParcelle = (idParcelle: string): void => {

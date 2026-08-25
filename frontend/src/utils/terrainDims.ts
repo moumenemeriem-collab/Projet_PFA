@@ -118,6 +118,18 @@ export function ringCenter(ring: number[][]): { lat: number; lng: number } {
   return { lat: lat / ring.length, lng: lng / ring.length }
 }
 
+export function closeRing(ring: number[][]): number[][] {
+  if (ring.length < 3) return ring
+  const first = ring[0]
+  const last = ring[ring.length - 1]
+  if (first[0] === last[0] && first[1] === last[1]) return ring
+  return [...ring, [first[0], first[1]]]
+}
+
+export function ringAreaM2(ring: number[][]): number {
+  return polygonAreaM2(ring)
+}
+
 export function openGoogleMaps(lat: number, lng: number): void {
   window.open(
     `https://www.google.com/maps/search/?api=1&query=${lat.toFixed(6)},${lng.toFixed(6)}`,

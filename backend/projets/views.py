@@ -724,24 +724,29 @@ class TerrainBulkImportView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 
-ALLOWED_DESIGNATIONS = [
-    'B2', 'B3', 'B4',
-    'SB2', 'SB4', 'SB6',
-    'C2', 'C4',
-    'ZPI', 'ZS',
-    'IN2', 'IN3', 'INS',
-    'DS1', 'D1', 'D5',
-]
+ALLOWED_DESIGNATIONS = {
+    'B', 'B2', 'B3', 'B4', 'SB', 'SB2', 'SB4', 'SB6',
+    'C', 'C2', 'C4',
+    'ZPI',
+    'ZS',
+    'IN', 'IN2', 'IN3', 'INS',
+    'D', 'DS1', 'D1', 'D5',
+}
+
+IGNORABLE_DESIGNATIONS = {
+    '', 'none', 'null', 'undefined', '-', 'affectation non définie',
+    'affectation non definie', 'non défini', 'non defini', 'inconnu'
+}
 
 
-def _is_parent_of_allowed(designation: str) -> bool:
-    d = designation.strip()
-    if not d:
-        return False
-    for allowed in ALLOWED_DESIGNATIONS:
-        if allowed.startswith(d):
-            return True
-    return False
+def _is_constructible_designation(designation: str) -> bool:
+    d = (designation or '').strip().upper()
+    return d in ALLOWED_DESIGNATIONS
+
+
+def _is_ignorable_designation(designation: str) -> bool:
+    d = (designation or '').strip().lower()
+    return not d or d in IGNORABLE_DESIGNATIONS
 
 
 class SurfaceConstructibleView(APIView):
@@ -789,16 +794,14 @@ class SurfaceConstructibleView(APIView):
             SELECT pa.designation,
                 ST_Area(
                     ST_Intersection(
-                        ST_GeomFromEWKT(%s),
+                        ST_SetSRID(ST_GeomFromText(%s), 4326),
                         ST_SetSRID(ST_GeomFromGeoJSON(pa.geometry::text), 4326)
                     )::geography
                 ) as intersection_area_m2
             FROM couche_plan_amenagement pa
-            WHERE pa.designation IS NOT NULL
-            AND TRIM(pa.designation) != ''
-            AND pa.designation != 'Affectation non définie'
+            WHERE pa.geometry IS NOT NULL
             AND ST_Intersects(
-                ST_GeomFromEWKT(%s),
+                ST_SetSRID(ST_GeomFromText(%s), 4326),
                 ST_SetSRID(ST_GeomFromGeoJSON(pa.geometry::text), 4326)
             )
         """
@@ -819,19 +822,20 @@ class SurfaceConstructibleView(APIView):
             area = round(float(area_m2), 2)
             if area <= 0:
                 continue
-            d = designation.strip()
-            is_allowed = d in ALLOWED_DESIGNATIONS
-            is_parent = _is_parent_of_allowed(d)
-            if is_allowed:
-                affectations.append({'designation': d, 'surface_m2': area, 'type': 'constructible'})
-            elif is_parent:
-                affectations.append({'designation': d, 'surface_m2': area, 'type': 'parent'})
-            else:
-                non_constr += area
-                affectations.append({'designation': d, 'surface_m2': area, 'type': 'non_constructible'})
+            raw_d = (designation or '').strip()
+            if _is_ignorable_designation(raw_d):
+                # Les affectations non définies ou nulles n'ont aucun impact
+                continue
 
-        surface_constructible = max(0, terrain_superficie - non_constr)
-        taux = round(surface_constructible / terrain_superficie * 100, 1) if terrain_superficie > 0 else 0
+            if _is_constructible_designation(raw_d):
+                affectations.append({'designation': raw_d, 'surface_m2': area, 'type': 'constructible'})
+            else:
+                # Tout le reste est non constructible et soustrait de la surface constructible
+                non_constr += area
+                affectations.append({'designation': raw_d, 'surface_m2': area, 'type': 'non_constructible'})
+
+        surface_constructible = max(0.0, terrain_superficie - non_constr)
+        taux = round(surface_constructible / terrain_superficie * 100, 1) if terrain_superficie > 0 else 0.0
 
         return Response({
             'surface_constructible': round(surface_constructible, 2),
@@ -848,7 +852,7 @@ class SurfaceConstructibleView(APIView):
             SELECT pa.designation,
                 ST_Area(
                     ST_Intersection(
-                        ST_GeomFromEWKT(%s),
+                        ST_SetSRID(ST_GeomFromText(%s), 4326),
                         ST_SetSRID(ST_GeomFromGeoJSON(pa.geometry::text), 4326)
                     )::geography
                 ) as intersection_area_m2
@@ -856,7 +860,7 @@ class SurfaceConstructibleView(APIView):
             WHERE pa.designation IS NOT NULL
             AND TRIM(pa.designation) IN ('ZPI', 'ZS', 'IN2', 'IN3', 'INS', 'DS1', 'D1', 'D5')
             AND ST_Intersects(
-                ST_GeomFromEWKT(%s),
+                ST_SetSRID(ST_GeomFromText(%s), 4326),
                 ST_SetSRID(ST_GeomFromGeoJSON(pa.geometry::text), 4326)
             )
         """
