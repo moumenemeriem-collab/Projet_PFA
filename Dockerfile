@@ -21,6 +21,7 @@ COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir GDAL==$(gdal-config --version)
 COPY backend/ ./
+COPY data/ /app/data/
 COPY --from=frontend /app/frontend/dist ./frontend_dist
 RUN chmod +x entrypoint.sh
 EXPOSE 8000

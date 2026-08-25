@@ -6,7 +6,7 @@ from django.core.files.base import ContentFile
 from django.db import connection
 from django.db.models import Q
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -900,7 +900,8 @@ class SurfaceEquipementView(APIView):
 
 
 class CoucheList(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTOptionalAuthentication]
+    permission_classes = [AllowAny]
 
     def get(self, request):
         queryset = Couche.objects.all()
@@ -910,7 +911,8 @@ class CoucheList(APIView):
 
 
 class CoucheDetail(APIView):
-    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTOptionalAuthentication]
+    permission_classes = [AllowAny]
 
     def get(self, request, pk):
         try:
@@ -1033,58 +1035,60 @@ def importer_couche(request, pk):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@authentication_classes([JWTOptionalAuthentication])
+@permission_classes([AllowAny])
 def telecharger_couche(request, pk):
     try:
         couche = Couche.objects.get(pk=pk)
     except Couche.DoesNotExist:
         return Response({'error': 'Couche introuvable'}, status=status.HTTP_404_NOT_FOUND)
 
+    from django.db import connection
+    from django.http import HttpResponse, FileResponse
+    import io
+
+    table_liee = couche.table_liee
+
+    # Si la couche a une table liée dans PostgreSQL, on génère le GeoJSON depuis la base
+    if table_liee:
+        attributs_attendus = [a['nom'] for a in couche.attributs] if couche.attributs else []
+        col_sql = ', '.join(f'"{c}"' for c in attributs_attendus)
+        sql = f'SELECT geometry, {col_sql} FROM "{table_liee}"' if attributs_attendus else f'SELECT geometry FROM "{table_liee}"'
+
+        features = []
+        try:
+            with connection.cursor() as cur:
+                cur.execute(sql)
+                for row in cur.fetchall():
+                    props = {}
+                    for i, nom in enumerate(attributs_attendus):
+                        props[nom] = row[i + 1]
+                    geometry = row[0]
+                    if isinstance(geometry, str):
+                        try:
+                            geometry = json.loads(geometry)
+                        except ValueError:
+                            geometry = None
+                    if not isinstance(geometry, dict) or geometry.get('type') not in ('Point', 'MultiPoint', 'LineString', 'MultiLineString', 'Polygon', 'MultiPolygon', 'GeometryCollection'):
+                        continue
+                    features.append({'type': 'Feature', 'properties': props, 'geometry': geometry})
+        except Exception as e:
+            return Response({'error': f'Erreur lors de la génération du fichier : {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        collection = {'type': 'FeatureCollection', 'features': features}
+        contenu = json.dumps(collection, ensure_ascii=False).encode('utf-8')
+
+        response = HttpResponse(contenu, content_type='application/geo+json')
+        response['Content-Disposition'] = f'attachment; filename="{couche.nom}.geojson"'
+        return response
+
     if couche.fichier:
-        from django.http import FileResponse
         file_path = couche.fichier.path
         if os.path.exists(file_path):
             ext = os.path.splitext(couche.fichier.name)[1] or '.geojson'
             return FileResponse(open(file_path, 'rb'), as_attachment=True, filename=f'{couche.nom}{ext}')
 
-    from django.db import connection
-    from django.http import HttpResponse
-    import io
-
-    table_liee = couche.table_liee
-    if not table_liee:
-        return Response({'error': 'Aucun fichier disponible pour cette couche'}, status=status.HTTP_404_NOT_FOUND)
-
-    attributs_attendus = [a['nom'] for a in couche.attributs] if couche.attributs else []
-    col_sql = ', '.join(f'"{c}"' for c in attributs_attendus)
-    sql = f'SELECT geometry, {col_sql} FROM "{table_liee}"' if attributs_attendus else f'SELECT geometry FROM "{table_liee}"'
-
-    features = []
-    try:
-        with connection.cursor() as cur:
-            cur.execute(sql)
-            for row in cur.fetchall():
-                props = {}
-                for i, nom in enumerate(attributs_attendus):
-                    props[nom] = row[i + 1]
-                geometry = row[0]
-                if isinstance(geometry, str):
-                    try:
-                        geometry = json.loads(geometry)
-                    except ValueError:
-                        geometry = None
-                if not isinstance(geometry, dict) or geometry.get('type') not in ('Point', 'MultiPoint', 'LineString', 'MultiLineString', 'Polygon', 'MultiPolygon', 'GeometryCollection'):
-                    continue
-                features.append({'type': 'Feature', 'properties': props, 'geometry': geometry})
-    except Exception as e:
-        return Response({'error': f'Erreur lors de la génération du fichier : {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    collection = {'type': 'FeatureCollection', 'features': features}
-    contenu = json.dumps(collection, ensure_ascii=False).encode('utf-8')
-
-    response = HttpResponse(contenu, content_type='application/geo+json')
-    response['Content-Disposition'] = f'attachment; filename="{couche.nom}.geojson"'
-    return response
+    return Response({'error': 'Aucune donnée disponible pour cette couche'}, status=status.HTTP_404_NOT_FOUND)
 
 
 # ---------------------------------------------------------------------------

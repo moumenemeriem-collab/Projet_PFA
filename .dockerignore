@@ -6,7 +6,6 @@ node_modules
 backend/media
 backend/staticfiles
 backend/.env
-data
 database
 docker
 docs

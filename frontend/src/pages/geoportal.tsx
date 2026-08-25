@@ -161,14 +161,6 @@ const FILTRE_ROUTE_OSM: Record<string, string[]> = {
   peu_importe: ['motorway', 'trunk', 'primary', 'secondary', 'tertiary'],
 }
 
-const FILTRE_AMENITY_OSM: Record<string, Record<string, string[]>> = {
-  health: { hopital: ['hospital'], clinique: ['clinic', 'doctors'] },
-  education: { ecole: ['school', 'prep_school'], lycee: ['school'], universite: ['university'] },
-  commerce: { centre_commercial: ['mall'], marche: ['marketplace'] },
-  transport: { gare_routiere: ['bus_station'], arret_bus: ['bus_station'] },
-  admin: { commune: ['townhall'], poste: ['post_office'], police: ['police'] },
-}
-
 const BUFFER_COLORS: Record<string, string> = {
   distance_route: '#1b3a6e',
   distance_health: '#dc2626',
@@ -238,62 +230,26 @@ const TYPE_LABELS: Record<string, string> = {
   '': 'Autre',
 }
 
-const EQUIP_GROUP_MAPPING: Record<string, string> = {
-  pharmacy: 'Pharmacie',
-  school: 'Éducation',
-  kindergarten: 'Éducation',
-  prep_school: 'Éducation',
-  hospital: 'Santé',
-  doctors: 'Santé',
-  dentist: 'Santé',
-  bank: 'Services financiers',
-  money_transfer: 'Services financiers',
-  payment_terminal: 'Services financiers',
-  atm: 'Services financiers',
-  place_of_worship: 'Lieu de culte',
-  fuel: 'Services automobiles',
-  vehicle_inspection: 'Services automobiles',
-  charging_station: 'Services automobiles',
-  car_wash: 'Services automobiles',
-  police: 'Sécurité et justice',
-  courthouse: 'Sécurité et justice',
-  post_office: 'Administration',
-  cafe: 'Restauration',
-  restaurant: 'Restauration',
-  fast_food: 'Restauration',
-  bar: 'Restauration',
-  parking: 'Parking',
-  parking_entrance: 'Parking',
-  taxi: 'Transport',
-  bus_station: 'Transport',
+// --- Équipements PA Temara : groupement par préfixe de designation ---
+// S% → Santé,  E% → Enseignement,  A% → Administration
+const EQUIP_PA_GROUPS: { key: string; label: string; prefix: string; symbol: string }[] = [
+  { key: 'Santé', label: 'Santé', prefix: 'S', symbol: '<path d="M12 4v16M4 12h16"/>' },
+  { key: 'Enseignement', label: 'Enseignement', prefix: 'E', symbol: '<path d="M12 4l10 4-10 4L2 8z"/><path d="M5 10.5V16c2.5 2.5 9 2.5 14 0v-5.5"/>' },
+  { key: 'Administration', label: 'Administration', prefix: 'A', symbol: '<rect x="4" y="6" width="16" height="12"/><path d="M4 7l8 6 8-6"/>' },
+]
+
+/** Retourne le groupe PA d'un équipement à partir de sa designation. */
+function equipGroupOfDesignation(designation: string | null | undefined): string {
+  if (!designation) return 'Autres'
+  const prefix = designation.trim().charAt(0).toUpperCase()
+  return EQUIP_PA_GROUPS.find((g) => g.prefix === prefix)?.key ?? 'Autres'
 }
 
-const EQUIP_GROUP_SYMBOLS: Record<string, string> = {
-  Pharmacie: '<path d="M12 4v16M4 12h16"/>',
-  Éducation: '<path d="M12 4l10 4-10 4L2 8z"/><path d="M5 10.5V16c2.5 2.5 9 2.5 14 0v-5.5"/>',
-  Santé: '<rect x="6" y="4" width="12" height="16"/><path d="M12 4v16M6 12h12M9 8v8M15 8v8"/>',
-  'Services financiers': '<path d="M12 3l9 5H3z"/><path d="M4 8h16v3H4z"/><path d="M6 11v6h12v-6"/><path d="M4 20h16"/>',
-  'Lieu de culte': '<path d="M12 3l7 6H5z"/><path d="M5 9h14v12H5z"/><path d="M9 21v-5a3 3 0 0 1 6 0v5"/>',
-  'Services automobiles': '<path d="M6 3h8v18H6z"/><path d="M6 9h8"/><path d="M14 12h4v7a1.5 1.5 0 0 1-3 0"/><path d="M18 12l1-1"/><path d="M8 3v3"/>',
-  'Sécurité et justice': '<path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/>',
-  Administration: '<rect x="4" y="6" width="16" height="12"/><path d="M4 7l8 6 8-6"/>',
-  Restauration: '<path d="M7 3v9M4 3v9M5.5 3v9"/><path d="M5.5 12v6"/><path d="M19 3c-2 1-3 4-3 8l-1 7M15 18h5"/>',
-  Parking: '<path d="M10 4h4a4 4 0 1 1 0 8h-4V4z"/><path d="M10 12v8"/>',
-  Transport: '<rect x="4" y="6" width="16" height="12"/><path d="M4 11h16"/><circle cx="8" cy="15" r="1.5"/><circle cx="16" cy="15" r="1.5"/><path d="M6 18v2M18 18v2"/>',
+/** Icône SVG du groupe. */
+function equipGroupSymbol(group: string): string {
+  return EQUIP_PA_GROUPS.find((g) => g.key === group)?.symbol ?? '<circle cx="12" cy="12" r="5"/>'
 }
 
-const EQUIP_DEFAULT_GROUP = 'Autres équipements'
-const EQUIP_DEFAULT_GROUP_SYMBOL = '<circle cx="12" cy="12" r="5"/>'
-
-function equipGroupOf(amenity: string): string {
-  return EQUIP_GROUP_MAPPING[amenity] ?? EQUIP_DEFAULT_GROUP
-}
-
-const EQUIP_GROUP_SUBTYPES: Record<string, string[]> = {}
-Object.entries(EQUIP_GROUP_MAPPING).forEach(([raw, group]) => {
-  const list = EQUIP_GROUP_SUBTYPES[group] ?? (EQUIP_GROUP_SUBTYPES[group] = [])
-  if (!list.includes(raw)) list.push(raw)
-})
 
 function escapeHtml(value: unknown): string {
   return String(value ?? '')
@@ -337,8 +293,11 @@ const buildPopupActions = (lat: number, lng: number, ring?: number[][] | null, t
       ? `<button type="button" class="geo-popup-btn geo-popup-btn--primary" data-action="affectations-detail" data-parcelle="${escapeHtml(affectations.idParcelle)}">${DETAIL_ICON}<span>Voir Détail</span></button>`
       : `<button type="button" class="geo-popup-btn geo-popup-btn--primary" data-action="parcelles" data-parcelle="${escapeHtml(affectations.idParcelle)}">${PARCELLES_ICON}<span>Voir les parcelles</span></button>`
     : ''
-  const renta = rentaInfo
-    ? `<button type="button" class="geo-popup-btn geo-popup-btn--renta" data-action="rentabilite" data-terrain-id="${rentaInfo.terrainId ?? ''}" data-terrain-nom="${escapeHtml(rentaInfo.nom ?? '')}" data-terrain-surf="${rentaInfo.superficie ?? ''}" data-terrain-lat="${rentaInfo.lat ?? ''}" data-terrain-lng="${rentaInfo.lng ?? ''}" data-terrain-ref="${escapeHtml(rentaInfo.ref ?? '')}" data-terrain-ring="${escapeHtml(JSON.stringify(rentaInfo.ring ?? []))}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span>Calculer la rentabilit&eacute;</span></button>`
+  const renta = ring && ring.length >= 3
+    ? (() => {
+        const ri = rentaInfo ?? { nom: title ?? '', superficie: 0, lat, lng, ref: title ?? '', ring }
+        return `<button type="button" class="geo-popup-btn geo-popup-btn--renta" data-action="rentabilite" data-terrain-id="${ri.terrainId ?? ''}" data-terrain-nom="${escapeHtml(ri.nom ?? '')}" data-terrain-surf="${ri.superficie ?? ''}" data-terrain-lat="${ri.lat ?? ''}" data-terrain-lng="${ri.lng ?? ''}" data-terrain-ref="${escapeHtml(ri.ref ?? '')}" data-terrain-ring="${escapeHtml(JSON.stringify(ri.ring ?? []))}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span>Calculer la rentabilit&eacute;</span></button>`
+      })()
     : ''
   if (!gmap && !dims && !aff && !renta) return ''
   return `<div class="geo-popup-actions">${gmap}${dims}${aff}${renta}</div>`
@@ -1272,15 +1231,11 @@ const bindPopupActionButtons = (popup: any): void => {
         if (routeCouche) toggles[`${routeCouche.id}:${osm}`] = true
       })
     })
-    ;(['health', 'education', 'commerce', 'transport', 'admin'] as const).forEach((group) => {
-      const values = f[group]
-      if (!values) return
-      values.forEach((val) => {
-        ;(FILTRE_AMENITY_OSM[group]?.[val] ?? []).forEach((osm) => {
-          if (equipCouche) toggles[`${equipCouche.id}:${equipGroupOf(osm)}`] = true
-        })
-      })
-    })
+    if (equipCouche) {
+      if (f.health && f.health.length > 0) toggles[`${equipCouche.id}:Santé`] = true
+      if (f.education && f.education.length > 0) toggles[`${equipCouche.id}:Enseignement`] = true
+      if (f.admin && f.admin.length > 0) toggles[`${equipCouche.id}:Administration`] = true
+    }
     return toggles
   }
 
@@ -1471,7 +1426,12 @@ const bindPopupActionButtons = (popup: any): void => {
       .then((list) => {
         if (cancelled) return
         setCadastreFc(null)
-        setCouchesDispo(list.filter((c) => c.nom === 'cadastre' || c.nom === 'reseau_routier' || c.nom === 'equipements_publics' || c.nom === 'plan_amenagement'))
+        const filtered = list.filter((c) => c.nom === 'cadastre' || c.nom === 'reseau_routier' || c.nom === 'equipements_publics' || c.nom === 'plan_amenagement')
+        setCouchesDispo(filtered)
+        const equipC = filtered.find((c) => c.nom === 'equipements_publics')
+        if (equipC) {
+          setEquipTypes(EQUIP_PA_GROUPS.map((g) => ({ key: `${equipC.id}:${g.key}`, coucheId: equipC.id, type: g.key, count: 0 })))
+        }
       })
       .catch(() => {})
     return () => {
@@ -1504,11 +1464,10 @@ const bindPopupActionButtons = (popup: any): void => {
             paPreparedRef.current = preparePAZones(collection.features)
           }
           if (c.nom !== 'reseau_routier' && c.nom !== 'equipements_publics') return
-          const attrKey = c.nom === 'reseau_routier' ? 'highway' : 'amenity'
           if (c.nom === 'reseau_routier') {
             const counts = new Map<string, number>()
             collection.features.forEach((f) => {
-              const v = String(f.properties?.[attrKey] ?? 'autre')
+              const v = String(f.properties?.['highway'] ?? 'autre')
               counts.set(v, (counts.get(v) ?? 0) + 1)
             })
             const items = Array.from(counts.entries())
@@ -1516,18 +1475,20 @@ const bindPopupActionButtons = (popup: any): void => {
               .map(([type, count]) => ({ key: `${c.id}:${type}`, coucheId: c.id, type, count }))
             routes.push(...items)
           } else {
-            const groupCounts = new Map<string, { count: number; subTypes: string[] }>()
+            // Groupement PA Temara par préfixe de designation (S/E/A)
+            const groupCounts = new Map<string, number>()
             collection.features.forEach((f) => {
-              const raw = String(f.properties?.[attrKey] ?? 'autre')
-              const group = equipGroupOf(raw)
-              const entry = groupCounts.get(group) ?? { count: 0, subTypes: [] }
-              entry.count++
-              if (!entry.subTypes.includes(raw)) entry.subTypes.push(raw)
-              groupCounts.set(group, entry)
+              const designation = String(f.properties?.['designation'] ?? f.properties?.['definition'] ?? '')
+              const group = equipGroupOfDesignation(designation)
+              groupCounts.set(group, (groupCounts.get(group) ?? 0) + 1)
             })
-            const items = Array.from(groupCounts.entries())
-              .sort((a, b) => b[1].count - a[1].count)
-              .map(([group, { count }]) => ({ key: `${c.id}:${group}`, coucheId: c.id, type: group, count }))
+            // Toujours afficher les 3 groupes Santé, Enseignement, Administration
+            const items = EQUIP_PA_GROUPS.map((g) => ({
+              key: `${c.id}:${g.key}`,
+              coucheId: c.id,
+              type: g.key,
+              count: groupCounts.get(g.key) ?? 0,
+            }))
             equips.push(...items)
           }
         })
@@ -1572,7 +1533,7 @@ const bindPopupActionButtons = (popup: any): void => {
       }).addTo(map)
     }
     const label = type
-    const symbol = EQUIP_GROUP_SYMBOLS[type] ?? EQUIP_DEFAULT_GROUP_SYMBOL
+    const symbol = equipGroupSymbol(type)
     return L.geoJSON(validFeatures(fc), {
       pointToLayer: (_feature: any, latlng: any) =>
         L.marker(latlng, {
@@ -1593,8 +1554,21 @@ const bindPopupActionButtons = (popup: any): void => {
           const c = Array.isArray((feature.geometry as any)?.coordinates)
             ? (feature.geometry as any).coordinates
             : null
+          const props = feature.properties as Record<string, unknown>
+          const couche = couchesDispo.find((cc) => cc.id === id)
+          const isEquipPA = couche?.nom === 'equipements_publics'
+          let popupBody: string
+          if (isEquipPA) {
+            const def = escapeHtml(props['definition'] ?? props['designation'] ?? '')
+            const typeConstr = escapeHtml(props['type_construction'] ?? '')
+            const ville = escapeHtml(props['ville'] ?? '')
+            const surface = props['Surface'] != null ? `<div><strong>Surface</strong> : ${escapeHtml(props['Surface'])} m²</div>` : ''
+            popupBody = `${typeConstr ? `<div><strong>Catégorie</strong> : ${typeConstr}</div>` : ''}${def ? `<div><strong>Définition</strong> : ${def}</div>` : ''}${ville ? `<div><strong>Ville</strong> : ${ville}</div>` : ''}${surface}`
+          } else {
+            popupBody = propsToHtml(props)
+          }
           layerItem.bindPopup(
-            `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(label)}</div><div class="geoportal-popup-coords">${propsToHtml(feature.properties)}</div>${buildPopupActions(c ? c[1] : NaN, c ? c[0] : NaN)}</div>`,
+            `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(label)}</div><div class="geoportal-popup-coords">${popupBody}</div>${buildPopupActions(c ? c[1] : NaN, c ? c[0] : NaN)}</div>`,
             { autoPan: false }
           )
         }
@@ -1831,9 +1805,20 @@ const bindPopupActionButtons = (popup: any): void => {
         if (!fc) return
         const couche = couchesDispo.find((c) => c.id === id)
         const isEquip = couche?.nom === 'equipements_publics'
-        const attrKey = couche?.nom === 'reseau_routier' ? 'highway' : 'amenity'
-        const subTypes = isEquip ? (EQUIP_GROUP_SUBTYPES[type] ?? [type]) : [type]
-        const features = fc.features.filter((f) => subTypes.includes(String(f.properties?.[attrKey] ?? 'autre')))
+        // Filtrage par préfixe designation pour équipements PA Temara
+        const features = isEquip
+          ? (() => {
+              const group = EQUIP_PA_GROUPS.find((g) => g.key === type)
+              if (!group) return fc.features
+              return fc.features.filter((f) => {
+                const desig = String(f.properties?.['designation'] ?? '')
+                return desig.trim().charAt(0).toUpperCase() === group.prefix
+              })
+            })()
+          : (() => {
+              // Reseau routier : filtrer par highway
+              return fc.features.filter((f) => String(f.properties?.['highway'] ?? 'autre') === type)
+            })()
         const layer = buildTypeLayer(map, id, type, { type: 'FeatureCollection', features })
         typeLayersRef.current[key] = layer
         if (features.length > 0) {
@@ -2714,7 +2699,7 @@ const bindPopupActionButtons = (popup: any): void => {
                                       onChange={() => setTypeToggles((prev) => ({ ...prev, [et.key]: !prev[et.key] }))}
                                     />
                                     <span className="geo-couche-type-svg">
-                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: EQUIP_GROUP_SYMBOLS[et.type] ?? EQUIP_DEFAULT_GROUP_SYMBOL }} />
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: equipGroupSymbol(et.type) }} />
                                     </span>
                                     <span>{et.type} <em className="geo-couche-count">({et.count})</em></span>
                                   </label>
@@ -2855,7 +2840,7 @@ const bindPopupActionButtons = (popup: any): void => {
                         {activeEquipTypes.map((et) => (
                           <div className="geo-legend-item" key={et.key}>
                             <span className="geo-couche-type-svg">
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: EQUIP_GROUP_SYMBOLS[et.type] ?? EQUIP_DEFAULT_GROUP_SYMBOL }} />
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: equipGroupSymbol(et.type) }} />
                             </span>
                             <span>{et.type}</span>
                           </div>
@@ -3033,7 +3018,7 @@ const bindPopupActionButtons = (popup: any): void => {
                                       onChange={() => toggleTerrainEquipement(et.key)}
                                     />
                                     <span className="geo-couche-type-svg">
-                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: EQUIP_GROUP_SYMBOLS[et.type] ?? EQUIP_DEFAULT_GROUP_SYMBOL }} />
+                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: equipGroupSymbol(et.type) }} />
                                     </span>
                                     <span>{et.type} <em className="geo-couche-count">({et.count})</em></span>
                                   </label>
@@ -3244,83 +3229,36 @@ const bindPopupActionButtons = (popup: any): void => {
                 </div>
               </div>
 
-              <div className="geo-card-form-section">
-                <span className="geo-layers-popup-label">{t('projects.section_quote_parts')}</span>
-                <div className="form-row">
-                  {rentaForm.hasAppartement && (
-                    <div className="form-field form-field--half">
-                      <label className="form-label">{t('projects.field_quote_part_app')}</label>
-                      <input type="number" step="0.01" className="modal-input" value={rentaForm.quotePartApp} onChange={(e) => setRentaForm((f) => ({ ...f, quotePartApp: e.target.value }))} />
+              {rentaForm.hasEquipement ? (
+                <div className="renta-row-split">
+                  <div className="geo-card-form-section">
+                    <span className="geo-layers-popup-label">{t('projects.section_quote_parts')}</span>
+                    <div className="form-row">
+                      {rentaForm.hasAppartement && (
+                        <div className="form-field form-field--half">
+                          <label className="form-label">{t('projects.field_quote_part_app')}</label>
+                          <input type="number" step="0.01" className="modal-input" value={rentaForm.quotePartApp} onChange={(e) => setRentaForm((f) => ({ ...f, quotePartApp: e.target.value }))} />
+                        </div>
+                      )}
+                      {rentaForm.hasCommerce && (
+                        <div className="form-field form-field--half">
+                          <label className="form-label">{t('projects.field_quote_part_commerce')}</label>
+                          <input type="number" step="0.01" className="modal-input" value={rentaForm.quotePartCommerce} onChange={(e) => setRentaForm((f) => ({ ...f, quotePartCommerce: e.target.value }))} />
+                        </div>
+                      )}
+                      {rentaForm.hasBureau && (
+                        <div className="form-field form-field--half">
+                          <label className="form-label">{t('projects.field_quote_part_bureau')}</label>
+                          <input type="number" step="0.01" className="modal-input" value={rentaForm.quotePartBureau} onChange={(e) => setRentaForm((f) => ({ ...f, quotePartBureau: e.target.value }))} />
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {rentaForm.hasCommerce && (
-                    <div className="form-field form-field--half">
-                      <label className="form-label">{t('projects.field_quote_part_commerce')}</label>
-                      <input type="number" step="0.01" className="modal-input" value={rentaForm.quotePartCommerce} onChange={(e) => setRentaForm((f) => ({ ...f, quotePartCommerce: e.target.value }))} />
-                    </div>
-                  )}
-                  {rentaForm.hasBureau && (
-                    <div className="form-field form-field--half">
-                      <label className="form-label">{t('projects.field_quote_part_bureau')}</label>
-                      <input type="number" step="0.01" className="modal-input" value={rentaForm.quotePartBureau} onChange={(e) => setRentaForm((f) => ({ ...f, quotePartBureau: e.target.value }))} />
-                    </div>
-                  )}
-                </div>
-              </div>
+                  </div>
 
-              <div className="geo-card-form-section">
-                <span className="geo-layers-popup-label">{t('projects.section_dest_prices')}</span>
-                <div className="form-row">
-                  {rentaForm.hasAppartement && (
-                    <div className="form-field form-field--half">
-                      <label className="form-label">{t('projects.field_prix_vente_app')}</label>
-                      <input type="number" step="0.01" className="modal-input" placeholder="8000" value={rentaForm.prixVenteApp} onChange={(e) => setRentaForm((f) => ({ ...f, prixVenteApp: e.target.value }))} />
-                    </div>
-                  )}
-                  {rentaForm.hasCommerce && (
-                    <div className="form-field form-field--half">
-                      <label className="form-label">{t('projects.field_prix_vente_commerce')}</label>
-                      <input type="number" step="0.01" className="modal-input" placeholder="12000" value={rentaForm.prixVenteCommerce} onChange={(e) => setRentaForm((f) => ({ ...f, prixVenteCommerce: e.target.value }))} />
-                    </div>
-                  )}
-                  {rentaForm.hasBureau && (
-                    <div className="form-field form-field--half">
-                      <label className="form-label">{t('projects.field_prix_vente_bureau')}</label>
-                      <input type="number" step="0.01" className="modal-input" placeholder="10000" value={rentaForm.prixVenteBureau} onChange={(e) => setRentaForm((f) => ({ ...f, prixVenteBureau: e.target.value }))} />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="geo-card-form-section">
-                <span className="geo-layers-popup-label">{t('projects.section_dest_costs')}</span>
-                <div className="form-row">
-                  {rentaForm.hasAppartement && (
-                    <div className="form-field form-field--half">
-                      <label className="form-label">{t('projects.field_cout_constr_app')}</label>
-                      <input type="number" step="0.01" className="modal-input" placeholder="4500" value={rentaForm.coutConstrApp} onChange={(e) => setRentaForm((f) => ({ ...f, coutConstrApp: e.target.value }))} />
-                    </div>
-                  )}
-                  {rentaForm.hasCommerce && (
-                    <div className="form-field form-field--half">
-                      <label className="form-label">{t('projects.field_cout_constr_commerce')}</label>
-                      <input type="number" step="0.01" className="modal-input" placeholder="5500" value={rentaForm.coutConstrCommerce} onChange={(e) => setRentaForm((f) => ({ ...f, coutConstrCommerce: e.target.value }))} />
-                    </div>
-                  )}
-                  {rentaForm.hasBureau && (
-                    <div className="form-field form-field--half">
-                      <label className="form-label">{t('projects.field_cout_constr_bureau')}</label>
-                      <input type="number" step="0.01" className="modal-input" placeholder="5000" value={rentaForm.coutConstrBureau} onChange={(e) => setRentaForm((f) => ({ ...f, coutConstrBureau: e.target.value }))} />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {rentaForm.hasEquipement && (
-                <div className="geo-card-form-section">
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 20px' }}>
-                    <div>
-                      <span className="geo-layers-popup-label" style={{ marginBottom: 10, display: 'block' }}>{t('projects.field_quote_part_equipement')}</span>
+                  <div className="geo-card-form-section">
+                    <span className="geo-layers-popup-label">{t('projects.field_quote_part_equipement')}</span>
+                    <div className="form-field">
+                      <label className="form-label">Taux des équipements</label>
                       <div className="modal-input" style={{ background: '#f3f4f6', cursor: 'default' }}>
                         {(() => {
                           const surfBrute = Number(projet?.surface_souhaitee ?? 0)
@@ -3332,18 +3270,154 @@ const bindPopupActionButtons = (popup: any): void => {
                         })()}
                       </div>
                     </div>
-                    <div style={{ borderLeft: '1px solid #e5e7eb', paddingLeft: 20 }}>
-                      <span className="geo-layers-popup-label" style={{ marginBottom: 10, display: 'block' }}>{t('projects.field_surface_equipement')}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="geo-card-form-section">
+                  <span className="geo-layers-popup-label">{t('projects.section_quote_parts')}</span>
+                  <div className="form-row">
+                    {rentaForm.hasAppartement && (
+                      <div className="form-field form-field--half">
+                        <label className="form-label">{t('projects.field_quote_part_app')}</label>
+                        <input type="number" step="0.01" className="modal-input" value={rentaForm.quotePartApp} onChange={(e) => setRentaForm((f) => ({ ...f, quotePartApp: e.target.value }))} />
+                      </div>
+                    )}
+                    {rentaForm.hasCommerce && (
+                      <div className="form-field form-field--half">
+                        <label className="form-label">{t('projects.field_quote_part_commerce')}</label>
+                        <input type="number" step="0.01" className="modal-input" value={rentaForm.quotePartCommerce} onChange={(e) => setRentaForm((f) => ({ ...f, quotePartCommerce: e.target.value }))} />
+                      </div>
+                    )}
+                    {rentaForm.hasBureau && (
+                      <div className="form-field form-field--half">
+                        <label className="form-label">{t('projects.field_quote_part_bureau')}</label>
+                        <input type="number" step="0.01" className="modal-input" value={rentaForm.quotePartBureau} onChange={(e) => setRentaForm((f) => ({ ...f, quotePartBureau: e.target.value }))} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {rentaForm.hasEquipement ? (
+                <div className="renta-row-split">
+                  <div className="geo-card-form-section">
+                    <span className="geo-layers-popup-label">{t('projects.section_dest_prices')}</span>
+                    <div className="form-row">
+                      {rentaForm.hasAppartement && (
+                        <div className="form-field form-field--half">
+                          <label className="form-label">{t('projects.field_prix_vente_app')}</label>
+                          <input type="number" step="0.01" className="modal-input" placeholder="8000" value={rentaForm.prixVenteApp} onChange={(e) => setRentaForm((f) => ({ ...f, prixVenteApp: e.target.value }))} />
+                        </div>
+                      )}
+                      {rentaForm.hasCommerce && (
+                        <div className="form-field form-field--half">
+                          <label className="form-label">{t('projects.field_prix_vente_commerce')}</label>
+                          <input type="number" step="0.01" className="modal-input" placeholder="12000" value={rentaForm.prixVenteCommerce} onChange={(e) => setRentaForm((f) => ({ ...f, prixVenteCommerce: e.target.value }))} />
+                        </div>
+                      )}
+                      {rentaForm.hasBureau && (
+                        <div className="form-field form-field--half">
+                          <label className="form-label">{t('projects.field_prix_vente_bureau')}</label>
+                          <input type="number" step="0.01" className="modal-input" placeholder="10000" value={rentaForm.prixVenteBureau} onChange={(e) => setRentaForm((f) => ({ ...f, prixVenteBureau: e.target.value }))} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="geo-card-form-section">
+                    <span className="geo-layers-popup-label">{t('projects.field_surface_equipement')}</span>
+                    <div className="form-field">
+                      <label className="form-label">Surface des équipements</label>
                       <div className="modal-input" style={{ background: '#f3f4f6', cursor: 'default' }}>
                         {rentaSurfaceEquipement?.surface_equipement != null
                           ? `${Number(rentaSurfaceEquipement.surface_equipement).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m²`
                           : '—'}
                       </div>
                     </div>
-                    <div>
-                      <span className="geo-layers-popup-label" style={{ marginBottom: 10, display: 'block' }}>{t('projects.field_prix_vente_equipement')}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="geo-card-form-section">
+                  <span className="geo-layers-popup-label">{t('projects.section_dest_prices')}</span>
+                  <div className="form-row">
+                    {rentaForm.hasAppartement && (
+                      <div className="form-field form-field--half">
+                        <label className="form-label">{t('projects.field_prix_vente_app')}</label>
+                        <input type="number" step="0.01" className="modal-input" placeholder="8000" value={rentaForm.prixVenteApp} onChange={(e) => setRentaForm((f) => ({ ...f, prixVenteApp: e.target.value }))} />
+                      </div>
+                    )}
+                    {rentaForm.hasCommerce && (
+                      <div className="form-field form-field--half">
+                        <label className="form-label">{t('projects.field_prix_vente_commerce')}</label>
+                        <input type="number" step="0.01" className="modal-input" placeholder="12000" value={rentaForm.prixVenteCommerce} onChange={(e) => setRentaForm((f) => ({ ...f, prixVenteCommerce: e.target.value }))} />
+                      </div>
+                    )}
+                    {rentaForm.hasBureau && (
+                      <div className="form-field form-field--half">
+                        <label className="form-label">{t('projects.field_prix_vente_bureau')}</label>
+                        <input type="number" step="0.01" className="modal-input" placeholder="10000" value={rentaForm.prixVenteBureau} onChange={(e) => setRentaForm((f) => ({ ...f, prixVenteBureau: e.target.value }))} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {rentaForm.hasEquipement ? (
+                <div className="renta-row-split">
+                  <div className="geo-card-form-section">
+                    <span className="geo-layers-popup-label">{t('projects.section_dest_costs')}</span>
+                    <div className="form-row">
+                      {rentaForm.hasAppartement && (
+                        <div className="form-field form-field--half">
+                          <label className="form-label">{t('projects.field_cout_constr_app')}</label>
+                          <input type="number" step="0.01" className="modal-input" placeholder="4500" value={rentaForm.coutConstrApp} onChange={(e) => setRentaForm((f) => ({ ...f, coutConstrApp: e.target.value }))} />
+                        </div>
+                      )}
+                      {rentaForm.hasCommerce && (
+                        <div className="form-field form-field--half">
+                          <label className="form-label">{t('projects.field_cout_constr_commerce')}</label>
+                          <input type="number" step="0.01" className="modal-input" placeholder="5500" value={rentaForm.coutConstrCommerce} onChange={(e) => setRentaForm((f) => ({ ...f, coutConstrCommerce: e.target.value }))} />
+                        </div>
+                      )}
+                      {rentaForm.hasBureau && (
+                        <div className="form-field form-field--half">
+                          <label className="form-label">{t('projects.field_cout_constr_bureau')}</label>
+                          <input type="number" step="0.01" className="modal-input" placeholder="5000" value={rentaForm.coutConstrBureau} onChange={(e) => setRentaForm((f) => ({ ...f, coutConstrBureau: e.target.value }))} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="geo-card-form-section">
+                    <span className="geo-layers-popup-label">{t('projects.field_prix_vente_equipement')}</span>
+                    <div className="form-field">
+                      <label className="form-label">Prix unitaire (DH/m²)</label>
                       <input type="number" step="0.01" className="modal-input" placeholder="Prix unitaire (DH/m²)" value={rentaForm.prixVenteEquipement} onChange={(e) => setRentaForm((f) => ({ ...f, prixVenteEquipement: e.target.value }))} />
                     </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="geo-card-form-section">
+                  <span className="geo-layers-popup-label">{t('projects.section_dest_costs')}</span>
+                  <div className="form-row">
+                    {rentaForm.hasAppartement && (
+                      <div className="form-field form-field--half">
+                        <label className="form-label">{t('projects.field_cout_constr_app')}</label>
+                        <input type="number" step="0.01" className="modal-input" placeholder="4500" value={rentaForm.coutConstrApp} onChange={(e) => setRentaForm((f) => ({ ...f, coutConstrApp: e.target.value }))} />
+                      </div>
+                    )}
+                    {rentaForm.hasCommerce && (
+                      <div className="form-field form-field--half">
+                        <label className="form-label">{t('projects.field_cout_constr_commerce')}</label>
+                        <input type="number" step="0.01" className="modal-input" placeholder="5500" value={rentaForm.coutConstrCommerce} onChange={(e) => setRentaForm((f) => ({ ...f, coutConstrCommerce: e.target.value }))} />
+                      </div>
+                    )}
+                    {rentaForm.hasBureau && (
+                      <div className="form-field form-field--half">
+                        <label className="form-label">{t('projects.field_cout_constr_bureau')}</label>
+                        <input type="number" step="0.01" className="modal-input" placeholder="5000" value={rentaForm.coutConstrBureau} onChange={(e) => setRentaForm((f) => ({ ...f, coutConstrBureau: e.target.value }))} />
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

@@ -3501,6 +3501,25 @@
   background: #94a3b8;
 }
 
+.renta-row-split {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 900px) {
+  .renta-row-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+.renta-row-split > .geo-card-form-section {
+  margin-bottom: 0 !important;
+  height: 100%;
+}
+
 .renta-modal-form .geo-card-form-section {
   margin-bottom: 18px;
   padding: 16px 18px;

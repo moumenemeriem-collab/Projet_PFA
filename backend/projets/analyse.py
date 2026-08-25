@@ -340,12 +340,103 @@ def _load_routes():
     }
 
 
+# Correspondance type_construction (PA Temara) → catégorie de scoring
+_TYPE_CONSTRUCTION_TO_AMENITY = {
+    # Santé
+    'Santé': 'hospital',
+    'sante': 'hospital',
+    'Hôpital': 'hospital',
+    'Clinique': 'clinic',
+    'Pharmacie': 'pharmacy',
+    # Éducation
+    'Éducation': 'school',
+    'education': 'school',
+    'Ecole': 'school',
+    'École': 'school',
+    'Lycée': 'school',
+    'Collège': 'college',
+    'Université': 'university',
+    # Administrations
+    'Administrations': 'townhall',
+    'administrations': 'townhall',
+    'Administration': 'townhall',
+    'Commune': 'townhall',
+    'Gendarmerie': 'police',
+    'Police': 'police',
+    'Poste': 'post_office',
+    # Commerce / marché
+    'Commerce': 'supermarket',
+    'commerce': 'supermarket',
+    'Marché': 'marketplace',
+    # Sportif / culturel → on les ignore pour le scoring de base
+    'Sports et loisirs': 'sports_centre',
+    'Culte': 'place_of_worship',
+    # Transport
+    'Transport': 'bus_station',
+}
+
+
+def _normalise_amenity(type_construction: str, definition: str) -> str:
+    """Retourne un identifiant 'amenity' normalisé pour le scoring."""
+    if type_construction:
+        for key, val in _TYPE_CONSTRUCTION_TO_AMENITY.items():
+            if key.lower() in type_construction.lower():
+                return val
+    if definition:
+        defl = definition.lower()
+        if any(w in defl for w in ('hôpital', 'hopital', 'médical', 'medical', 'dispensaire')):
+            return 'hospital'
+        if any(w in defl for w in ('clinique', 'soin')):
+            return 'clinic'
+        if any(w in defl for w in ('école', 'ecole', 'scolaire', 'collège', 'lycée')):
+            return 'school'
+        if any(w in defl for w in ('université', 'faculté')):
+            return 'university'
+        if any(w in defl for w in ('police', 'sûreté', 'gendarm')):
+            return 'police'
+        if any(w in defl for w in ('commune', 'mairie', 'arrondissement', 'wilaya', 'caïdat')):
+            return 'townhall'
+        if any(w in defl for w in ('marché', 'commerce', 'supermarché')):
+            return 'marketplace'
+        if any(w in defl for w in ('bus', 'transport', 'gare')):
+            return 'bus_station'
+    return 'other'
+
+
 def _load_equipment() -> list:
     with connection.cursor() as cur:
-        cur.execute(
-            'SELECT geometry, amenity FROM couche_equipements_publics'
-        )
-        rows = cur.fetchall()
+        # Tente d'abord la nouvelle structure (PA Temara)
+        try:
+            cur.execute(
+                'SELECT geometry, ville, designation, definition, type_construction, "Surface"'
+                ' FROM couche_equipements_publics'
+            )
+            rows = cur.fetchall()
+            items = []
+            for geometry, ville, designation, definition, type_const, surface in rows:
+                if isinstance(geometry, str):
+                    geometry = json.loads(geometry)
+                coords = geometry.get('coordinates')
+                if not coords:
+                    continue
+                lng, lat = coords[0], coords[1]
+                amenity = _normalise_amenity(type_const, definition)
+                items.append({
+                    'lat': lat, 'lng': lng,
+                    'amenity': amenity,
+                    'type_construction': type_const or '',
+                    'definition': definition or '',
+                    'ville': ville or '',
+                })
+            return items
+        except Exception:
+            pass
+        # Fallback : ancienne structure OSM (amenity)
+        try:
+            cur.execute('SELECT geometry, amenity FROM couche_equipements_publics')
+            rows = cur.fetchall()
+        except Exception:
+            return []
     items = []
     for geometry, amenity in rows:
         if isinstance(geometry, str):
@@ -354,7 +445,7 @@ def _load_equipment() -> list:
         if not coords:
             continue
         lng, lat = coords[0], coords[1]
-        items.append({'lat': lat, 'lng': lng, 'amenity': amenity or ''})
+        items.append({'lat': lat, 'lng': lng, 'amenity': amenity or '', 'type_construction': '', 'definition': '', 'ville': ''})
     return items
 
 
@@ -540,7 +631,7 @@ GROUPES_EQUIPEMENTS = {
 FILTRE_AMENITY = {
     'health': {'hopital': ['hospital'], 'clinique': ['clinic', 'doctors']},
     'education': {'ecole': ['school', 'prep_school'], 'lycee': ['school'], 'universite': ['university']},
-    'commerce': {'centre_commercial': ['mall'], 'marche': ['marketplace']},
+    'commerce': {'centre_commercial': ['mall', 'supermarket'], 'marche': ['marketplace']},
     'transport': {'gare_routiere': ['bus_station'], 'arret_bus': ['bus_station']},
     'admin': {'commune': ['townhall'], 'poste': ['post_office'], 'police': ['police']},
 }
