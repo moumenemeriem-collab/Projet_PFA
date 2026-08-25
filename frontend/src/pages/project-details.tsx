@@ -81,7 +81,7 @@ export function ProjectDetailsPage(): React.JSX.Element | null {
   if (!id || !Number.isInteger(projetId) || projetId <= 0) return null
 
   return (
-    <DashboardLayout role="investisseur" activePage="project_details" projectContext={projet ? { id: projet.id, name: projet.nom } : null}>
+    <DashboardLayout role="investisseur" activePage="project_details" projectContext={{ id: projetId, name: projet?.nom ?? '...' }}>
       <div className="pd-page">
         {loading ? (
           <>

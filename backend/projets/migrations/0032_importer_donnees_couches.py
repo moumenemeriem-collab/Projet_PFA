@@ -19,7 +19,15 @@ except ImportError:
     except ImportError:
         execute_values = None
 
-DATA_DIR = Path(__file__).resolve().parent.parent / 'data'
+# Le fichier migration est dans backend/projets/migrations/
+# → 3 niveaux vers backend/, 4 niveaux vers la racine du projet.
+_BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+_PROJECT_ROOT = _BACKEND_DIR.parent
+
+DATA_SEARCH_PATHS = [
+    _PROJECT_ROOT / 'data',      # data/cadastre/…, data/Routes/…  (développement local)
+    _BACKEND_DIR / 'data',       # backend/data/…                  (inclus dans Docker)
+]
 
 # ---------------------------------------------------------------------------
 # 1. Schéma correct pour chaque table
@@ -162,15 +170,21 @@ DATA_SOURCES = [
 
 
 def _resolve_file(spec):
+    """Recherche le fichier GeoJSON dans les chemins de data/.
+
+    Recherche dans l'ordre :
+      1. <PROJECT_ROOT>/data/<subdir>/<filename>   (développement local)
+      2. <PROJECT_ROOT>/data/<filename>             (fallback plat)
+      3. <BACKEND_DIR>/data/<filename>              (Docker)
+    """
     candidates = spec['candidates']
     subdir = spec.get('subdir', '')
-    search_bases = [
-        DATA_DIR / subdir,
-        DATA_DIR,
-        DATA_DIR.parent / 'backend' / 'data',
-    ]
-    for base in search_bases:
+    for base in DATA_SEARCH_PATHS:
         for name in candidates:
+            if subdir:
+                p = base / subdir / name
+                if p.exists():
+                    return p
             p = base / name
             if p.exists():
                 return p

@@ -102,7 +102,7 @@ export function DashboardLayout({ role, activePage, children, hideSidebar = fals
 
   const nav = role === 'admin' ? adminNav : projectContext ? investisseurProjectNav : investisseurNav
   const profileUrl = role === 'admin' ? '/admin/profil' : '/profil'
-  const defaultTitle = projectContext ? `${t('dashboard.topbar.space')} : ${projectContext.name}` : t(role === 'admin' ? 'admin.topbar.space' : 'dashboard.topbar.space')
+  const defaultTitle = projectContext ? `${t('dashboard.topbar.space')}  Projet : ${projectContext.name}` : t(role === 'admin' ? 'admin.topbar.space' : 'dashboard.topbar.space')
   const spaceTitle = topbarTitle ?? defaultTitle
 
   // ── Espace projet : navbar horizontale glassmorphism ──
@@ -122,9 +122,12 @@ export function DashboardLayout({ role, activePage, children, hideSidebar = fals
         <header className="app-pnav">
           <div className="app-pnav-brand">
             <span className="app-pnav-logo">{icons.logo}</span>
-            <span className="app-pnav-title">{spaceTitle}</span>
+            <span className="app-pnav-title">{t('dashboard.topbar.space')}</span>
           </div>
           <nav className={`app-pnav-links${menuOpen ? ' app-pnav-links--open' : ''}`}>
+            <span className="app-pnav-project-title">
+              Projet : {ctx.name}
+            </span>
             {nav.map((item) => {
               const href = item.id === 'project_details'
                 ? `/projets/${ctx.id}/details`

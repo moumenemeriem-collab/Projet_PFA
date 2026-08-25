@@ -2132,7 +2132,7 @@ const bindPopupActionButtons = (popup: any): void => {
 
   if (projetError) {
     return (
-    <DashboardLayout role="investisseur" activePage="ranking" hideSidebar projectContext={projet ? { id: projet.id, name: projet.nom } : null}>
+      <DashboardLayout role="investisseur" activePage="ranking" hideSidebar projectContext={{ id: projetId, name: '...' }}>
         <div className="admin-error-state">
           <p>{projetError}</p>
           <Link to="/projets" className="btn btn-primary">{t('projects.error_login')}</Link>
@@ -2143,7 +2143,7 @@ const bindPopupActionButtons = (popup: any): void => {
 
   if (!projet) {
     return (
-      <DashboardLayout role="investisseur" activePage="ranking" hideSidebar projectContext={null}>
+      <DashboardLayout role="investisseur" activePage="ranking" hideSidebar projectContext={{ id: projetId, name: '...' }}>
         <div className="admin-loading">
           <div className="admin-loading-spinner"></div>
           <p>{t('ranking.loading')}</p>
@@ -2185,16 +2185,9 @@ const bindPopupActionButtons = (popup: any): void => {
   const cosNum = terrainForm.cos.trim() !== '' ? Number(terrainForm.cos) : null
   const surfaceConstructible = superficieCalculee != null && cosNum != null && cosNum > 0 ? superficieCalculee * cosNum : null
 
-  const toggleTerrainEquipement = (key: string): void => {
-    setTerrainForm((f) => {
-      const has = f.equipements.includes(key)
-      return { ...f, equipements: has ? f.equipements.filter((k) => k !== key) : [...f.equipements, key] }
-    })
-  }
-
   return (
     <>
-    <DashboardLayout role="investisseur" activePage="ranking" hideSidebar topbarTitle={t('ranking.geoportal_title')} projectContext={projet ? { id: projet.id, name: projet.nom } : null}>
+    <DashboardLayout role="investisseur" activePage="ranking" hideSidebar topbarTitle={t('ranking.geoportal_title')} projectContext={{ id: projet.id, name: projet.nom }}>
       <div className="geo-layout">
         <div className="geo-body">
           <aside className={`geo-sidebar${sidebarCollapsed ? ' geo-sidebar--collapsed' : ''}`}>
@@ -2803,7 +2796,7 @@ const bindPopupActionButtons = (popup: any): void => {
                           setCardHidden(true)
                         } else {
                           setCardMode('addTerrain')
-                          setCardHidden(false)
+                          setCardHidden(true)
                         }
                       }}
                     >
@@ -2937,115 +2930,7 @@ const bindPopupActionButtons = (popup: any): void => {
                       {cardError ? (
                         <div className="geo-sr-empty"><p>{cardError}</p></div>
                       ) : cardMode === 'addTerrain' ? (
-                        <form id="terrain-form" className="admin-modal-form geo-card-add-form" noValidate onSubmit={(e) => { void handleAddTerrain(e) }}>
-                          <div className="form-alert form-alert--error" hidden={!terrainError}>{terrainError}</div>
-                          {terrainNote ? (
-                            <div className="form-alert form-alert--success terrain-draft-note">
-                              {terrainNote}
-                              {terrainForm.geom.geometry ? (
-                                <button type="button" className="terrain-draft-clear" onClick={clearFormDraw}>{t('ranking.loc_clear_draw')}</button>
-                              ) : null}
-                            </div>
-                          ) : null}
-
-                          <div className="geo-card-form-section">
-                            <div className="form-field">
-                              <label htmlFor="g-t-titre" className="form-label">{t('ranking.field_num_titre_foncier')}</label>
-                              <input id="g-t-titre" name="num_titre_foncier" className="modal-input" placeholder="T54884" value={terrainForm.num_titre_foncier} onChange={(e) => setTerrainForm((f) => ({ ...f, num_titre_foncier: e.target.value }))} />
-                            </div>
-
-                            <div className="form-row">
-                              <div className="form-field form-field--half">
-                                <label htmlFor="g-t-statut" className="form-label">{t('ranking.field_statut_juridique')}</label>
-                                <select id="g-t-statut" name="statut_juridique" className="modal-input" value={terrainForm.statut_juridique || 'titre'} onChange={(e) => setTerrainForm((f) => ({ ...f, statut_juridique: e.target.value }))}>
-                                  {STATUTS_JURIDIQUES.map((s) => (
-                                    <option key={s.value} value={s.value}>{t(`ranking.${s.label}`)}</option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div className="form-field form-field--half">
-                                <label htmlFor="g-t-zonage" className="form-label">{t('ranking.field_zonage')}</label>
-                                <select id="g-t-zonage" name="zonage" className="modal-input" value={terrainForm.zonage || 'residentiel'} onChange={(e) => setTerrainForm((f) => ({ ...f, zonage: e.target.value }))}>
-                                  {ZONAGES.map((z) => (
-                                    <option key={z.value} value={z.value}>{t(`ranking.${z.label}`)}</option>
-                                  ))}
-                                </select>
-                              </div>
-                            </div>
-
-                            <div className="form-row">
-                              <div className="form-field form-field--half">
-                                <label htmlFor="g-t-prix" className="form-label">{t('ranking.field_prix_demande')}</label>
-                                <input id="g-t-prix" name="prix_demande" type="number" min="0" step="any" className="modal-input" value={terrainForm.prix_demande} onChange={(e) => setTerrainForm((f) => ({ ...f, prix_demande: e.target.value }))} />
-                              </div>
-                              <div className="form-field form-field--half">
-                                <label htmlFor="g-t-hauteur" className="form-label">{t('ranking.field_hauteur_maximale')}</label>
-                                <input id="g-t-hauteur" name="hauteur_maximale" type="number" min="0" step="any" className="modal-input" placeholder="15" value={terrainForm.hauteur_maximale} onChange={(e) => setTerrainForm((f) => ({ ...f, hauteur_maximale: e.target.value }))} />
-                              </div>
-                            </div>
-
-                            <div className="form-row">
-                              <div className="form-field form-field--half">
-                                <label htmlFor="g-t-cos" className="form-label">{t('ranking.field_cos')}</label>
-                                <input id="g-t-cos" name="cos" type="number" min="0" step="any" className="modal-input" placeholder="0.5" value={terrainForm.cos} onChange={(e) => setTerrainForm((f) => ({ ...f, cos: e.target.value }))} />
-                              </div>
-                              <div className="form-field form-field--half">
-                                <label htmlFor="g-t-cus" className="form-label">{t('ranking.field_cus')}</label>
-                                <input id="g-t-cus" name="cus" type="number" min="0" step="any" className="modal-input" placeholder="1.0" value={terrainForm.cus} onChange={(e) => setTerrainForm((f) => ({ ...f, cus: e.target.value }))} />
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="geo-card-form-section">
-                            <span className="geo-layers-popup-label">{t('ranking.geo_geometry_title')}</span>
-                            <TerrainGeometryEditor
-                              value={terrainForm.geom}
-                              onChange={(geom: TerrainGeom) => setTerrainForm((f) => ({ ...f, geom }))}
-                              cadastre={cadastreFc}
-                            />
-                          </div>
-
-                          <div className="geo-terrain-calc">
-                            <div className="geo-terrain-calc-row">
-                              <span>{t('ranking.geo_area')}</span>
-                              <strong>{superficieCalculee != null ? `${superficieCalculee.toLocaleString('fr-FR')} m²` : '—'}</strong>
-                            </div>
-                            <div className="geo-terrain-calc-row">
-                              <span>{t('ranking.price_per_m2')}</span>
-                              <strong>{prixM2 != null ? `${prixM2.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} DH/m²` : '—'}</strong>
-                            </div>
-                            <div className="geo-terrain-calc-row">
-                              <span>{t('ranking.surface_constructible')}</span>
-                              <strong>{surfaceConstructible != null ? `${surfaceConstructible.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} m²` : '—'}</strong>
-                            </div>
-                          </div>
-
-                          {equipTypes.length > 0 ? (
-                            <div className="form-field">
-                              <label className="form-label">{t('ranking.field_equipements')}</label>
-                              <div className="geo-layers-popup-overlays geo-layers-popup-overlays--scroll geo-terrain-equips">
-                                {equipTypes.map((et) => (
-                                  <label className="geo-popup-overlay-item" key={et.key}>
-                                    <input
-                                      type="checkbox"
-                                      checked={terrainForm.equipements.includes(et.key)}
-                                      onChange={() => toggleTerrainEquipement(et.key)}
-                                    />
-                                    <span className="geo-couche-type-svg">
-                                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: equipGroupSymbol(et.type) }} />
-                                    </span>
-                                    <span>{et.type} <em className="geo-couche-count">({et.count})</em></span>
-                                  </label>
-                                ))}
-                              </div>
-                            </div>
-                          ) : null}
-
-                          <div className="admin-modal-actions geo-card-form-actions">
-                            <button type="button" className="btn btn-outline" onClick={() => { setCardMode('search'); setCardHidden(true) }}>{t('common.cancel')}</button>
-                            <button type="submit" className="btn btn-primary" disabled={savingTerrain}>{savingTerrain ? '…' : icons.save} {t('ranking.save_terrain')}</button>
-                          </div>
-                        </form>
+                        null
                       ) : cardMode === 'loading' ? (
                         <div className="geo-sr-loading"><div className="geo-sr-spinner"></div> {t('ranking.analyse_running')}</div>
                       ) : cardMode === 'empty' ? (
@@ -3179,16 +3064,8 @@ const bindPopupActionButtons = (popup: any): void => {
                         </strong>
                       </div>
                     )}
-                    {rentaSurfaceConstructible && rentaSurfaceConstructible.affectations.length > 0 && (
-                      <div style={{ gridColumn: '1 / -1', marginTop: 6, fontSize: '0.78rem' }}>
-                        {rentaSurfaceConstructible.affectations.map((a) => (
-                          <div key={a.designation} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', color: a.type === 'non_constructible' ? '#dc2626' : a.type === 'constructible' ? '#16a34a' : '#6b7280' }}>
-                            <span>{a.type === 'non_constructible' ? '✗' : a.type === 'constructible' ? '✓' : '—'} {a.designation}</span>
-                            <span>{a.surface_m2.toLocaleString('fr-FR')} m²</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+
+
                   </div>
                 </div>
               )}
@@ -3568,6 +3445,113 @@ const bindPopupActionButtons = (popup: any): void => {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      </div>,
+      document.body
+    ) : null}
+
+    {cardMode === 'addTerrain' ? createPortal(
+      <div className="geo-dims-overlay renta-modal-overlay" data-dims-overlay onClick={() => { setCardMode('search'); setCardHidden(true) }}>
+        <div className="geo-dims-modal" style={{ maxWidth: 1600, width: '95vw', height: '94vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
+          <div className="geo-dims-header">
+            <div>
+              <h3>{t('ranking.add_terrain_title')}</h3>
+            </div>
+            <div className="geo-dims-header-actions">
+              <button type="button" className="geo-dims-close" data-dims-close aria-label="Fermer" onClick={() => { setCardMode('search'); setCardHidden(true) }}>&times;</button>
+            </div>
+          </div>
+
+          <div className="geo-dims-body renta-modal-content" style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
+            <form id="terrain-form" className="admin-modal-form geo-card-add-form" style={{ width: '100%' }} noValidate onSubmit={(e) => { void handleAddTerrain(e) }}>
+              <div className="form-alert form-alert--error" hidden={!terrainError}>{terrainError}</div>
+              {terrainNote ? (
+                <div className="form-alert form-alert--success terrain-draft-note">
+                  {terrainNote}
+                  {terrainForm.geom.geometry ? (
+                    <button type="button" className="terrain-draft-clear" onClick={clearFormDraw}>{t('ranking.loc_clear_draw')}</button>
+                  ) : null}
+                </div>
+              ) : null}
+
+              <div className="geo-card-form-section">
+                <div className="form-field">
+                  <label htmlFor="g-t-titre" className="form-label">{t('ranking.field_num_titre_foncier')}</label>
+                  <input id="g-t-titre" name="num_titre_foncier" className="modal-input" placeholder="T54884" value={terrainForm.num_titre_foncier} onChange={(e) => setTerrainForm((f) => ({ ...f, num_titre_foncier: e.target.value }))} />
+                </div>
+
+                <div className="form-row">
+                  <div className="form-field form-field--half">
+                    <label htmlFor="g-t-statut" className="form-label">{t('ranking.field_statut_juridique')}</label>
+                    <select id="g-t-statut" name="statut_juridique" className="modal-input" value={terrainForm.statut_juridique || 'titre'} onChange={(e) => setTerrainForm((f) => ({ ...f, statut_juridique: e.target.value }))}>
+                      {STATUTS_JURIDIQUES.map((s) => (
+                        <option key={s.value} value={s.value}>{t(`ranking.${s.label}`)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-field form-field--half">
+                    <label htmlFor="g-t-zonage" className="form-label">{t('ranking.field_zonage')}</label>
+                    <select id="g-t-zonage" name="zonage" className="modal-input" value={terrainForm.zonage || 'residentiel'} onChange={(e) => setTerrainForm((f) => ({ ...f, zonage: e.target.value }))}>
+                      {ZONAGES.map((z) => (
+                        <option key={z.value} value={z.value}>{t(`ranking.${z.label}`)}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-field form-field--half">
+                    <label htmlFor="g-t-prix" className="form-label">{t('ranking.field_prix_demande')}</label>
+                    <input id="g-t-prix" name="prix_demande" type="number" min="0" step="any" className="modal-input" value={terrainForm.prix_demande} onChange={(e) => setTerrainForm((f) => ({ ...f, prix_demande: e.target.value }))} />
+                  </div>
+                  <div className="form-field form-field--half">
+                    <label htmlFor="g-t-hauteur" className="form-label">{t('ranking.field_hauteur_maximale')}</label>
+                    <input id="g-t-hauteur" name="hauteur_maximale" type="number" min="0" step="any" className="modal-input" placeholder="15" value={terrainForm.hauteur_maximale} onChange={(e) => setTerrainForm((f) => ({ ...f, hauteur_maximale: e.target.value }))} />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-field form-field--half">
+                    <label htmlFor="g-t-cos" className="form-label">{t('ranking.field_cos')}</label>
+                    <input id="g-t-cos" name="cos" type="number" min="0" step="any" className="modal-input" placeholder="0.5" value={terrainForm.cos} onChange={(e) => setTerrainForm((f) => ({ ...f, cos: e.target.value }))} />
+                  </div>
+                  <div className="form-field form-field--half">
+                    <label htmlFor="g-t-cus" className="form-label">{t('ranking.field_cus')}</label>
+                    <input id="g-t-cus" name="cus" type="number" min="0" step="any" className="modal-input" placeholder="1.0" value={terrainForm.cus} onChange={(e) => setTerrainForm((f) => ({ ...f, cus: e.target.value }))} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="geo-card-form-section">
+                <span className="geo-layers-popup-label">{t('ranking.geo_geometry_title')}</span>
+                <TerrainGeometryEditor
+                  value={terrainForm.geom}
+                  onChange={(geom: TerrainGeom) => setTerrainForm((f) => ({ ...f, geom }))}
+                  cadastre={cadastreFc}
+                />
+              </div>
+
+              <div className="geo-terrain-calc">
+                <div className="geo-terrain-calc-row">
+                  <span>{t('ranking.geo_area')}</span>
+                  <strong>{superficieCalculee != null ? `${superficieCalculee.toLocaleString('fr-FR')} m²` : '—'}</strong>
+                </div>
+                <div className="geo-terrain-calc-row">
+                  <span>{t('ranking.price_per_m2')}</span>
+                  <strong>{prixM2 != null ? `${prixM2.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} DH/m²` : '—'}</strong>
+                </div>
+                <div className="geo-terrain-calc-row">
+                  <span>{t('ranking.surface_constructible')}</span>
+                  <strong>{surfaceConstructible != null ? `${surfaceConstructible.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} m²` : '—'}</strong>
+                </div>
+              </div>
+
+              <div className="admin-modal-actions geo-card-form-actions">
+                <button type="button" className="btn btn-outline" onClick={() => { setCardMode('search'); setCardHidden(true) }}>{t('common.cancel')}</button>
+                <button type="submit" className="btn btn-primary" disabled={savingTerrain}>{savingTerrain ? '…' : icons.save} {t('ranking.save_terrain')}</button>
+              </div>
+            </form>
           </div>
         </div>
       </div>,
