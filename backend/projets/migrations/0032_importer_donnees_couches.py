@@ -191,7 +191,37 @@ def _resolve_file(spec):
     return None
 
 
-def _build_rows(filepath, cols):
+def _coerce_numeric(val):
+    """Convert a value to float for DOUBLE PRECISION columns.
+
+    Handles strings with unit suffixes like '20m', '14m', '200m²', etc.
+    Returns None if the value cannot be converted to a number.
+    """
+    if val is None:
+        return None
+    if isinstance(val, (int, float)):
+        return float(val)
+    if isinstance(val, str):
+        # Strip common unit suffixes and whitespace, then try to parse
+        cleaned = val.strip()
+        # Remove trailing non-numeric characters (units like m, m², ha, %…)
+        import re
+        m = re.match(r'^[+-]?[\d.,]+', cleaned.replace(',', '.'))
+        if m:
+            try:
+                return float(m.group(0).replace(',', '.'))
+            except ValueError:
+                pass
+    return None
+
+
+def _build_rows(filepath, cols, col_types=None):
+    """Build insert rows from a GeoJSON file.
+
+    col_types: optional dict mapping column name → 'number' | 'string'.
+    When a column is typed 'number', its value is coerced via _coerce_numeric
+    so that string-with-unit values (e.g. '20m') are safely converted to float.
+    """
     with open(filepath, 'r', encoding='utf-8') as f:
         collection = json.load(f)
     features = collection.get('features', [])
@@ -204,7 +234,12 @@ def _build_rows(filepath, cols):
         row = [json.dumps(geom)]
         for col in cols:
             val = props.get(col)
-            row.append(val if val is not None else None)
+            if col_types and col_types.get(col) == 'number':
+                val = _coerce_numeric(val)
+            else:
+                row.append(val if val is not None else None)
+                continue
+            row.append(val)
         rows.append(tuple(row))
     return rows
 
@@ -250,8 +285,11 @@ def importer(apps, schema_editor):
             filepath = _resolve_file(src)
             if not filepath:
                 continue
-            cols = TABLES[src['table']]['cols']
-            rows = _build_rows(filepath, cols)
+            table_spec = TABLES[src['table']]
+            cols = table_spec['cols']
+            # Build a col→type mapping so numeric columns are coerced correctly
+            col_types = {a['nom']: a['type'] for a in table_spec.get('attributs', [])}
+            rows = _build_rows(filepath, cols, col_types=col_types)
             if rows:
                 _import_table(cur, src['table'], cols, rows)
 
