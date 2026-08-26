@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { t } from '../../i18n/index'
 import { calculerPoidsAHP, type AhpResult } from '../../utils/ahp'
+import { WizardNextButton } from './WizardNextButton'
 
 interface AhpStepProps {
   /** [a12, a23] intensités consécutives sauvegardées */
@@ -189,9 +190,9 @@ export function AhpStep({ initial, initialOrder, onComplete }: AhpStepProps): Re
           </div>
 
           <div className="step-actions">
-            <button type="button" className="btn btn-primary" onClick={handleValidateRanking}>
+            <WizardNextButton onClick={handleValidateRanking}>
               Définir l'intensité
-            </button>
+            </WizardNextButton>
           </div>
         </div>
       )}
@@ -258,12 +259,12 @@ export function AhpStep({ initial, initialOrder, onComplete }: AhpStepProps): Re
           </div>
 
           <div className="step-actions">
-            <button type="button" className="btn btn-secondary" onClick={handleBackToRanking}>
+            <WizardNextButton variant="secondary" onClick={handleBackToRanking}>
               ← Modifier le classement
-            </button>
-            <button type="button" className="btn btn-primary" onClick={handleComplete}>
+            </WizardNextButton>
+            <WizardNextButton onClick={handleComplete}>
               {t('ponderation.next')}
-            </button>
+            </WizardNextButton>
           </div>
         </div>
       )}

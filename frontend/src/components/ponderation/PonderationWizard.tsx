@@ -176,32 +176,80 @@ export function PonderationWizard({ projetId }: PonderationWizardProps): React.J
     setError(null)
   }
 
-  const steps: { key: Step; label: string; icon: string }[] = [
-    { key: 'selection', label: t('ponderation.step_selection'), icon: '1' },
-    { key: 'ahp', label: t('ponderation.step_priorites'), icon: '2' },
-    { key: 'roc', label: t('ponderation.step_classement'), icon: '3' },
-    { key: 'resultats', label: t('ponderation.step_resultats'), icon: '4' },
+  const steps: { key: Step; label: string }[] = [
+    { key: 'selection', label: t('ponderation.step_selection') },
+    { key: 'ahp', label: t('ponderation.step_priorites') },
+    { key: 'roc', label: t('ponderation.step_classement') },
+    { key: 'resultats', label: t('ponderation.step_resultats') },
   ]
+
+  const activeIdx = steps.findIndex((s) => s.key === step)
 
   return (
     <div className="ponderation-wizard">
       <div className="ponderation-header">
+        <div className="ponderation-header-badge">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+            <path d="M4 22h16" />
+            <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+            <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+          </svg>
+        </div>
         <h2 className="ponderation-title">{t('ponderation.title')}</h2>
         <p className="ponderation-desc">{t('ponderation.desc')}</p>
       </div>
 
-      <div className="ponderation-stepper">
-        {steps.map((s, i) => (
-          <div
-            key={s.key}
-            className={`ponderation-stepper-step ${step === s.key ? 'ponderation-stepper-step--active' : ''} ${
-              steps.findIndex((ss) => ss.key === step) > i ? 'ponderation-stepper-step--done' : ''
-            }`}
-          >
-            <span className="ponderation-stepper-num">{s.icon}</span>
-            <span className="ponderation-stepper-label">{s.label}</span>
-          </div>
-        ))}
+      <div className="ponderation-stepper" role="navigation" aria-label="Étapes du wizard">
+        {steps.map((s, i) => {
+          const isDone = i < activeIdx
+          const isActive = i === activeIdx
+
+          return (
+            <div key={s.key} className="ponderation-stepper-group">
+              <div
+                className={`ponderation-stepper-step ${
+                  isActive ? 'ponderation-stepper-step--active' : ''
+                } ${isDone ? 'ponderation-stepper-step--done' : ''}`}
+              >
+                <span className="ponderation-stepper-num">
+                  {isDone ? (
+                    <svg
+                      className="ponderation-stepper-check"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M3.5 8.5L6.5 11.5L12.5 4.5"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  ) : (
+                    i + 1
+                  )}
+                </span>
+                <span className="ponderation-stepper-label">{s.label}</span>
+              </div>
+              {i < steps.length - 1 && (
+                <div className="ponderation-stepper-connector">
+                  <div
+                    className={`ponderation-stepper-connector-fill ${
+                      i < activeIdx ? 'ponderation-stepper-connector-fill--done' : ''
+                    }`}
+                  />
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
 
       {error && (
@@ -242,7 +290,6 @@ export function PonderationWizard({ projetId }: PonderationWizardProps): React.J
         <ResultatsStep
           resultats={resultats.resultats}
           poidsGlobaux={resultats.poids_globaux}
-          poidsAhp={resultats.poids_ahp}
           projetId={projetId}
           onRestart={handleRestart}
         />

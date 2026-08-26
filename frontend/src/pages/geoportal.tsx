@@ -331,7 +331,7 @@ function propsToHtml(props: Record<string, unknown>, labels?: Record<string, str
     .join('')
 }
 
-type CardMode = 'search' | 'loading' | 'results' | 'terrainList' | 'empty' | 'addTerrain'
+type CardMode = 'search' | 'loading' | 'results' | 'terrainList' | 'empty' | 'addTerrain' | 'ponderationDetail'
 
 function getScoreColor(score: number): string {
   if (score >= 80) return '#16a34a'
@@ -561,6 +561,7 @@ export function GeoportalPage(): React.JSX.Element {
   const [cardHidden, setCardHidden] = useState(true)
   const [cardMode, setCardMode] = useState<CardMode>('search')
   const [selectedTerrain, setSelectedTerrain] = useState<AnalyseResultat | null>(null)
+  const [selectedPonderationTerrain, setSelectedPonderationTerrain] = useState<TerrainPondere | null>(null)
   const [cardError, setCardError] = useState<string | null>(null)
   const [coord, setCoord] = useState('Lat: — , Lng: —')
   const [layersPopupOpen, setLayersPopupOpen] = useState(false)
@@ -2268,6 +2269,17 @@ const bindPopupActionButtons = (popup: any): void => {
     refreshMapSize()
   }
 
+  const handlePonderationTerrainSelect = (terrain: TerrainPondere): void => {
+    setSelectedPonderationTerrain(terrain)
+    setCardMode('ponderationDetail')
+    setCardHidden(false)
+    refreshMapSize()
+    // Center map on terrain
+    if (mapRef.current && terrain.lat && terrain.lng) {
+      mapRef.current.flyTo([terrain.lat, terrain.lng], 16, { duration: 0.8 })
+    }
+  }
+
   if (projetError) {
     return (
       <DashboardLayout role="investisseur" activePage="ranking" hideSidebar projectContext={{ id: projetId, name: '...' }}>
@@ -2291,7 +2303,7 @@ const bindPopupActionButtons = (popup: any): void => {
   }
 
   const currentBasemap = BASEMAPS.find((b) => b.id === basemapId) ?? BASEMAPS[0]
-  const cardTitle = cardMode === 'search' ? t('ranking.terrain_info') : cardMode === 'addTerrain' ? t('ranking.add_terrain_title') : cardMode === 'terrainList' ? `Resultats (${analyseResultatsRef.current.length})` : t('ranking.analyse_title')
+  const cardTitle = cardMode === 'search' ? t('ranking.terrain_info') : cardMode === 'addTerrain' ? t('ranking.add_terrain_title') : cardMode === 'terrainList' ? `Resultats (${analyseResultatsRef.current.length})` : cardMode === 'ponderationDetail' && selectedPonderationTerrain ? `Analyse — ${selectedPonderationTerrain.nom}` : t('ranking.analyse_title')
 
   const BUFFER_LEGEND: { key: string; label: string }[] = [
     { key: 'distance_route', label: t('ranking.filter_max_distance_road') },
@@ -2330,32 +2342,58 @@ const bindPopupActionButtons = (popup: any): void => {
         <div className="geo-body">
           <aside className={`geo-sidebar${sidebarCollapsed ? ' geo-sidebar--collapsed' : ''}`}>
             <div className="geo-sidebar-scroll geo-sidebar-scroll--ponderation">
+              {/* ── Header ── */}
               <div className="geo-sidebar-header">
                 <div className="geo-sidebar-header-row">
-                  <span className="geo-sidebar-header-icon">{icons.ranking}</span>
-                  <h2 className="geo-sidebar-title">Analyse Multicritère</h2>
+                  <div className="geo-sidebar-header-badge">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+                      <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+                      <path d="M4 22h16" />
+                      <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+                      <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+                      <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+                    </svg>
+                  </div>
+                  <div className="geo-sidebar-header-text">
+                    <h2 className="geo-sidebar-title">Analyse Multicritère</h2>
+                    <p className="geo-sidebar-desc">Définissez vos priorités pour classer les terrains</p>
+                  </div>
                 </div>
-                <p className="geo-sidebar-desc">Définissez vos priorités pour classer les terrains</p>
               </div>
 
-              {/* Stepper */}
-              <div className="ponderation-stepper geo-wizard-stepper">
-                {([
-                  { key: 'selection' as WizardStep, label: 'Critères', icon: '1' },
-                  { key: 'ahp' as WizardStep, label: 'Vos priorités', icon: '2' },
-                  { key: 'roc' as WizardStep, label: 'Classement', icon: '3' },
-                  { key: 'resultats' as WizardStep, label: 'Résultats', icon: '4' },
-                ]).map((s, i) => (
-                  <div
-                    key={s.key}
-                    className={`ponderation-stepper-step ${wizardStep === s.key ? 'ponderation-stepper-step--active' : ''} ${
-                      (['selection', 'ahp', 'roc', 'resultats'] as WizardStep[]).indexOf(wizardStep) > i ? 'ponderation-stepper-step--done' : ''
-                    }`}
-                  >
-                    <span className="ponderation-stepper-num">{s.icon}</span>
-                    <span className="ponderation-stepper-label">{s.label}</span>
-                  </div>
-                ))}
+              {/* ── Stepper ── */}
+              <div className="geo-wizard-stepper">
+                {(() => {
+                  const stepKeys: WizardStep[] = ['selection', 'ahp', 'roc', 'resultats']
+                  const stepLabels = ['Critères', 'Vos priorités', 'Classement', 'Résultats']
+                  const activeIdx = stepKeys.indexOf(wizardStep)
+                  return stepKeys.map((key, i) => {
+                    const isDone = i < activeIdx
+                    const isActive = i === activeIdx
+                    return (
+                      <div key={key} className="geo-stepper-group">
+                        <div
+                          className={`geo-stepper-step ${isDone ? 'geo-stepper-step--done' : ''} ${isActive ? 'geo-stepper-step--active' : ''}`}
+                        >
+                          <span className="geo-stepper-num">
+                            {isDone ? (
+                              <svg className="geo-stepper-check" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                                <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            ) : (
+                              i + 1
+                            )}
+                          </span>
+                          <span className="geo-stepper-label">{stepLabels[i]}</span>
+                        </div>
+                        {i < stepKeys.length - 1 && (
+                          <div className={`geo-stepper-connector ${i < activeIdx ? 'geo-stepper-connector--filled' : ''}`} />
+                        )}
+                      </div>
+                    )
+                  })
+                })()}
               </div>
 
               {wizardError && (
@@ -2396,11 +2434,11 @@ const bindPopupActionButtons = (popup: any): void => {
                 <ResultatsStep
                   resultats={wizardResultats.resultats}
                   poidsGlobaux={wizardResultats.poids_globaux}
-                  poidsAhp={wizardResultats.poids_ahp}
                   projetId={projetId}
                   onRestart={handleWizardRestart}
                   onViewOnMap={handleWizardViewOnMap}
                   onOpenRentabilite={handleWizardOpenRentabilite}
+                  onTerrainSelect={handlePonderationTerrainSelect}
                   hideNavLinks
                 />
               )}
@@ -2819,7 +2857,7 @@ const bindPopupActionButtons = (popup: any): void => {
                   <div className="geo-terrain-card-header">
                     <h3 id="card-title">{cardTitle}</h3>
                     <div className="geo-card-header-actions">
-                      <button type="button" className="geo-card-back" id="card-back-btn" hidden={cardMode === 'search' || cardMode === 'terrainList'} onClick={() => { if (cardMode === 'results') { setCardMode('terrainList'); setSelectedTerrain(null) } else if (cardMode === 'addTerrain') { setCardMode('search'); setCardHidden(true) } else { setCardMode('search') } }}>{icons.chevronLeft}</button>
+                      <button type="button" className="geo-card-back" id="card-back-btn" hidden={cardMode === 'search' || cardMode === 'terrainList'} onClick={() => { if (cardMode === 'ponderationDetail') { setCardMode('search'); setSelectedPonderationTerrain(null); setCardHidden(true) } else if (cardMode === 'results') { setCardMode('terrainList'); setSelectedTerrain(null) } else if (cardMode === 'addTerrain') { setCardMode('search'); setCardHidden(true) } else { setCardMode('search') } }}>{icons.chevronLeft}</button>
                       <button type="button" className="geo-terrain-card-close" id="terrain-card-toggle" onClick={closeTerrainCard}>
                         {icons.close}
                       </button>
@@ -2878,6 +2916,96 @@ const bindPopupActionButtons = (popup: any): void => {
                                     <div className="geo-terrain-list-arrow">{icons.chevron}</div>
                                   </button>
                               ))}
+                            </div>
+                          )
+                        })()
+                      ) : cardMode === 'ponderationDetail' && selectedPonderationTerrain ? (
+                        (() => {
+                          const tp = selectedPonderationTerrain
+                          const pct = Math.round(tp.score_final * 100)
+                          const scoreCol = pct >= 70 ? '#16a34a' : pct >= 40 ? '#d97706' : '#dc2626'
+                          return (
+                            <div className="geo-ponderation-detail">
+                              {/* Score summary */}
+                              <div className="geo-sr-card">
+                                <div className="geo-sr-card-body">
+                                  <div className="geo-sr-info-grid">
+                                    <div className="geo-sr-info-item">
+                                      <span className="geo-sr-info-label">Rang</span>
+                                      <span className="geo-sr-info-value" style={{ fontSize: '1.3rem', fontWeight: 800, color: '#4A7FE0' }}>#{tp.rang}</span>
+                                    </div>
+                                    <div className="geo-sr-info-item">
+                                      <span className="geo-sr-info-label">Score global</span>
+                                      <span className="geo-sr-info-value" style={{ fontSize: '1.3rem', fontWeight: 800, color: scoreCol }}>{pct}%</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Infos terrain */}
+                              <div className="geo-sr-card">
+                                <div className="geo-sr-card-header">
+                                  <h4 className="geo-sr-card-title">{t('ranking.terrain_infos')}</h4>
+                                </div>
+                                <div className="geo-sr-card-body">
+                                  <div className="geo-sr-info-grid">
+                                    <div className="geo-sr-info-item">
+                                      <span className="geo-sr-info-label">{t('ranking.terrain_reference')}</span>
+                                      <span className="geo-sr-info-value">{tp.reference_cadastrale || '—'}</span>
+                                    </div>
+                                    <div className="geo-sr-info-item">
+                                      <span className="geo-sr-info-label">{t('ranking.terrain_surface')}</span>
+                                      <span className="geo-sr-info-value">{Number(tp.superficie).toLocaleString('fr-FR')} m²</span>
+                                    </div>
+                                    <div className="geo-sr-info-item geo-sr-info-item--full">
+                                      <span className="geo-sr-info-label">{t('ranking.terrain_centre')}</span>
+                                      <span className="geo-sr-info-value">{tp.lat.toFixed(6)}, {tp.lng.toFixed(6)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Détail des contributions par critère */}
+                              {tp.contributions.length > 0 && (
+                                <div className="geo-sr-card">
+                                  <div className="geo-sr-card-header">
+                                    <h4 className="geo-sr-card-title">Détail par critère</h4>
+                                  </div>
+                                  <div className="geo-sr-card-body">
+                                    {[...tp.contributions]
+                                      .sort((a, b) => b.contribution - a.contribution)
+                                      .map((c) => (
+                                        <div key={c.critere} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #f0f5fd' }}>
+                                          <span style={{ flex: 1, fontSize: '0.82rem', fontWeight: 600, color: '#1a2744' }}>
+                                            {CRITERE_LABELS[c.critere] || c.critere}
+                                          </span>
+                                          <div style={{ width: 100, height: 6, background: '#e0e7f2', borderRadius: 3, overflow: 'hidden' }}>
+                                            <div style={{ height: '100%', width: `${c.score * 100}%`, background: 'linear-gradient(90deg, #4A7FE0, #6B9CF0)', borderRadius: 3 }} />
+                                          </div>
+                                          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#1a2744', minWidth: 40, textAlign: 'right' }}>{Math.round(c.score * 100)}%</span>
+                                        </div>
+                                      ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Actions */}
+                              <div className="geo-ponderation-actions">
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary"
+                                  onClick={() => handleWizardViewOnMap(tp)}
+                                >
+                                  Voir sur la carte SIG
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-primary"
+                                  onClick={() => handleWizardOpenRentabilite(tp)}
+                                >
+                                  Calculer la rentabilité
+                                </button>
+                              </div>
                             </div>
                           )
                         })()

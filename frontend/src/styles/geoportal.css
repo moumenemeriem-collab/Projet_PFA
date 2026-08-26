@@ -38,7 +38,7 @@
 /* ── Left sidebar ── */
 
 .geo-sidebar {
-  width: 340px;
+  width: 500px;
   flex-shrink: 0;
   min-width: 0;
   background: #fff;
@@ -47,6 +47,13 @@
   flex-direction: column;
   transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 20;
+}
+
+@media (max-width: 1280px) {
+  .geo-sidebar { width: 420px; }
+}
+@media (max-width: 1024px) {
+  .geo-sidebar { width: 380px; }
 }
 
 .geo-sidebar--collapsed {
@@ -62,9 +69,35 @@
 }
 
 .geo-sidebar-header {
-  padding: 20px 20px 16px;
-  border-bottom: 1px solid var(--border);
-  background: linear-gradient(180deg, #f8faff 0%, #fff 100%);
+  padding: 24px 24px 20px;
+  border-bottom: none;
+  background: linear-gradient(180deg, #E8F0FB 0%, #f0f5fd 60%, #fff 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.geo-sidebar-header::before {
+  content: '';
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(74, 127, 224, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.geo-sidebar-header::after {
+  content: '';
+  position: absolute;
+  bottom: -20px;
+  left: 30px;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(107, 156, 240, 0.06) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .geo-back-link {
@@ -121,28 +154,29 @@
 
 .geo-sidebar-title {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 700;
-  color: var(--text-heading);
+  color: #1a2744;
   line-height: 1.3;
 }
 
 .geo-sidebar-desc {
   margin: 0;
-  font-size: 0.75rem;
-  color: var(--text-muted);
+  font-size: 0.82rem;
+  color: #6B7A99;
   line-height: 1.5;
+  margin-top: 4px;
 }
 
 /* ── Footer ── */
 
 .geo-sidebar-footer {
-  padding: 12px 20px;
-  border-top: 1px solid var(--border);
+  padding: 16px 24px;
+  border-top: 1px solid #e8ecf2;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: #fff;
+  background: linear-gradient(0deg, #f8fafc 0%, #fff 100%);
 }
 
 .geo-btn-reset {
@@ -4155,97 +4189,331 @@
 .geo-sidebar-scroll--ponderation {
   overflow-y: auto;
   overflow-x: hidden;
+  background: linear-gradient(180deg, #f4f7fc 0%, #ffffff 120px);
+  scroll-behavior: smooth;
 }
+
+/* ── Header dans la sidebar ── */
+
+.geo-sidebar-scroll--ponderation .geo-sidebar-header {
+  padding: 20px 24px 16px;
+  margin-bottom: 0;
+}
+
+.geo-sidebar-scroll--ponderation .geo-sidebar-header-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.geo-sidebar-scroll--ponderation .geo-sidebar-header-badge {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f0f5fd, #e0eaff);
+  border: 1px solid rgba(74, 127, 224, 0.15);
+  border-radius: 12px;
+  color: #4A7FE0;
+  box-shadow: 0 2px 8px rgba(74, 127, 224, 0.1);
+}
+
+.geo-sidebar-scroll--ponderation .geo-sidebar-header-badge svg {
+  width: 20px;
+  height: 20px;
+}
+
+.geo-sidebar-scroll--ponderation .geo-sidebar-header-text {
+  min-width: 0;
+}
+
+.geo-sidebar-scroll--ponderation .geo-sidebar-title {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #1E293B;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  margin: 0 0 2px;
+}
+
+.geo-sidebar-scroll--ponderation .geo-sidebar-desc {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: #64748B;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ── Stepper dans la sidebar ── */
 
 .geo-wizard-stepper {
-  margin-bottom: 1rem !important;
+  display: flex;
+  align-items: flex-start;
+  padding: 12px 24px 16px;
+  margin-bottom: 0;
+  background: linear-gradient(180deg, #E8F0FB 0%, #f4f7fc 100%);
+  border-bottom: 1px solid #e8ecf2;
 }
 
-.geo-wizard-stepper .ponderation-stepper-num {
-  width: 28px;
-  height: 28px;
-  font-size: 0.75rem;
+.geo-stepper-group {
+  display: flex;
+  align-items: flex-start;
+  flex: 1;
 }
 
-.geo-wizard-stepper .ponderation-stepper-label {
-  font-size: 0.7rem;
+.geo-stepper-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
 }
 
-/* CritereSelectionStep dans la sidebar */
+.geo-stepper-num {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Étape à venir ── */
+
+.geo-stepper-step:not(.geo-stepper-step--done):not(.geo-stepper-step--active) .geo-stepper-num {
+  background: #E2E8F0;
+  border: 2px solid transparent;
+  color: #94A3B8;
+}
+
+.geo-stepper-step:not(.geo-stepper-step--done):not(.geo-stepper-step--active) .geo-stepper-label {
+  color: #94A3B8;
+  font-weight: 500;
+}
+
+/* ── Étape complétée ── */
+
+.geo-stepper-step--done .geo-stepper-num {
+  background: linear-gradient(135deg, #2563EB, #1d4ed8);
+  border: 2px solid transparent;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+}
+
+.geo-stepper-step--done .geo-stepper-label {
+  color: #1E293B;
+  font-weight: 600;
+}
+
+.geo-stepper-check {
+  display: block;
+  color: #ffffff;
+  animation: wz-check-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ── Étape active ── */
+
+.geo-stepper-step--active .geo-stepper-num {
+  width: 42px;
+  height: 42px;
+  background: linear-gradient(135deg, #2563EB, #1d4ed8);
+  border: 2px solid transparent;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.88rem;
+  box-shadow:
+    0 0 0 5px rgba(37, 99, 235, 0.15),
+    0 0 16px rgba(37, 99, 235, 0.4);
+  animation: wz-glow-pulse 2.5s ease-in-out infinite;
+}
+
+.geo-stepper-step--active .geo-stepper-label {
+  color: #2563EB;
+  font-weight: 700;
+}
+
+/* ── Labels ── */
+
+.geo-stepper-label {
+  font-size: 0.68rem;
+  white-space: nowrap;
+  max-width: 68px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  transition: color 0.3s ease, font-weight 0.2s ease;
+}
+
+/* ── Connecteur ── */
+
+.geo-stepper-connector {
+  flex: 1;
+  height: 2px;
+  background: #E2E8F0;
+  margin-top: 18px;
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.geo-stepper-connector--filled {
+  background: linear-gradient(90deg, #2563EB, #60A5FA);
+}
+
+/* ── CritereSelectionStep dans la sidebar ── */
+
 .geo-sidebar-scroll--ponderation .critere-step {
   padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .geo-sidebar-scroll--ponderation .critere-step-title {
-  font-size: 1rem;
-  margin-bottom: 0.3rem;
+  font-size: 1.05rem;
+  color: #1a2744;
+  margin-bottom: 0.35rem;
 }
 
 .geo-sidebar-scroll--ponderation .critere-step-desc {
-  font-size: 0.78rem;
-  margin-bottom: 0.6rem;
+  font-size: 0.8rem;
+  color: #6B7A99;
+  margin-bottom: 1rem;
 }
 
 .geo-sidebar-scroll--ponderation .critere-section {
-  margin-bottom: 0.75rem;
+  background: #ffffff;
+  border: 1px solid #e8ecf2;
+  border-radius: 16px;
+  padding: 1.15rem 1.25rem;
+  margin: 0 20px 0.85rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.025);
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.geo-sidebar-scroll--ponderation .critere-section:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border-color: #d4dbe8;
 }
 
 .geo-sidebar-scroll--ponderation .critere-section-title {
-  font-size: 0.85rem;
-  margin-bottom: 0.3rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1a2744;
+  margin-bottom: 0.25rem;
 }
 
 .geo-sidebar-scroll--ponderation .critere-section-desc {
   font-size: 0.75rem;
-  margin-bottom: 0.3rem;
+  color: #6B7A99;
+  margin-bottom: 0.65rem;
 }
 
 .geo-sidebar-scroll--ponderation .critere-chips {
-  gap: 0.3rem;
+  gap: 0.45rem;
 }
 
 .geo-sidebar-scroll--ponderation .critere-chip {
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
+  font-size: 0.78rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 20px;
+  border: 1.5px solid #d4dbe8;
+  color: #3d4f6f;
+  background: #ffffff;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+.geo-sidebar-scroll--ponderation .critere-chip:hover {
+  border-color: #4A7FE0;
+  color: #4A7FE0;
+  background: rgba(74, 127, 224, 0.04);
+}
+
+.geo-sidebar-scroll--ponderation .critere-chip--active {
+  background: linear-gradient(135deg, #4A7FE0, #6B9CF0);
+  border-color: #4A7FE0;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(74, 127, 224, 0.28);
+  transform: scale(1.02);
+}
+
+.geo-sidebar-scroll--ponderation .critere-sub {
+  margin-top: 0.75rem;
+  background: #f8faff;
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid #e0e7f2;
+}
+
+.geo-sidebar-scroll--ponderation .critere-sub-label {
+  font-size: 0.78rem;
 }
 
 .geo-sidebar-scroll--ponderation .critere-select {
-  font-size: 0.78rem;
-  padding: 0.3rem 0.5rem;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: 8px;
+  border: 1.5px solid #d4dbe8;
+}
+
+.geo-sidebar-scroll--ponderation .critere-radios {
+  gap: 0.5rem;
 }
 
 .geo-sidebar-scroll--ponderation .critere-radio {
-  font-size: 0.78rem;
-  gap: 0.3rem;
+  font-size: 0.82rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 8px;
+  gap: 0.55rem;
+  transition: background 0.15s;
 }
 
-/* AhpStep dans la sidebar */
+.geo-sidebar-scroll--ponderation .critere-radio:hover {
+  background: #f0f5fd;
+}
+
+/* ── AhpStep dans la sidebar ── */
+
 .geo-sidebar-scroll--ponderation .ahp-step {
   padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .geo-sidebar-scroll--ponderation .ahp-step-title {
-  font-size: 1rem;
-  margin-bottom: 0.3rem;
+  font-size: 1.05rem;
+  color: #1a2744;
+  margin-bottom: 0.35rem;
 }
 
 .geo-sidebar-scroll--ponderation .ahp-step-desc {
-  font-size: 0.78rem;
-  margin-bottom: 0.6rem;
+  font-size: 0.8rem;
+  color: #6B7A99;
+  margin-bottom: 0.75rem;
 }
 
 .geo-sidebar-scroll--ponderation .ahp-comparison-card {
-  padding: 0.6rem;
-  margin-bottom: 0.6rem;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
 }
 
 .geo-sidebar-scroll--ponderation .ahp-comparison-header {
-  gap: 0.3rem;
+  gap: 0.4rem;
 }
 
 .geo-sidebar-scroll--ponderation .ahp-cat-tag {
-  font-size: 0.7rem;
-  padding: 0.15rem 0.4rem;
+  font-size: 0.72rem;
+  padding: 0.2rem 0.5rem;
 }
 
 .geo-sidebar-scroll--ponderation .ahp-vs {
@@ -4253,7 +4521,7 @@
 }
 
 .geo-sidebar-scroll--ponderation .ahp-slider-end-label {
-  font-size: 0.6rem;
+  font-size: 0.62rem;
 }
 
 .geo-sidebar-scroll--ponderation .ahp-slider-track-wrap {
@@ -4261,157 +4529,464 @@
 }
 
 .geo-sidebar-scroll--ponderation .ahp-badge-container {
-  margin-top: 0.3rem;
+  margin-top: 0.35rem;
 }
 
 .geo-sidebar-scroll--ponderation .ahp-badge {
-  font-size: 0.65rem;
-  padding: 0.15rem 0.4rem;
+  font-size: 0.68rem;
+  padding: 0.18rem 0.45rem;
 }
 
 .geo-sidebar-scroll--ponderation .ahp-result {
-  margin-top: 0.6rem;
+  margin-top: 0.75rem;
 }
 
 .geo-sidebar-scroll--ponderation .ahp-result h4 {
-  font-size: 0.85rem;
-  margin-bottom: 0.4rem;
+  font-size: 0.88rem;
+  margin-bottom: 0.45rem;
 }
 
 .geo-sidebar-scroll--ponderation .ahp-weight-item {
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.35rem;
 }
 
 .geo-sidebar-scroll--ponderation .ahp-weight-label {
-  font-size: 0.75rem;
+  font-size: 0.78rem;
 }
 
 .geo-sidebar-scroll--ponderation .ahp-weight-value {
-  font-size: 0.75rem;
+  font-size: 0.78rem;
 }
 
 .geo-sidebar-scroll--ponderation .ahp-coherence {
-  padding: 0.4rem 0.6rem;
-  font-size: 0.75rem;
-  margin-top: 0.4rem;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.78rem;
+  margin-top: 0.45rem;
+  border-radius: 10px;
 }
 
-/* RocStep dans la sidebar */
+/* AHP ranking items dans la sidebar */
+.geo-sidebar-scroll--ponderation .ahp-ranking-question {
+  font-size: 0.88rem;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-ranking-hint {
+  font-size: 0.75rem;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-ranking-item {
+  padding: 0.7rem 0.9rem;
+  border-radius: 10px;
+  border: 1.5px solid #e0e7f2;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-ranking-item:hover {
+  border-color: #b8c9e0;
+  background: #f8faff;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-ranking-rank {
+  font-size: 0.88rem;
+  color: #4A7FE0;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-ranking-cat-name {
+  font-size: 0.85rem;
+}
+
+/* AHP intensity dans la sidebar */
+.geo-sidebar-scroll--ponderation .ahp-intensity-card {
+  padding: 1.15rem 1rem;
+  border-radius: 12px;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-intensity-cat {
+  font-size: 0.88rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 8px;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-intensity-label {
+  font-size: 0.8rem;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-intensity-select {
+  min-width: 180px;
+  font-size: 0.82rem;
+  padding: 0.45rem 1.8rem 0.45rem 0.75rem;
+}
+
+/* ── RocStep dans la sidebar ── */
+
 .geo-sidebar-scroll--ponderation .roc-step {
   padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .geo-sidebar-scroll--ponderation .roc-step-title {
-  font-size: 1rem;
-  margin-bottom: 0.3rem;
+  font-size: 1.05rem;
+  color: #1a2744;
+  margin-bottom: 0.35rem;
 }
 
 .geo-sidebar-scroll--ponderation .roc-step-desc {
-  font-size: 0.78rem;
-  margin-bottom: 0.6rem;
+  font-size: 0.8rem;
+  color: #6B7A99;
+  margin-bottom: 0.75rem;
 }
 
 .geo-sidebar-scroll--ponderation .roc-item {
-  padding: 0.4rem 0.5rem;
-  font-size: 0.8rem;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.82rem;
+  border-radius: 10px;
+  border: 1.5px solid #e0e7f2;
+}
+
+.geo-sidebar-scroll--ponderation .roc-item:hover {
+  border-color: #b8c9e0;
+  background: #f8faff;
+}
+
+.geo-sidebar-scroll--ponderation .roc-rank {
+  color: #4A7FE0;
+}
+
+.geo-sidebar-scroll--ponderation .roc-weight {
+  background: #eef2ff;
+  color: #4A7FE0;
+  border-radius: 10px;
+  font-size: 0.78rem;
+}
+
+.geo-sidebar-scroll--ponderation .roc-weights-preview {
+  border-radius: 12px;
+  border: 1px solid #e0e7f2;
 }
 
 .geo-sidebar-scroll--ponderation .roc-weights-preview h4 {
-  font-size: 0.85rem;
+  font-size: 0.88rem;
+  color: #1a2744;
 }
 
-/* ResultatsStep dans la sidebar */
+.geo-sidebar-scroll--ponderation .roc-weight-fill {
+  background: linear-gradient(90deg, #4A7FE0, #6B9CF0);
+}
+
+/* ── ResultatsStep dans la sidebar ── */
+
 .geo-sidebar-scroll--ponderation .resultats-step {
   padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .geo-sidebar-scroll--ponderation .resultats-header-block {
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.75rem;
 }
 
 .geo-sidebar-scroll--ponderation .resultats-step-title {
-  font-size: 1rem;
-  margin-bottom: 0.2rem;
-}
-
-.geo-sidebar-scroll--ponderation .resultats-step-desc {
-  font-size: 0.75rem;
-}
-
-.geo-sidebar-scroll--ponderation .resultats-poids-card {
-  padding: 0.6rem;
-  margin-bottom: 0.6rem;
-}
-
-.geo-sidebar-scroll--ponderation .resultats-ahp-badge {
-  font-size: 0.7rem;
-}
-
-.geo-sidebar-scroll--ponderation .resultats-poids-item {
+  font-size: 1.05rem;
+  color: #1a2744;
   margin-bottom: 0.25rem;
 }
 
+.geo-sidebar-scroll--ponderation .resultats-step-desc {
+  font-size: 0.78rem;
+  color: #6B7A99;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-poids-card {
+  padding: 0.85rem;
+  margin-bottom: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid #e0e7f2;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-ahp-badge {
+  font-size: 0.72rem;
+  border-radius: 14px;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-poids-item {
+  margin-bottom: 0.3rem;
+  border-radius: 8px;
+  border: 1px solid #e8ecf2;
+}
+
 .geo-sidebar-scroll--ponderation .resultats-poids-name {
-  font-size: 0.72rem;
-}
-
-.geo-sidebar-scroll--ponderation .resultats-poids-val {
-  font-size: 0.72rem;
-}
-
-.geo-sidebar-scroll--ponderation .resultats-filter-bar {
-  padding: 0.5rem 0;
-  margin-bottom: 0.5rem;
-}
-
-.geo-sidebar-scroll--ponderation .resultats-filter-label {
   font-size: 0.75rem;
 }
 
-.geo-sidebar-scroll--ponderation .ponderation-terrain-card {
+.geo-sidebar-scroll--ponderation .resultats-poids-val {
+  font-size: 0.75rem;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-poids-fill {
+  background: linear-gradient(90deg, #4A7FE0, #6B9CF0);
+}
+
+.geo-sidebar-scroll--ponderation .resultats-synthesis {
+  border-radius: 12px;
+  border: 1px solid #bfdbfe;
+  background: linear-gradient(135deg, #eff6ff, #f0fdf4);
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 0.85rem;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-synthesis-text {
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-synthesis--hidden {
+  padding: 0 0.9rem;
+  margin-bottom: 0;
+}
+
+.resultats-synthesis-show {
+  background: none;
+  border: 1px dashed var(--wz-border);
+  border-radius: var(--wz-radius-sm);
+  color: var(--wz-text-muted);
+  font-size: var(--wz-font-small);
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0.4rem 0.75rem;
+  margin-bottom: var(--wz-space-sm);
+  transition: all 0.15s;
+}
+
+.resultats-synthesis-show:hover {
+  border-color: var(--wz-primary);
+  color: var(--wz-primary);
+}
+
+.geo-sidebar-scroll--ponderation .resultats-synthesis-show {
+  font-size: 0.72rem;
+  padding: 0.35rem 0.65rem;
+  margin: 0 0 0.65rem;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-contrib-row {
+  border-radius: 8px;
+  border: 1px solid #e8ecf2;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-contrib-fill {
+  background: linear-gradient(90deg, #4A7FE0, #6B9CF0);
+}
+
+.geo-sidebar-scroll--ponderation .resultats-filter-bar {
+  padding: 0.65rem 0.85rem;
+  margin-bottom: 0.65rem;
+  border-radius: 12px;
+  border: 1.5px solid #e0e7f2;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-filter-label {
+  font-size: 0.78rem;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-filter-section {
+  padding: 0.85rem 1rem;
+  margin: 0 20px 0.85rem;
+  border-radius: var(--wz-radius-md, 12px);
+  border: 1px solid #e8ecf2;
+  background: #ffffff;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-filter-header {
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-filter-label {
+  font-size: 0.82rem;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-filter-label-value {
+  font-size: 0.78rem;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-filter-desc {
+  font-size: 0.7rem;
   margin-bottom: 0.5rem;
 }
 
+.geo-sidebar-scroll--ponderation .resultats-count-badge {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.6rem;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-simple-list {
+  gap: 4px;
+}
+
+.geo-sidebar-scroll--ponderation .ponderation-terrain-card {
+  margin-bottom: 0.6rem;
+  border-radius: 12px;
+  border: 1.5px solid #e0e7f2;
+}
+
+.geo-sidebar-scroll--ponderation .ponderation-terrain-card:hover {
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.04);
+}
+
+.geo-sidebar-scroll--ponderation .ponderation-terrain-card--expanded {
+  border-color: #93c5fd;
+  box-shadow: 0 4px 16px rgba(74, 127, 224, 0.08);
+}
+
 .geo-sidebar-scroll--ponderation .ponderation-terrain-name {
-  font-size: 0.85rem;
+  font-size: 0.88rem;
+  color: #1a2744;
 }
 
 .geo-sidebar-scroll--ponderation .ponderation-score-num {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
+}
+
+.geo-sidebar-scroll--ponderation .ponderation-score-pill {
+  color: #4A7FE0;
+}
+
+.geo-sidebar-scroll--ponderation .ponderation-progress-fill {
+  background: linear-gradient(90deg, #4A7FE0, #6B9CF0);
 }
 
 .geo-sidebar-scroll--ponderation .ponderation-contributions-table {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
+  border-radius: 8px;
 }
 
 .geo-sidebar-scroll--ponderation .ponderation-contributions-table th,
 .geo-sidebar-scroll--ponderation .ponderation-contributions-table td {
-  padding: 0.25rem 0.3rem;
+  padding: 0.3rem 0.35rem;
 }
 
 .geo-sidebar-scroll--ponderation .ponderation-terrain-actions {
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.45rem;
 }
 
 .geo-sidebar-scroll--ponderation .ponderation-terrain-actions .btn {
-  font-size: 0.75rem;
-  padding: 0.35rem 0.6rem;
+  font-size: 0.78rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: 8px;
 }
 
-/* step-actions buttons dans la sidebar */
+/* ── Step-actions buttons dans la sidebar ── */
+
 .geo-sidebar-scroll--ponderation .step-actions {
-  padding: 0.5rem 0;
-  gap: 0.5rem;
+  padding: 0.75px 20px 0.75rem;
+  gap: 0.6rem;
+  background: transparent;
+}
+
+.geo-sidebar-scroll--ponderation .step-actions .wz-btn {
+  font-size: 0.8rem;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+}
+
+.geo-sidebar-scroll--ponderation .step-actions .wz-btn--primary {
+  background: linear-gradient(135deg, #4A7FE0, #6B9CF0);
+  border: none;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(74, 127, 224, 0.25);
+}
+
+.geo-sidebar-scroll--ponderation .step-actions .wz-btn--primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #3a6fd0, #5a8ce0);
+  box-shadow: 0 4px 12px rgba(74, 127, 224, 0.35);
+  transform: translateY(-1px);
+}
+
+.geo-sidebar-scroll--ponderation .step-actions .wz-btn--secondary {
+  background: #ffffff;
+  border: 1.5px solid #d4dbe8;
+  color: #3d4f6f;
+}
+
+.geo-sidebar-scroll--ponderation .step-actions .wz-btn--secondary:hover:not(:disabled) {
+  border-color: #4A7FE0;
+  color: #4A7FE0;
+  background: rgba(74, 127, 224, 0.03);
 }
 
 .geo-sidebar-scroll--ponderation .step-actions .btn {
-  font-size: 0.8rem;
-  padding: 0.4rem 0.8rem;
+  font-size: 0.82rem;
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  font-weight: 600;
+  transition: all 0.2s ease;
 }
 
-/* Form alerts dans la sidebar */
+.geo-sidebar-scroll--ponderation .step-actions .btn-primary {
+  background: linear-gradient(135deg, #4A7FE0, #6B9CF0);
+  border: none;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(74, 127, 224, 0.25);
+}
+
+.geo-sidebar-scroll--ponderation .step-actions .btn-primary:hover {
+  background: linear-gradient(135deg, #3a6fd0, #5a8ce0);
+  box-shadow: 0 4px 12px rgba(74, 127, 224, 0.35);
+  transform: translateY(-1px);
+}
+
+.geo-sidebar-scroll--ponderation .step-actions .btn-secondary {
+  background: #ffffff;
+  border: 1.5px solid #d4dbe8;
+  color: #3d4f6f;
+}
+
+.geo-sidebar-scroll--ponderation .step-actions .btn-secondary:hover {
+  border-color: #4A7FE0;
+  color: #4A7FE0;
+  background: rgba(74, 127, 224, 0.03);
+}
+
+/* ── Form alerts dans la sidebar ── */
+
 .geo-sidebar-scroll--ponderation .form-alert {
+  font-size: 0.78rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  margin: 0 20px 0.75rem;
+}
+
+/* ── Loading dans la sidebar ── */
+
+.geo-sidebar-scroll--ponderation .ponderation-loading {
+  padding: 2rem 0;
+}
+
+/* ── AHP substep indicator dans la sidebar ── */
+
+.geo-sidebar-scroll--ponderation .ahp-substep-indicator {
+  margin-bottom: 1.25rem;
+  padding: 0 20px;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-substep-dot {
+  width: 28px;
+  height: 28px;
   font-size: 0.75rem;
-  padding: 0.4rem 0.6rem;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-substep-dot--active {
+  background: linear-gradient(135deg, #4A7FE0, #6B9CF0);
+  border-color: #4A7FE0;
+  box-shadow: 0 0 0 3px rgba(74, 127, 224, 0.15);
+}
+
+.geo-sidebar-scroll--ponderation .ahp-substep-dot--done {
+  background: linear-gradient(135deg, #34d399, #10b981);
+  border-color: #10b981;
 }

@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { t } from '../../i18n/index'
+import { WizardNextButton } from './WizardNextButton'
 
 interface RocStepProps {
   categorie: string
@@ -120,13 +121,11 @@ export function RocStep({
       </div>
 
       <div className="step-actions">
-        <button
-          type="button"
-          className="btn btn-primary"
+        <WizardNextButton
           onClick={() => onComplete(categorie, ordre)}
         >
           {t('ponderation.next')}
-        </button>
+        </WizardNextButton>
       </div>
     </div>
   )
