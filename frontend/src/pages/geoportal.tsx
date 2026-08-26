@@ -876,6 +876,8 @@ export function GeoportalPage(): React.JSX.Element {
   const [rentaSurfaceConstructible, setRentaSurfaceConstructible] = useState<SurfaceConstructibleResponse | null>(null)
   const [rentaSurfaceEquipement, setRentaSurfaceEquipement] = useState<SurfaceEquipementResponse | null>(null)
   const [rentaRing, setRentaRing] = useState<number[][]>([])
+  const [rentaAffectationsOpen, setRentaAffectationsOpen] = useState(false)
+  const [rentaSurfaceLoading, setRentaSurfaceLoading] = useState(false)
 
   useEffect(() => {
     if (!rentaModalOpen || !projetId) return
@@ -887,12 +889,15 @@ export function GeoportalPage(): React.JSX.Element {
   }, [rentaModalOpen, projetId])
 
   useEffect(() => {
-    if (!projetId) { setRentaSurfaceConstructible(null); return }
+    if (!projetId) { setRentaSurfaceConstructible(null); setRentaSurfaceLoading(false); return }
+    setRentaSurfaceConstructible(null)
+    setRentaAffectationsOpen(false)
+    setRentaSurfaceLoading(true)
     if (rentaTerrainId) {
       let cancelled = false
       void fetchSurfaceConstructible(projetId, rentaTerrainId)
-        .then((data) => { if (!cancelled) setRentaSurfaceConstructible(data) })
-        .catch(() => { if (!cancelled) setRentaSurfaceConstructible(null) })
+        .then((data) => { if (!cancelled) { setRentaSurfaceConstructible(data); setRentaSurfaceLoading(false) } })
+        .catch(() => { if (!cancelled) { setRentaSurfaceConstructible(null); setRentaSurfaceLoading(false) } })
       return () => { cancelled = true }
     }
     if (rentaRing.length >= 3) {
@@ -903,11 +908,12 @@ export function GeoportalPage(): React.JSX.Element {
         : Math.round(ringAreaM2(rentaRing))
       let cancelled = false
       void computeSurfaceConstructible(projetId, geom, surf)
-        .then((data) => { if (!cancelled) setRentaSurfaceConstructible(data) })
-        .catch(() => { if (!cancelled) setRentaSurfaceConstructible(null) })
+        .then((data) => { if (!cancelled) { setRentaSurfaceConstructible(data); setRentaSurfaceLoading(false) } })
+        .catch(() => { if (!cancelled) { setRentaSurfaceConstructible(null); setRentaSurfaceLoading(false) } })
       return () => { cancelled = true }
     }
     setRentaSurfaceConstructible(null)
+    setRentaSurfaceLoading(false)
   }, [rentaTerrainId, projetId, rentaRing, rentaParcelInfo])
 
   useEffect(() => {
@@ -922,15 +928,25 @@ export function GeoportalPage(): React.JSX.Element {
     if (rentaRing.length >= 3) {
       const closedRing = closeRing(rentaRing)
       const geom = { type: 'Polygon', coordinates: [closedRing] }
+      const surf = rentaParcelInfo?.superficie && rentaParcelInfo.superficie > 0
+        ? rentaParcelInfo.superficie
+        : Math.round(ringAreaM2(rentaRing))
       let cancelled = false
-      void computeSurfaceEquipement(projetId, geom)
+      void computeSurfaceEquipement(projetId, geom, surf)
         .then((data) => { if (!cancelled) setRentaSurfaceEquipement(data) })
         .catch(() => { if (!cancelled) setRentaSurfaceEquipement(null) })
       return () => { cancelled = true }
     }
     setRentaSurfaceEquipement(null)
-  }, [rentaTerrainId, projetId, rentaRing])
-  
+  }, [rentaTerrainId, projetId, rentaRing, rentaParcelInfo])
+
+  // Uncheck hasEquipement automatically if the terrain has no equipment intersection
+  useEffect(() => {
+    if (!rentaSurfaceEquipement || rentaSurfaceEquipement.surface_equipement === 0) {
+      setRentaForm((f) => ({ ...f, hasEquipement: false }))
+    }
+  }, [rentaSurfaceEquipement])
+
   const openPopupRef = useRef<any>(null)
   const popupActionHandlerRef = useRef<(e: MouseEvent) => void>(() => {})
   popupActionHandlerRef.current = (e: MouseEvent) => {
@@ -981,6 +997,10 @@ export function GeoportalPage(): React.JSX.Element {
       })
       setRentaResult(null)
       setRentaError(null)
+      setRentaSurfaceConstructible(null)
+      setRentaSurfaceEquipement(null)
+      setRentaAffectationsOpen(false)
+      setRentaSurfaceLoading(true)
       setRentaNote(null)
       setRentaModalOpen(true)
     }
@@ -2934,14 +2954,87 @@ const bindPopupActionButtons = (popup: any): void => {
                     </div>
                     <div className="geo-terrain-calc-row">
                       <span>Surface constructible</span>
-                      <strong>{rentaSurfaceConstructible ? `${rentaSurfaceConstructible.surface_constructible.toLocaleString('fr-FR')} m²` : rentaTerrainId ? '...' : '—'}</strong>
+                      <strong>{rentaSurfaceConstructible ? `${rentaSurfaceConstructible.surface_constructible.toLocaleString('fr-FR')} m²` : rentaSurfaceLoading ? 'Calcul en cours...' : '—'}</strong>
                     </div>
-                    {rentaSurfaceConstructible && (
+                    {rentaSurfaceConstructible ? (
                       <div className="geo-terrain-calc-row">
                         <span>Taux de constructibilit&eacute;</span>
                         <strong className={rentaSurfaceConstructible.taux >= 80 ? 'text-success' : rentaSurfaceConstructible.taux >= 50 ? '' : 'text-error'}>
                           {rentaSurfaceConstructible.taux}%
                         </strong>
+                      </div>
+                    ) : rentaSurfaceLoading ? (
+                      <div className="geo-terrain-calc-row">
+                        <span>Taux de constructibilit&eacute;</span>
+                        <strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <svg width="16" height="16" viewBox="0 0 16 16" style={{ animation: 'spin 0.8s linear infinite' }}>
+                            <circle cx="8" cy="8" r="6" fill="none" stroke="#d1d5db" strokeWidth="2" />
+                            <path d="M8 2a6 6 0 0 1 6 6" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" />
+                          </svg>
+                        </strong>
+                      </div>
+                    ) : null}
+                    {rentaSurfaceConstructible && rentaSurfaceConstructible.affectations.length > 0 && (
+                      <div style={{ gridColumn: '1 / -1', marginTop: 4 }}>
+                        <button
+                          type="button"
+                          onClick={() => setRentaAffectationsOpen((v) => !v)}
+                          style={{
+                            background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer',
+                            fontSize: '0.82rem', fontWeight: 500, padding: '4px 0', display: 'flex', alignItems: 'center', gap: 4,
+                          }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ transform: rentaAffectationsOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>
+                            <path d="M4.5 2.5L8 6L4.5 9.5" />
+                          </svg>
+                          D&eacute;tail des affectations
+                        </button>
+                        {rentaAffectationsOpen && (
+                          <div style={{ marginTop: 6, background: '#f9fafb', borderRadius: 6, padding: '6px 0', fontSize: '0.8rem', maxHeight: 220, overflowY: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                              <thead>
+                                <tr style={{ color: '#6b7280', fontWeight: 500, borderBottom: '1px solid #e5e7eb' }}>
+                                  <td style={{ padding: '4px 10px' }}>Désignation</td>
+                                  <td style={{ padding: '4px 10px' }}>Type de construction</td>
+                                  <td style={{ padding: '4px 10px', textAlign: 'right' }}>Type</td>
+                                  <td style={{ padding: '4px 10px', textAlign: 'right' }}>Surface</td>
+                                  <td style={{ padding: '4px 10px', textAlign: 'right' }}>% terrain</td>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {rentaSurfaceConstructible.affectations
+                                  .filter((a) => a.surface_m2 > 0)
+                                  .sort((a, b) => b.surface_m2 - a.surface_m2)
+                                  .map((a, i) => {
+                                    const pct = rentaParcelInfo?.superficie ? Math.round(a.surface_m2 / rentaParcelInfo.superficie * 10000) / 100 : 0
+                                    return (
+                                      <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                        <td style={{ padding: '4px 10px', fontWeight: 500 }}>{a.designation || '—'}</td>
+                                        <td style={{ padding: '4px 10px', fontSize: '0.78rem', color: '#6b7280' }}>
+                                          {a.type_construction || '—'}
+                                        </td>
+                                        <td style={{ padding: '4px 10px', textAlign: 'right' }}>
+                                          <span style={{
+                                            fontSize: '0.72rem', padding: '1px 6px', borderRadius: 4,
+                                            background: a.type === 'constructible' ? '#dcfce7' : '#fee2e2',
+                                            color: a.type === 'constructible' ? '#166534' : '#991b1b',
+                                          }}>
+                                            {a.type === 'constructible' ? 'Constr.' : 'Non constr.'}
+                                          </span>
+                                        </td>
+                                        <td style={{ padding: '4px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                                          {a.surface_m2.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m&sup2;
+                                        </td>
+                                        <td style={{ padding: '4px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                                          {pct.toLocaleString('fr-FR', { maximumFractionDigits: 2 })}%
+                                        </td>
+                                      </tr>
+                                    )
+                                  })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -2993,8 +3086,25 @@ const bindPopupActionButtons = (popup: any): void => {
                     <input type="checkbox" checked={rentaForm.hasBureau} onChange={(e) => setRentaForm((f) => ({ ...f, hasBureau: e.target.checked }))} />
                     {t('projects.dest_bureau')}
                   </label>
-                  <label className={`cp-dest-toggle${rentaForm.hasEquipement ? ' active' : ''}`} style={{ fontSize: '0.85rem' }}>
-                    <input type="checkbox" checked={rentaForm.hasEquipement} onChange={(e) => setRentaForm((f) => ({ ...f, hasEquipement: e.target.checked }))} />
+                  {/* Équipement toggle — désactivé si aucune intersection */}
+                  <label
+                    className={`cp-dest-toggle${rentaForm.hasEquipement ? ' active' : ''}${
+                      (!rentaSurfaceEquipement || rentaSurfaceEquipement.surface_equipement === 0) ? ' cp-dest-toggle--disabled' : ''
+                    }`}
+                    style={{ fontSize: '0.85rem' }}
+                    title={(!rentaSurfaceEquipement || rentaSurfaceEquipement.surface_equipement === 0)
+                      ? 'Ce terrain ne couvre aucune zone d\'équipement'
+                      : undefined}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={rentaForm.hasEquipement}
+                      disabled={!rentaSurfaceEquipement || rentaSurfaceEquipement.surface_equipement === 0}
+                      onChange={(e) => {
+                        if (!rentaSurfaceEquipement || rentaSurfaceEquipement.surface_equipement === 0) return
+                        setRentaForm((f) => ({ ...f, hasEquipement: e.target.checked }))
+                      }}
+                    />
                     {t('projects.dest_equipement')}
                   </label>
                 </div>
@@ -3031,14 +3141,9 @@ const bindPopupActionButtons = (popup: any): void => {
                     <div className="form-field">
                       <label className="form-label">Taux des équipements</label>
                       <div className="modal-input" style={{ background: '#f3f4f6', cursor: 'default' }}>
-                        {(() => {
-                          const surfBrute = Number(projet?.surface_souhaitee ?? 0)
-                          const cosVal = numRenta(rentaForm.cos) ?? 0
-                          const surfaceVendable = surfBrute * cosVal * 0.9
-                          const surfEq = rentaSurfaceEquipement?.surface_equipement ?? 0
-                          const pct = surfaceVendable > 0 && surfEq > 0 ? Math.round(surfEq / surfaceVendable * 10000) / 100 : 0
-                          return `${pct.toLocaleString('fr-FR', { maximumFractionDigits: 2 })}%`
-                        })()}
+                        {rentaSurfaceEquipement
+                          ? `${Number(rentaSurfaceEquipement.taux_equipement).toLocaleString('fr-FR', { maximumFractionDigits: 2 })}%`
+                          : '0%'}
                       </div>
                     </div>
                   </div>
@@ -3302,6 +3407,10 @@ const bindPopupActionButtons = (popup: any): void => {
                             setRentaTerrainNom(tr.nom)
                             setRentaParcelInfo({ nom: tr.nom, superficie: Number(tr.superficie) || 0, lat: Number(tr.lat) || 0, lng: Number(tr.lng) || 0, ref: tr.num_titre_foncier || tr.num_parcelle || '' })
                             setRentaResult(tr.rentabilite_json as Rentabilite | null)
+                            setRentaSurfaceConstructible(null)
+                            setRentaSurfaceEquipement(null)
+                            setRentaAffectationsOpen(false)
+                            setRentaSurfaceLoading(true)
                           }}
                         >
                           <div className="renta-terrain-card-top">

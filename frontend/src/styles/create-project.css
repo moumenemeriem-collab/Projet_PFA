@@ -429,6 +429,19 @@
   border-color: var(--primary);
 }
 
+.cp-dest-toggle--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: auto;
+  border-color: var(--border-input) !important;
+  background: var(--input-bg) !important;
+  color: var(--text-muted) !important;
+}
+
+.cp-dest-toggle--disabled:hover {
+  border-color: var(--border-input) !important;
+}
+
 /* Repartition row */
 .cp-repart-row {
   display: flex;

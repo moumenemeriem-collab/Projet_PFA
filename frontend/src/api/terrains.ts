@@ -186,6 +186,7 @@ export interface AffectationSurface {
   designation: string
   surface_m2: number
   type: 'constructible' | 'non_constructible' | 'parent'
+  type_construction: string | null
 }
 
 export interface SurfaceConstructibleResponse {
@@ -211,6 +212,7 @@ export async function computeSurfaceConstructible(projetId: number, geometry: Re
 
 export interface SurfaceEquipementResponse {
   surface_equipement: number
+  taux_equipement: number
 }
 
 export async function fetchSurfaceEquipement(projetId: number, terrainId: number): Promise<SurfaceEquipementResponse> {
@@ -218,10 +220,10 @@ export async function fetchSurfaceEquipement(projetId: number, terrainId: number
   return parseResponse<SurfaceEquipementResponse>(res)
 }
 
-export async function computeSurfaceEquipement(projetId: number, geometry: Record<string, unknown>): Promise<SurfaceEquipementResponse> {
+export async function computeSurfaceEquipement(projetId: number, geometry: Record<string, unknown>, superficie = 0): Promise<SurfaceEquipementResponse> {
   const res = await apiFetch(`/api/projets/${projetId}/surface-equipement/`, {
     method: 'POST',
-    body: JSON.stringify({ geometry }),
+    body: JSON.stringify({ geometry, superficie }),
   })
   return parseResponse<SurfaceEquipementResponse>(res)
 }

@@ -748,14 +748,14 @@ def _is_constructible_designation(designation: str) -> bool:
 
 def _is_ignorable_designation(designation: str) -> bool:
     d = (designation or '').strip().lower()
-    return not d or d in IGNORABLE_DESIGNATIONS
+    return not d or d.startswith('ta') or d in IGNORABLE_DESIGNATIONS
 
 
 class SurfaceConstructibleView(APIView):
     authentication_classes = [JWTOptionalAuthentication]
     permission_classes = [AllowAny]
 
-    EQUIPEMENT_DESIGNATIONS = ['ZPI', 'ZS', 'IN2', 'IN3', 'INS', 'DS1', 'D1', 'D5']
+    EQUIPEMENT_DESIGNATIONS_RE = r'^(A|P|E|S|SP|M|C|G)\d{2,}'
 
     def get(self, request, projet_pk: int, terrain_pk: int):
         try:
@@ -793,7 +793,7 @@ class SurfaceConstructibleView(APIView):
     @staticmethod
     def _compute(terrain_wkt: str, terrain_superficie: float):
         sql = """
-            SELECT pa.designation,
+            SELECT pa.designation, pa.type_construction,
                 ST_Area(
                     ST_Intersection(
                         ST_SetSRID(ST_GeomFromText(%s), 4326),
@@ -820,21 +820,22 @@ class SurfaceConstructibleView(APIView):
 
         non_constr = 0.0
         affectations = []
-        for designation, area_m2 in rows:
+        for designation, type_construction, area_m2 in rows:
             area = round(float(area_m2), 2)
             if area <= 0:
                 continue
             raw_d = (designation or '').strip()
+            raw_tc = (type_construction or '').strip() or None
             if _is_ignorable_designation(raw_d):
                 # Les affectations non définies ou nulles n'ont aucun impact
                 continue
 
             if _is_constructible_designation(raw_d):
-                affectations.append({'designation': raw_d, 'surface_m2': area, 'type': 'constructible'})
+                affectations.append({'designation': raw_d, 'surface_m2': area, 'type': 'constructible', 'type_construction': raw_tc})
             else:
                 # Tout le reste est non constructible et soustrait de la surface constructible
                 non_constr += area
-                affectations.append({'designation': raw_d, 'surface_m2': area, 'type': 'non_constructible'})
+                affectations.append({'designation': raw_d, 'surface_m2': area, 'type': 'non_constructible', 'type_construction': raw_tc})
 
         surface_constructible = max(0.0, terrain_superficie - non_constr)
         taux = round(surface_constructible / terrain_superficie * 100, 1) if terrain_superficie > 0 else 0.0
@@ -848,10 +849,19 @@ class SurfaceConstructibleView(APIView):
         })
 
     @staticmethod
-    def _compute_equipement(terrain_wkt: str):
-        """Calcule la surface des zones d'équipement (ZPI, ZS, IN2, ...) intersectant le terrain."""
-        sql = """
-            SELECT pa.designation,
+    def _compute_equipement(terrain_wkt: str, terrain_superficie: float = 0.0) -> dict:
+        """Calcule la surface des zones d'équipement intersectant le terrain.
+
+        Recherche l'intersection avec :
+          - couche_plan_amenagement : zones PA à vocation équipement
+            (Administrations A01-A68, Services publics P01-P97, Enseignement E01-E110,
+             Santé S01-S33, Sport SP01-SP41, Mosquées M01-M61, Cimetières C01-C07,
+             Équipements privés G01-G166)
+          - couche_equipements_publics : équipements publics réels (école, hôpital, …)
+        Retourne un dict {surface_equipement, taux_equipement}.
+        """
+        sql_pa = """
+            SELECT
                 ST_Area(
                     ST_Intersection(
                         ST_SetSRID(ST_GeomFromText(%s), 4326),
@@ -860,21 +870,46 @@ class SurfaceConstructibleView(APIView):
                 ) as intersection_area_m2
             FROM couche_plan_amenagement pa
             WHERE pa.designation IS NOT NULL
-            AND TRIM(pa.designation) IN ('ZPI', 'ZS', 'IN2', 'IN3', 'INS', 'DS1', 'D1', 'D5')
+            AND UPPER(TRIM(pa.designation)) ~ '^(A|P|E|S|SP|M|C|G)[0-9]{2,}'
             AND ST_Intersects(
                 ST_SetSRID(ST_GeomFromText(%s), 4326),
                 ST_SetSRID(ST_GeomFromGeoJSON(pa.geometry::text), 4326)
             )
         """
+        sql_eq = """
+            SELECT
+                ST_Area(
+                    ST_Intersection(
+                        ST_SetSRID(ST_GeomFromText(%s), 4326),
+                        ST_SetSRID(ST_GeomFromGeoJSON(ep.geometry::text), 4326)
+                    )::geography
+                ) as intersection_area_m2
+            FROM couche_equipements_publics ep
+            WHERE ep.geometry IS NOT NULL
+            AND ST_Intersects(
+                ST_SetSRID(ST_GeomFromText(%s), 4326),
+                ST_SetSRID(ST_GeomFromGeoJSON(ep.geometry::text), 4326)
+            )
+        """
+        total = 0.0
         try:
             with connection.cursor() as cur:
-                cur.execute(sql, [terrain_wkt, terrain_wkt])
-                rows = cur.fetchall()
-        except Exception as exc:
-            return 0.0
+                cur.execute(sql_pa, [terrain_wkt, terrain_wkt])
+                for (area,) in cur.fetchall():
+                    v = float(area)
+                    if v > 0:
+                        total += v
+                cur.execute(sql_eq, [terrain_wkt, terrain_wkt])
+                for (area,) in cur.fetchall():
+                    v = float(area)
+                    if v > 0:
+                        total += v
+        except Exception:
+            pass
 
-        total = sum(float(area) for _, area in rows if float(area) > 0)
-        return round(total, 2)
+        surface = round(total, 2)
+        taux = round(surface / terrain_superficie * 100, 2) if terrain_superficie > 0 else 0.0
+        return {'surface_equipement': surface, 'taux_equipement': taux}
 
 
 class SurfaceEquipementView(APIView):
@@ -888,12 +923,14 @@ class SurfaceEquipementView(APIView):
         except Terrain.DoesNotExist:
             return Response({'detail': 'Terrain introuvable.'}, status=status.HTTP_404_NOT_FOUND)
         if not terrain.geometry:
-            return Response({'surface_equipement': 0})
-        surface = SurfaceConstructibleView._compute_equipement(terrain.geometry.wkt)
-        return Response({'surface_equipement': surface})
+            return Response({'surface_equipement': 0, 'taux_equipement': 0})
+        superficie = float(terrain.superficie) if terrain.superficie else 0.0
+        result = SurfaceConstructibleView._compute_equipement(terrain.geometry.wkt, superficie)
+        return Response(result)
 
     def post(self, request, projet_pk: int):
         geometry = request.data.get('geometry')
+        superficie = float(request.data.get('superficie', 0) or 0)
         if not geometry:
             return Response({'detail': 'geometry requise.'}, status=status.HTTP_400_BAD_REQUEST)
         from django.contrib.gis.geos import GEOSException, fromstr
@@ -901,8 +938,18 @@ class SurfaceEquipementView(APIView):
             geom = fromstr(json.dumps(geometry)) if isinstance(geometry, dict) else fromstr(geometry)
         except (GEOSException, TypeError, ValueError) as exc:
             return Response({'detail': f'Géométrie invalide : {exc}'}, status=status.HTTP_400_BAD_REQUEST)
-        surface = SurfaceConstructibleView._compute_equipement(geom.wkt)
-        return Response({'surface_equipement': surface})
+        if superficie <= 0:
+            try:
+                from pyproj import Transformer
+                from shapely.geometry import Polygon
+                transformer = Transformer.from_crs('EPSG:4326', 'EPSG:32629', always_xy=True)
+                coords = geom.coords
+                projected = Polygon([(transformer.transform(x, y)[0], transformer.transform(x, y)[1]) for x, y in coords[0]])
+                superficie = round(projected.area, 2)
+            except Exception:
+                superficie = 0.0
+        result = SurfaceConstructibleView._compute_equipement(geom.wkt, superficie)
+        return Response(result)
 
 
 class CoucheList(APIView):
@@ -995,6 +1042,24 @@ def importer_couche(request, pk):
     from django.db import connection
     try:
         with connection.cursor() as cur:
+            cur.execute(
+                "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = %s)",
+                [table_liee],
+            )
+            table_exists = cur.fetchone()[0]
+
+            if not table_exists:
+                col_defs = ['"id" BIGSERIAL PRIMARY KEY', '"geometry" JSONB NOT NULL']
+                for attr in (couche.attributs or []):
+                    attr_name = attr.get('nom', '')
+                    attr_type = attr.get('type', 'string')
+                    if attr_type == 'number':
+                        col_defs.append(f'"{attr_name}" DOUBLE PRECISION')
+                    else:
+                        col_defs.append(f'"{attr_name}" TEXT')
+                create_sql = f'CREATE TABLE IF NOT EXISTS "{table_liee}" ({", ".join(col_defs)})'
+                cur.execute(create_sql)
+
             cur.execute(f'TRUNCATE TABLE "{table_liee}" RESTART IDENTITY CASCADE')
 
             for feature in features:
