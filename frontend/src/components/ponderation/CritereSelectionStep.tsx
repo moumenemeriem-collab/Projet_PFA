@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { t } from '../../i18n/index'
+import { WizardNextButton } from './WizardNextButton'
 
 interface SelectionsInitiales {
   accessibilite: string[]
@@ -145,14 +146,12 @@ export function CritereSelectionStep({ initial, onComplete }: CritereSelectionSt
       </div>
 
       <div className="step-actions">
-        <button
-          type="button"
-          className="btn btn-primary"
+        <WizardNextButton
           disabled={!isValid}
           onClick={() => onComplete(selections)}
         >
           {t('ponderation.next')}
-        </button>
+        </WizardNextButton>
       </div>
     </div>
   )
