@@ -74,6 +74,87 @@ export async function fetchAnalyseResultats(
   return parseResponse<{ total: number; resultats: ResultatAnalyse[] }>(res)
 }
 
+// ---------------------------------------------------------------------------
+// Analyse pondérée AHP+ROC
+// ---------------------------------------------------------------------------
+
+export interface PonderationRequest {
+  matrice_ahp: [number, number]
+  ordre_categories: string[]
+  ordres_roc: Record<string, string[]>
+  selections_criteres: Record<string, string | string[]>
+  preferences_localisation: Record<string, string>
+  preferences_pente: string[]
+  seuil: number
+}
+
+export interface Contribution {
+  critere: string
+  poids: number
+  score: number
+  contribution: number
+}
+
+export interface TerrainPondere {
+  id: number
+  nom: string
+  superficie: number
+  lat: number
+  lng: number
+  reference_cadastrale?: string
+  indice?: string
+  consistance?: string
+  score_final: number
+  rang: number
+  contributions: Contribution[]
+  distances: Record<string, number | null>
+  zone_localisation: string
+  pente: number | null
+  altitude: number | null
+}
+
+export interface PonderationResponse {
+  total: number
+  resultats: TerrainPondere[]
+  poids_globaux: Record<string, number>
+  poids_ahp: Record<string, number>
+  CR: number
+  coherent: boolean
+}
+
+export interface PonderationPreference {
+  id: number
+  projet: number
+  matrice_ahp: [number, number]
+  ordre_categories: string[]
+  ordres_roc: Record<string, string[]>
+  selections_criteres: Record<string, string[]>
+  preferences_localisation: Record<string, string>
+  preferences_pente: string[]
+  seuil: number
+  date_creation: string
+  date_mise_a_jour: string
+}
+
+export async function createAnalysePondere(
+  projetId: number,
+  payload: PonderationRequest,
+): Promise<PonderationResponse> {
+  const res = await apiFetch(`/api/projets/${projetId}/analyser-pondere/`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }, 120000)
+  return parseResponse<PonderationResponse>(res)
+}
+
+export async function fetchPonderationPreferences(
+  projetId: number,
+): Promise<PonderationPreference | null> {
+  const res = await apiFetch(`/api/projets/${projetId}/ponderation-preferences/`)
+  if (res.status === 204 || res.status === 404) return null
+  return parseResponse<PonderationPreference>(res)
+}
+
 async function parseResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))

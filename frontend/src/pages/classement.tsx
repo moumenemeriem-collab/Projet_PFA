@@ -516,7 +516,10 @@ export function ClassementPage(): React.JSX.Element {
             <button type="button" className="btn btn-secondary btn-action" disabled={analyses.length === 0} onClick={() => setHistoryOpen(true)}>
               {icons.database} {t('ranking.analysis_history')}
             </button>
-            <Link to={`/projets/${projet.id}/classement/ajouter`} className="btn btn-primary btn-action">
+            <Link to={`/projets/${projet.id}/ponderation`} className="btn btn-primary btn-action">
+              {icons.layers} {t('ranking.launch_ponderation')}
+            </Link>
+            <Link to={`/projets/${projet.id}/classement/ajouter`} className="btn btn-secondary btn-action">
               {icons.plus} {t('ranking.new_analysis')}
             </Link>
           </div>

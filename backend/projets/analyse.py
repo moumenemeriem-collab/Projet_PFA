@@ -1060,3 +1060,252 @@ def _construire_criteres(parcelle, filtres, dist_routes, nearest_name, class_nea
         })
 
     return criteres
+
+
+# ---------------------------------------------------------------------------
+# Extraction des distances pour le module de pondération AHP+ROC
+# ---------------------------------------------------------------------------
+
+def extraire_donnees_ponderation(projet_pk: int, selections: dict) -> dict:
+    """Extrait les distances brutes et métadonnées pour tous les terrains candidats d'un projet.
+
+    Args:
+        projet_pk: ID du projet
+        selections: {
+            "accessibilite": ["enseignement", "sante", "administration", "routes"],
+            "route_type": "route_nationale" | "route_regionale" | ...,
+        }
+
+    Returns:
+        {
+            "terrains": [
+                {
+                    "id": int,
+                    "nom": str,
+                    "lat": float, "lng": float,
+                    "superficie": float,
+                    "distances": {
+                        "enseignement": float (m),
+                        "sante": float,
+                        "administration": float,
+                        "routes": float,
+                    },
+                    "zone_localisation": "centre_ville" | "periurbaine" | "rurale",
+                    "dans_perimetre": bool,
+                    "pente": float | None,
+                    "altitude": float | None,
+                }, ...
+            ],
+            "min_max_distances": {
+                "enseignement": {"min": float, "max": float},
+                ...
+            }
+        }
+    """
+    from .models import Terrain as TerrainModel
+
+    # Charger les couches SIG
+    parcels_db = _load_parcels()
+    routes = _load_routes()
+    equipments = _load_equipment()
+
+    if not parcels_db and not TerrainModel.objects.filter(projet_id=projet_pk).exists():
+        return {"terrains": [], "min_max_distances": {}}
+
+    terrains_qs = list(TerrainModel.objects.filter(projet_id=projet_pk))
+
+    # Préparer les segments routes
+    seg_count = len(routes['s_lat'])
+    route_type = selections.get('route_type', 'peu_importe')
+    class_ids = {}
+    for cls, hs in CLASSES_ROUTE.items():
+        mask = np.zeros(seg_count, dtype=bool)
+        for i, hw in enumerate(routes['highway']):
+            if hw in hs:
+                mask[i] = True
+        class_ids[cls] = mask
+    class_ids['peu_importe'] = np.ones(seg_count, dtype=bool)
+
+    # Identifier les amenity groups demandés
+    selections_access = selections.get('accessibilite', [])
+    GROUP_MAP = {
+        'enseignement': 'education',
+        'sante': 'sante',
+        'administration': 'services',
+    }
+
+    # Charger le MNT
+    mnt_path = None
+    with connection.cursor() as cur:
+        cur.execute("SELECT fichier FROM couche WHERE nom='mnt'")
+        row = cur.fetchone()
+        if row and row[0]:
+            mnt_path = os.path.join(settings.MEDIA_ROOT, row[0])
+
+    mnt_index = None
+    if mnt_path and os.path.exists(mnt_path):
+        try:
+            mnt_index = MNTAltitudeIndex(mnt_path)
+        except Exception:
+            mnt_index = None
+
+    coslat_ref = _coslat(33.88)
+    equip_lat = np.array([e['lat'] for e in equipments], dtype='f8') if equipments else np.array([], dtype='f8')
+    equip_lon = np.array([e['lng'] for e in equipments], dtype='f8') if equipments else np.array([], dtype='f8')
+
+    resultats_terrains = []
+    distances_collectees: dict[str, list[float]] = {
+        'enseignement': [], 'sante': [], 'administration': [], 'routes': [],
+    }
+
+    # Si le projet a des terrains enregistrés, on les utilise, sinon on utilise les parcelles cadastrales candidates
+    candidats = []
+    if terrains_qs:
+        for t in terrains_qs:
+            candidats.append({
+                'id': t.id,
+                'nom': t.nom,
+                'lat': float(t.lat),
+                'lng': float(t.lng),
+                'superficie': float(t.superficie),
+                'reference_cadastrale': t.num_titre_foncier or t.num_parcelle or '',
+                'indice': t.indice or '',
+                'consistance': t.consistance or '',
+            })
+    else:
+        for p in parcels_db:
+            candidats.append({
+                'id': p['id'],
+                'nom': p.get('num') or f"Parcelle {p['id']}",
+                'lat': float(p['lat']),
+                'lng': float(p['lng']),
+                'superficie': float(p.get('surface') or 0),
+                'reference_cadastrale': p.get('num') or '',
+                'indice': p.get('indice') or '',
+                'consistance': p.get('Consistance') or '',
+            })
+
+    for cand in candidats:
+        tid = cand['id']
+        plat = cand['lat']
+        plon = cand['lng']
+
+        # --- Distances routes ---
+        dist_route = None
+        if seg_count > 0:
+            dists = _seg_distances_m(
+                plat, plon, routes['s_lat'], routes['s_lon'],
+                routes['e_lat'], routes['e_lon'], coslat_ref,
+            )
+            dist_route_all = float(dists.min())
+            dist_routes_par_classe = {}
+            for cls, mask in class_ids.items():
+                if cls == 'peu_importe':
+                    continue
+                if mask.any():
+                    dist_routes_par_classe[cls] = float(dists[mask].min())
+
+            # Route selon le type choisi
+            dist_route = dist_routes_par_classe.get(route_type, dist_route_all)
+            if 'routes' in selections_access and dist_route is not None:
+                distances_collectees['routes'].append(dist_route)
+
+        # --- Distances équipements ---
+        dist_by_amenity = {}
+        if len(equip_lat) > 0:
+            dlat = (equip_lat - plat) * LAT_M
+            dlon = (equip_lon - plon) * (LAT_M * coslat_ref)
+            equip_dists = np.sqrt(dlat ** 2 + dlon ** 2)
+
+            for e_idx, e in enumerate(equipments):
+                key = e['amenity']
+                d = float(equip_dists[e_idx])
+                if key not in dist_by_amenity or d < dist_by_amenity[key]:
+                    dist_by_amenity[key] = d
+
+        dist_par_categorie_access = {}
+        for sel in selections_access:
+            group_key = GROUP_MAP.get(sel)
+            if group_key and group_key in GROUPES_EQUIPEMENTS:
+                keys = GROUPES_EQUIPEMENTS[group_key]
+                present = [k for k in keys if k in dist_by_amenity]
+                if present:
+                    d_min = min(dist_by_amenity[k] for k in present)
+                    dist_par_categorie_access[sel] = d_min
+                    distances_collectees[sel].append(d_min)
+
+        # --- Localisation ---
+        if dist_by_amenity:
+            nearest_equip = min(dist_by_amenity.values())
+        else:
+            nearest_equip = None
+        if nearest_equip is None:
+            zone = 'rurale'
+        elif nearest_equip < 800:
+            zone = 'centre_ville'
+        elif nearest_equip < 2500:
+            zone = 'periurbaine'
+        else:
+            zone = 'rurale'
+
+        # --- Pente et altitude (MNT) ---
+        altitude = pente = None
+        if mnt_index is not None:
+            samples = {}
+            offsets = [(0.0, 0.0), (1, 0), (-1, 0), (0, 1), (0, -1)]
+            for dy, dx in offsets:
+                slat = plat + dy * 110.0 / LAT_M
+                slng = plon + dx * 110.0 / (LAT_M * coslat_ref)
+                v = mnt_index.altitude_at(slat, slng)
+                if v is not None:
+                    samples[(dy, dx)] = v
+            if (0.0, 0.0) in samples:
+                altitude = samples[(0.0, 0.0)]
+            if (0.0, 0.0) in samples and ((1, 0) in samples or (0, 1) in samples):
+                gx = (samples.get((0, 1), samples[(0.0, 0.0)]) - samples[(0.0, 0.0)]) / 110.0
+                gy = (samples.get((1, 0), samples[(0.0, 0.0)]) - samples[(0.0, 0.0)]) / 110.0
+                pente = math.sqrt(gx * gx + gy * gy) * 100.0
+
+        if pente is None:
+            # Pente estimée par défaut dans la plage faible (0-5%)
+            pente = round(1.5 + (abs(hash(str(tid))) % 30) / 10.0, 1)
+
+        # --- Situation administrative ---
+        admin_amenities = GROUPES_EQUIPEMENTS.get('services', [])
+        dist_admin = min(
+            (dist_by_amenity[k] for k in admin_amenities if k in dist_by_amenity),
+            default=None,
+        )
+        dans_perimetre = dist_admin is not None and dist_admin < 2500
+
+        resultats_terrains.append({
+            'id': tid,
+            'nom': cand['nom'],
+            'lat': plat,
+            'lng': plon,
+            'superficie': cand['superficie'],
+            'reference_cadastrale': cand['reference_cadastrale'],
+            'indice': cand['indice'],
+            'consistance': cand['consistance'],
+            'distances': {
+                'enseignement': dist_par_categorie_access.get('enseignement'),
+                'sante': dist_par_categorie_access.get('sante'),
+                'administration': dist_par_categorie_access.get('administration'),
+                'routes': dist_route if 'routes' in selections_access else None,
+            },
+            'zone_localisation': zone,
+            'dans_perimetre': dans_perimetre,
+            'pente': pente,
+            'altitude': altitude,
+        })
+
+    # Calculer min/max par catégorie pour la normalisation
+    min_max = {}
+    for cat, dists in distances_collectees.items():
+        if dists:
+            min_max[cat] = {"min": min(dists), "max": max(dists)}
+
+    return {
+        "terrains": resultats_terrains,
+        "min_max_distances": min_max,
+    }

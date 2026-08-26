@@ -1,7 +1,7 @@
 from django.contrib.gis.geos import GEOSGeometry
 from rest_framework import serializers
 
-from .models import Analyse, Couche, Projet, ResultatAnalyse, Terrain, TypeProjet
+from .models import Analyse, Couche, PonderationPreference, Projet, ResultatAnalyse, Terrain, TypeProjet
 from .profitability import calculer_rentabilite_projet
 
 
@@ -415,3 +415,49 @@ class AnalyseCreateSerializer(serializers.Serializer):
             for p in parcelles
         ])
         return analyse
+
+
+# ---------------------------------------------------------------------------
+# Pondération AHP+ROC
+# ---------------------------------------------------------------------------
+
+class PonderationPreferenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PonderationPreference
+        fields = [
+            'id', 'projet', 'matrice_ahp', 'ordre_categories', 'ordres_roc', 'selections_criteres',
+            'preferences_localisation', 'preferences_pente', 'seuil',
+            'date_creation', 'date_mise_a_jour',
+        ]
+        read_only_fields = ['id', 'date_creation', 'date_mise_a_jour']
+
+
+class AnalysePondereeSerializer(serializers.Serializer):
+    """Serializer pour la requête d'analyse pondérée AHP+ROC."""
+
+    matrice_ahp = serializers.ListField(
+        child=serializers.FloatField(min_value=0.01, max_value=9.0),
+        min_length=2, max_length=3,
+        help_text='[a12, a23] intensités consécutives (échelle de Saaty)',
+    )
+    ordre_categories = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        default=list,
+        min_length=0, max_length=3,
+        help_text='[cat_rang1, cat_rang2, cat_rang3] ordre des catégories',
+    )
+    ordres_roc = serializers.DictField(
+        help_text='{"accessibilite": ["enseignement", "routes"], "positionnement": [...]}',
+    )
+    selections_criteres = serializers.DictField(
+        help_text='{"accessibilite": ["enseignement", "routes"], "route_type": "route_nationale", ...}',
+    )
+    preferences_localisation = serializers.DictField(
+        required=False, default=dict,
+    )
+    preferences_pente = serializers.ListField(
+        child=serializers.CharField(),
+        required=False, default=list,
+    )
+    seuil = serializers.FloatField(required=False, default=0.0, min_value=0, max_value=1)

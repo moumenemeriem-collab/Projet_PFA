@@ -340,3 +340,49 @@ class ImportCouche(models.Model):
 
     def __str__(self):
         return f'{self.couche.nom} - {self.date_import:%Y-%m-%d %H:%M}'
+
+
+class PonderationPreference(models.Model):
+    """Préférences de pondération AHP+ROC d'un utilisateur pour un projet."""
+
+    projet = models.ForeignKey(
+        Projet,
+        on_delete=models.CASCADE,
+        related_name='ponderation_preferences',
+        db_column='projet_id',
+    )
+    matrice_ahp = models.JSONField(
+        default=list,
+        help_text='2 intensités consécutives [a12, a23] (a13 = a12×a23 déduit)',
+    )
+    ordre_categories = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='[cat_rang1, cat_rang2, cat_rang3] ordre choisi par l\'utilisateur',
+    )
+    ordres_roc = models.JSONField(
+        default=dict,
+        help_text='{"accessibilite": ["Enseignement", "Routes", ...], "positionnement": [...]}',
+    )
+    selections_criteres = models.JSONField(
+        default=dict,
+        help_text='{"accessibilite": ["enseignement", "sante", "routes"], "localisation": ["centre_ville"], ...}',
+    )
+    preferences_localisation = models.JSONField(
+        default=dict,
+        help_text='{"localisation": "centre_ville", "situation_administrative": "intra_perimetre"}',
+    )
+    preferences_pente = models.JSONField(
+        default=list,
+        help_text='["0_5", "5_10"]',
+    )
+    seuil = models.FloatField(default=0.3)
+    date_creation = models.DateTimeField(auto_now_add=True)
+    date_mise_a_jour = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'ponderation_preference'
+        ordering = ['-date_mise_a_jour']
+
+    def __str__(self):
+        return f'Pondération {self.projet.nom} - {self.date_mise_a_jour:%Y-%m-%d %H:%M}'

@@ -4149,3 +4149,269 @@
   width: 16px;
   height: 16px;
 }
+
+/* ── Pondération Wizard dans la sidebar du Géoportail ── */
+
+.geo-sidebar-scroll--ponderation {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.geo-wizard-stepper {
+  margin-bottom: 1rem !important;
+}
+
+.geo-wizard-stepper .ponderation-stepper-num {
+  width: 28px;
+  height: 28px;
+  font-size: 0.75rem;
+}
+
+.geo-wizard-stepper .ponderation-stepper-label {
+  font-size: 0.7rem;
+}
+
+/* CritereSelectionStep dans la sidebar */
+.geo-sidebar-scroll--ponderation .critere-step {
+  padding: 0;
+}
+
+.geo-sidebar-scroll--ponderation .critere-step-title {
+  font-size: 1rem;
+  margin-bottom: 0.3rem;
+}
+
+.geo-sidebar-scroll--ponderation .critere-step-desc {
+  font-size: 0.78rem;
+  margin-bottom: 0.6rem;
+}
+
+.geo-sidebar-scroll--ponderation .critere-section {
+  margin-bottom: 0.75rem;
+}
+
+.geo-sidebar-scroll--ponderation .critere-section-title {
+  font-size: 0.85rem;
+  margin-bottom: 0.3rem;
+}
+
+.geo-sidebar-scroll--ponderation .critere-section-desc {
+  font-size: 0.75rem;
+  margin-bottom: 0.3rem;
+}
+
+.geo-sidebar-scroll--ponderation .critere-chips {
+  gap: 0.3rem;
+}
+
+.geo-sidebar-scroll--ponderation .critere-chip {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.geo-sidebar-scroll--ponderation .critere-select {
+  font-size: 0.78rem;
+  padding: 0.3rem 0.5rem;
+}
+
+.geo-sidebar-scroll--ponderation .critere-radio {
+  font-size: 0.78rem;
+  gap: 0.3rem;
+}
+
+/* AhpStep dans la sidebar */
+.geo-sidebar-scroll--ponderation .ahp-step {
+  padding: 0;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-step-title {
+  font-size: 1rem;
+  margin-bottom: 0.3rem;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-step-desc {
+  font-size: 0.78rem;
+  margin-bottom: 0.6rem;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-comparison-card {
+  padding: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-comparison-header {
+  gap: 0.3rem;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-cat-tag {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-vs {
+  font-size: 0.65rem;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-slider-end-label {
+  font-size: 0.6rem;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-slider-track-wrap {
+  min-width: 0;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-badge-container {
+  margin-top: 0.3rem;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-badge {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.4rem;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-result {
+  margin-top: 0.6rem;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-result h4 {
+  font-size: 0.85rem;
+  margin-bottom: 0.4rem;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-weight-item {
+  margin-bottom: 0.3rem;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-weight-label {
+  font-size: 0.75rem;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-weight-value {
+  font-size: 0.75rem;
+}
+
+.geo-sidebar-scroll--ponderation .ahp-coherence {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.75rem;
+  margin-top: 0.4rem;
+}
+
+/* RocStep dans la sidebar */
+.geo-sidebar-scroll--ponderation .roc-step {
+  padding: 0;
+}
+
+.geo-sidebar-scroll--ponderation .roc-step-title {
+  font-size: 1rem;
+  margin-bottom: 0.3rem;
+}
+
+.geo-sidebar-scroll--ponderation .roc-step-desc {
+  font-size: 0.78rem;
+  margin-bottom: 0.6rem;
+}
+
+.geo-sidebar-scroll--ponderation .roc-item {
+  padding: 0.4rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.geo-sidebar-scroll--ponderation .roc-weights-preview h4 {
+  font-size: 0.85rem;
+}
+
+/* ResultatsStep dans la sidebar */
+.geo-sidebar-scroll--ponderation .resultats-step {
+  padding: 0;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-header-block {
+  margin-bottom: 0.6rem;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-step-title {
+  font-size: 1rem;
+  margin-bottom: 0.2rem;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-step-desc {
+  font-size: 0.75rem;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-poids-card {
+  padding: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-ahp-badge {
+  font-size: 0.7rem;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-poids-item {
+  margin-bottom: 0.25rem;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-poids-name {
+  font-size: 0.72rem;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-poids-val {
+  font-size: 0.72rem;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-filter-bar {
+  padding: 0.5rem 0;
+  margin-bottom: 0.5rem;
+}
+
+.geo-sidebar-scroll--ponderation .resultats-filter-label {
+  font-size: 0.75rem;
+}
+
+.geo-sidebar-scroll--ponderation .ponderation-terrain-card {
+  margin-bottom: 0.5rem;
+}
+
+.geo-sidebar-scroll--ponderation .ponderation-terrain-name {
+  font-size: 0.85rem;
+}
+
+.geo-sidebar-scroll--ponderation .ponderation-score-num {
+  font-size: 0.8rem;
+}
+
+.geo-sidebar-scroll--ponderation .ponderation-contributions-table {
+  font-size: 0.7rem;
+}
+
+.geo-sidebar-scroll--ponderation .ponderation-contributions-table th,
+.geo-sidebar-scroll--ponderation .ponderation-contributions-table td {
+  padding: 0.25rem 0.3rem;
+}
+
+.geo-sidebar-scroll--ponderation .ponderation-terrain-actions {
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.geo-sidebar-scroll--ponderation .ponderation-terrain-actions .btn {
+  font-size: 0.75rem;
+  padding: 0.35rem 0.6rem;
+}
+
+/* step-actions buttons dans la sidebar */
+.geo-sidebar-scroll--ponderation .step-actions {
+  padding: 0.5rem 0;
+  gap: 0.5rem;
+}
+
+.geo-sidebar-scroll--ponderation .step-actions .btn {
+  font-size: 0.8rem;
+  padding: 0.4rem 0.8rem;
+}
+
+/* Form alerts dans la sidebar */
+.geo-sidebar-scroll--ponderation .form-alert {
+  font-size: 0.75rem;
+  padding: 0.4rem 0.6rem;
+}

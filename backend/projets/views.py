@@ -13,13 +13,15 @@ from rest_framework.views import APIView
 
 from accounts.authentication import JWTOptionalAuthentication
 
-from .models import Analyse, Couche, ImportCouche, Projet, ResultatAnalyse, Terrain, TypeProjet
+from .models import Analyse, Couche, ImportCouche, PonderationPreference, Projet, ResultatAnalyse, Terrain, TypeProjet
 from .serializers import (
     AnalyseCreateSerializer,
     AnalyseDetailSerializer,
     AnalyseListSerializer,
+    AnalysePondereeSerializer,
     CoucheDetailSerializer,
     CoucheListSerializer,
+    PonderationPreferenceSerializer,
     ProjetCreateSerializer,
     ProjetDetailSerializer,
     ProjetListSerializer,
@@ -1162,6 +1164,183 @@ class AnalyseResultatsView(APIView):
             'total': resultats.count(),
             'resultats': ResultatAnalyseSerializer(resultats, many=True).data,
         })
+
+
+# ---------------------------------------------------------------------------
+# Analyse pondérée AHP+ROC
+# ---------------------------------------------------------------------------
+
+class AnalysePondereeView(APIView):
+    """Analyse multicritère avec pondération AHP (catégories) + ROC (sous-critères)."""
+
+    authentication_classes = [JWTOptionalAuthentication]
+    permission_classes = [AllowAny]
+
+    def post(self, request, projet_pk: int):
+        try:
+            projet = Projet.objects.get(pk=projet_pk)
+        except Projet.DoesNotExist:
+            return Response({'detail': 'Projet introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = AnalysePondereeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            from .analyse import extraire_donnees_ponderation
+            from .ahp import calculer_poids_ahp
+            from .scoring import calculer_poids_globaux, calculer_score_terrain, calculer_contributions
+            from .normalisation import (
+                normaliser_distances, score_localisation,
+                score_situation_administrative, score_pente,
+            )
+
+            matrice_ahp = data['matrice_ahp']
+            ordre_categories = data.get('ordre_categories', [])
+            ordres_roc = data['ordres_roc']
+            selections = data['selections_criteres']
+            prefs_loc = data['preferences_localisation']
+            plages_pente = data['preferences_pente']
+            seuil = data['seuil']
+
+            # 1. Poids AHP
+            resultat_ahp = calculer_poids_ahp(
+                matrice_ahp,
+                ordre=ordre_categories if ordre_categories else None,
+            )
+            poids_ahp = resultat_ahp['poids']
+
+            # 2. Extraire les distances GIS
+            donnees = extraire_donnees_ponderation(projet_pk, {
+                'accessibilite': selections.get('accessibilite', []),
+                'route_type': selections.get('route_type', 'peu_importe'),
+            })
+
+            # 3. Normaliser les distances par catégorie
+            distances_brutes: dict[str, dict[str, float]] = {}
+            for t in donnees['terrains']:
+                for cat, dist in t['distances'].items():
+                    if dist is not None:
+                        if cat not in distances_brutes:
+                            distances_brutes[cat] = {}
+                        distances_brutes[cat][str(t['id'])] = dist
+
+            scores_dist_norm = {}
+            for cat, dists in distances_brutes.items():
+                scores_dist_norm[cat] = normaliser_distances(dists)
+
+            # 4. Poids globaux
+            poids_globaux = calculer_poids_globaux(poids_ahp, ordres_roc)
+
+            # 5. Score par terrain
+            resultats = []
+            for t in donnees['terrains']:
+                tid = str(t['id'])
+                scores_norm = {}
+
+                # Scores de distance normalisés
+                for cat in distances_brutes:
+                    if tid in scores_dist_norm.get(cat, {}):
+                        scores_norm[cat] = scores_dist_norm[cat][tid]
+
+                # Localisation
+                zone_terrain = t['zone_localisation']
+                choix_loc = prefs_loc.get('localisation')
+                if choix_loc and 'localisation' in poids_globaux:
+                    scores_norm['localisation'] = score_localisation(zone_terrain, choix_loc)
+
+                # Situation administrative
+                choix_sit = prefs_loc.get('situation_administrative')
+                if choix_sit and 'situation_administrative' in poids_globaux:
+                    scores_norm['situation_administrative'] = score_situation_administrative(
+                        t['dans_perimetre'], choix_sit
+                    )
+
+                # Pente
+                if plages_pente and t['pente'] is not None and 'pente' in poids_globaux:
+                    scores_norm['pente'] = score_pente(t['pente'], plages_pente)
+
+                score = calculer_score_terrain(scores_norm, poids_globaux)
+
+                if score < seuil:
+                    continue
+
+                contributions = calculer_contributions(scores_norm, poids_globaux)
+
+                resultats.append({
+                    'id': t['id'],
+                    'nom': t['nom'],
+                    'superficie': t['superficie'],
+                    'lat': t['lat'],
+                    'lng': t['lng'],
+                    'reference_cadastrale': t.get('reference_cadastrale', ''),
+                    'indice': t.get('indice', ''),
+                    'consistance': t.get('consistance', ''),
+                    'score_final': round(score, 4),
+                    'distances': t['distances'],
+                    'zone_localisation': zone_terrain,
+                    'pente': t['pente'],
+                    'altitude': t['altitude'],
+                    'contributions': contributions,
+                })
+
+            resultats.sort(key=lambda x: x['score_final'], reverse=True)
+            for i, r in enumerate(resultats):
+                r['rang'] = i + 1
+
+            # 6. Sauvegarder les préférences pour le projet
+            try:
+                from .models import PonderationPreference
+                PonderationPreference.objects.update_or_create(
+                    projet=projet,
+                    defaults={
+                        'matrice_ahp': matrice_ahp,
+                        'ordre_categories': ordre_categories,
+                        'ordres_roc': ordres_roc,
+                        'selections_criteres': selections,
+                        'preferences_localisation': prefs_loc,
+                        'preferences_pente': plages_pente,
+                        'seuil': seuil,
+                    },
+                )
+            except Exception:
+                pass
+
+            return Response({
+                'total': len(resultats),
+                'resultats': resultats,
+                'poids_globaux': poids_globaux,
+                'poids_ahp': poids_ahp,
+                'CR': resultat_ahp['CR'],
+                'coherent': resultat_ahp['coherent'],
+            })
+
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            return Response(
+                {'detail': f'Erreur lors de l\'analyse pondérée : {exc}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class PonderationPreferenceView(APIView):
+    """Récupère/sauvegarde les préférences de pondération d'un projet."""
+
+    authentication_classes = [JWTOptionalAuthentication]
+    permission_classes = [AllowAny]
+
+    def get(self, request, projet_pk: int):
+        try:
+            Projet.objects.get(pk=projet_pk)
+        except Projet.DoesNotExist:
+            return Response({'detail': 'Projet introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+
+        prefs = PonderationPreference.objects.filter(projet_id=projet_pk).first()
+        if not prefs:
+            return Response(None)
+
+        return Response(PonderationPreferenceSerializer(prefs).data)
 
 
 # ---------------------------------------------------------------------------

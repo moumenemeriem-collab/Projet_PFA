@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { icons, Icon } from '../components/icons'
@@ -6,10 +6,16 @@ import { DashboardLayout } from '../components/DashboardLayout'
 import { TerrainGeometryEditor, emptyGeom, type TerrainGeom } from '../components/TerrainGeometryEditor'
 import { formatApiErrors } from '../api/auth'
 import { fetchProjet, previewRentabilite, type Projet, type ProjetPayload, type Rentabilite } from '../api/projets'
-import { createTerrain, computeSurfaceConstructible, computeSurfaceEquipement, fetchAnalyse, fetchSurfaceConstructible, fetchSurfaceEquipement, fetchTerrains, saveTerrainRentabilite, type AnalyseFiltres, type AnalyseResultat, type SurfaceConstructibleResponse, type SurfaceEquipementResponse, type Terrain } from '../api/terrains'
+import { createTerrain, computeSurfaceConstructible, computeSurfaceEquipement, fetchSurfaceConstructible, fetchSurfaceEquipement, fetchTerrains, saveTerrainRentabilite, type AnalyseFiltres, type AnalyseResultat, type SurfaceConstructibleResponse, type SurfaceEquipementResponse, type Terrain } from '../api/terrains'
 import { createAnalyse, fetchAnalyseDetail, type AnalyseDetail, type ResultatAnalyse } from '../api/analyses'
+import { createAnalysePondere, type PonderationResponse, type TerrainPondere } from '../api/analyses'
 import { fetchCouches, fetchCoucheGeoJSON, type Couche, type CoucheFeature, type CoucheFeatureCollection } from '../api/couches'
 import { attributeLabel, CADASTRE_ATTRIBUTE_LABELS, PLAN_AMENAGEMENT_ATTRIBUTE_LABELS } from '../utils/attributeLabels'
+import { CritereSelectionStep } from '../components/ponderation/CritereSelectionStep'
+import { AhpStep } from '../components/ponderation/AhpStep'
+import { RocStep } from '../components/ponderation/RocStep'
+import { ResultatsStep } from '../components/ponderation/ResultatsStep'
+import { type AhpResult } from '../utils/ahp'
 import { t } from '../i18n/index'
 import {
   closeRing,
@@ -398,32 +404,6 @@ function collectFilterFiltres(): AnalyseFiltres {
   return f
 }
 
-function hasAnyFilter(f: AnalyseFiltres): boolean {
-  return Object.keys(f).length > 0
-}
-
-function setupCustomDistances(): void {
-  document.querySelectorAll<HTMLSelectElement>('#filter-accordion select[data-custom-input]').forEach((sel) => {
-    const inputName = sel.dataset.customInput
-    if (!inputName) return
-    const input = document.querySelector<HTMLInputElement>(`input[name="${inputName}"]`)
-    if (!input) return
-    const sync = (): void => {
-      input.hidden = sel.value !== '__custom__'
-      if (sel.value !== '__custom__') input.value = ''
-    }
-    sel.addEventListener('change', sync)
-    sync()
-  })
-}
-
-function resetFilterDom(): void {
-  document.querySelectorAll<HTMLInputElement>('#filter-accordion input[type="checkbox"]').forEach((cb) => { cb.checked = false })
-  document.querySelectorAll<HTMLSelectElement>('#filter-accordion select').forEach((sel) => { sel.selectedIndex = 0 })
-  document.querySelectorAll<HTMLInputElement>('#filter-accordion input.geo-distance-input').forEach((inp) => { inp.hidden = true; inp.value = '' })
-}
-
-
 function renderInfoGenerale(tr: AnalyseResultat): React.JSX.Element {
   const info = tr.infos_generales
   return (
@@ -588,7 +568,6 @@ export function GeoportalPage(): React.JSX.Element {
   const [legendOpen, setLegendOpen] = useState(false)
   const [basemapId, setBasemapId] = useState<string>(BASEMAPS[0].id)
   const [overlays, setOverlays] = useState<Record<string, boolean>>({})
-  const [openSections, setOpenSections] = useState<string[]>(['accessibilite'])
   const [couchesDispo, setCouchesDispo] = useState<Couche[]>([])
   const [routeTypes, setRouteTypes] = useState<CoucheType[]>([])
   const [equipTypes, setEquipTypes] = useState<CoucheType[]>([])
@@ -600,7 +579,7 @@ export function GeoportalPage(): React.JSX.Element {
   const [paEnabled, setPaEnabled] = useState(false)
   const [savedAnalyse, setSavedAnalyse] = useState<AnalyseDetail | null>(null)
   const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
+  const [_saveError, setSaveError] = useState<string | null>(null)
   const [showSavedBanner, setShowSavedBanner] = useState(false)
   const [cadastreQuery, setCadastreQuery] = useState('')
   const [coucheCounts, setCoucheCounts] = useState<Record<string, number>>({})
@@ -621,7 +600,6 @@ export function GeoportalPage(): React.JSX.Element {
   const layersBarRef = useRef<HTMLDivElement>(null)
   const basemapMenuRef = useRef<HTMLDivElement>(null)
   const legendRef = useRef<HTMLDivElement>(null)
-  const accordionContentRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const pendingSearchRef = useRef<string | null>(null)
   const searchParcelleRef = useRef<string | null>(null)
   const analyseFiltresRef = useRef<AnalyseFiltres | null>(null)
@@ -652,6 +630,227 @@ export function GeoportalPage(): React.JSX.Element {
   const [terrainError, setTerrainError] = useState<string | null>(null)
   const [terrainNote, setTerrainNote] = useState<string | null>(null)
   const addTerrainRef = useRef<HTMLDivElement>(null)
+
+  // ── Pondération multicritère (AHP + ROC) ──
+  type WizardStep = 'selection' | 'ahp' | 'roc' | 'resultats'
+  const [wizardStep, setWizardStep] = useState<WizardStep>('selection')
+  const [wizardLoading, setWizardLoading] = useState(false)
+  const [wizardError, setWizardError] = useState<string | null>(null)
+  const [wizardSelections, setWizardSelections] = useState<{
+    accessibilite: string[]
+    route_type: string
+    localisation: string
+    pente: string[]
+  } | null>(null)
+  const [wizardMatriceAhp, setWizardMatriceAhp] = useState<[number, number] | null>(null)
+  const [wizardOrdreCategoriesAhp, setWizardOrdreCategoriesAhp] = useState<string[]>([])
+  const [_wizardAhpResult, setWizardAhpResult] = useState<AhpResult | null>(null)
+  const [wizardOrdresRoc, setWizardOrdresRoc] = useState<Record<string, string[]>>({})
+  const [wizardRocStepsDone, setWizardRocStepsDone] = useState<string[]>([])
+  const [wizardResultats, setWizardResultats] = useState<PonderationResponse | null>(null)
+
+  const WIZARD_CATEGORIE_LABELS: Record<string, string> = {
+    accessibilite: 'Accessibilité',
+    positionnement: 'Positionnement',
+    topographie: 'Topographie',
+  }
+
+  const CRITERE_LABELS: Record<string, string> = {
+    enseignement: 'Enseignement',
+    sante: 'Santé',
+    administration: 'Administration',
+    routes: 'Routes',
+    localisation: 'Localisation',
+    pente: 'Pente',
+  }
+
+  const handleWizardSelectionComplete = useCallback((sel: typeof wizardSelections & {}): void => {
+    setWizardSelections(sel)
+    setWizardStep('ahp')
+  }, [])
+
+  const handleWizardAhpComplete = useCallback((intensites: [number, number], ordre: string[], resultat: AhpResult): void => {
+    setWizardMatriceAhp(intensites)
+    setWizardOrdreCategoriesAhp(ordre)
+    setWizardAhpResult(resultat)
+    if (!wizardSelections) return
+    const newOrdres: Record<string, string[]> = {}
+    if (wizardSelections.accessibilite.length > 0) {
+      newOrdres.accessibilite = [...wizardSelections.accessibilite]
+    }
+    newOrdres.positionnement = ['localisation']
+    if (wizardSelections.pente.length > 0) {
+      newOrdres.topographie = ['pente']
+    }
+    setWizardOrdresRoc(newOrdres)
+    setWizardRocStepsDone([])
+    setWizardStep('roc')
+  }, [wizardSelections])
+
+  const handleWizardRocComplete = useCallback((categorie: string, ordre: string[]): void => {
+    setWizardOrdresRoc((prev) => ({ ...prev, [categorie]: ordre }))
+    setWizardRocStepsDone((prev) => [...prev, categorie])
+  }, [])
+
+  const wizardRocCatsAll = Object.keys(wizardOrdresRoc)
+  const wizardRocCatsNeedRanking = wizardRocCatsAll.filter((c) => (wizardOrdresRoc[c]?.length ?? 0) > 1)
+  const wizardNextRocCat = wizardRocCatsNeedRanking.find((c) => !wizardRocStepsDone.includes(c))
+
+  // Auto-valider les catégories avec un seul sous-critère
+  useEffect(() => {
+    if (wizardStep !== 'roc') return
+    const singleCritCats = wizardRocCatsAll.filter(
+      (c) => (wizardOrdresRoc[c]?.length ?? 0) === 1 && !wizardRocStepsDone.includes(c),
+    )
+    if (singleCritCats.length > 0) {
+      setWizardRocStepsDone((prev) => [...prev, ...singleCritCats])
+    }
+  }, [wizardStep, wizardRocCatsAll, wizardOrdresRoc, wizardRocStepsDone])
+
+  const allRocDone = wizardRocCatsAll.length > 0 && wizardRocCatsAll.every((c) => wizardRocStepsDone.includes(c))
+
+  useEffect(() => {
+    if (!allRocDone || wizardStep !== 'roc' || !projetId) return
+    const run = async (): Promise<void> => {
+      setWizardLoading(true)
+      setWizardError(null)
+      try {
+        const response = await createAnalysePondere(projetId, {
+          matrice_ahp: wizardMatriceAhp!,
+          ordre_categories: wizardOrdreCategoriesAhp,
+          ordres_roc: wizardOrdresRoc,
+          selections_criteres: {
+            accessibilite: wizardSelections?.accessibilite ?? [],
+            route_type: wizardSelections?.route_type ?? 'peu_importe',
+          },
+          preferences_localisation: {
+            localisation: wizardSelections?.localisation ?? '',
+            situation_administrative: 'intra_perimetre',
+          },
+          preferences_pente: Array.isArray(wizardSelections?.pente) ? wizardSelections!.pente : [],
+          seuil: 0,
+        })
+        setWizardResultats(response)
+        setWizardStep('resultats')
+      } catch (err) {
+        setWizardError(err instanceof Error ? err.message : 'Erreur inconnue')
+      } finally {
+        setWizardLoading(false)
+      }
+    }
+    void run()
+  }, [allRocDone, wizardStep, wizardMatriceAhp, wizardOrdreCategoriesAhp, wizardOrdresRoc, wizardSelections, projetId])
+
+  const handleWizardRestart = (): void => {
+    setWizardStep('selection')
+    setWizardSelections(null)
+    setWizardMatriceAhp(null)
+    setWizardOrdreCategoriesAhp([])
+    setWizardAhpResult(null)
+    setWizardOrdresRoc({})
+    setWizardRocStepsDone([])
+    setWizardResultats(null)
+    setWizardError(null)
+  }
+
+  const handleWizardViewOnMap = useCallback((terrain: TerrainPondere): void => {
+    // Convertir le terrain pondéré en AnalyseResultat pour le système existant
+    const result: AnalyseResultat = {
+      id: terrain.id,
+      nom: terrain.nom,
+      superficie: terrain.superficie,
+      lat: terrain.lat,
+      lng: terrain.lng,
+      score_global: terrain.score_final,
+      score_final: terrain.score_final,
+      score_amc: 0,
+      score_accessibilite: null,
+      score_positionnement: null,
+      score_topographie: null,
+      score_superficie: null,
+      roi: null,
+      marge: null,
+      benefice_net: null,
+      score_rentabilite: null,
+      type_rentabilite: 'indisponible',
+      prix_terrain: null,
+      infos_generales: {
+        reference_cadastrale: terrain.reference_cadastrale || terrain.nom,
+        commune: '—',
+        province: '—',
+        region: '—',
+        superficie: `${terrain.superficie.toFixed(2)} m²`,
+        perimetre: '—',
+        latitude: terrain.lat,
+        longitude: terrain.lng,
+        zone_amenagement: '—',
+      },
+      criteres: [],
+      criteres_satisfaits: 0,
+      criteres_total: 0,
+      criteres_conformite: [],
+      classement: terrain.rang,
+      points_forts: [],
+      points_faibles: [],
+    }
+    // Ajouter aux résultats de l'analyse pour que la carte puisse les afficher
+    analyseResultatsRef.current = wizardResultats!.resultats.map((tp) => ({
+      id: tp.id,
+      nom: tp.nom,
+      superficie: tp.superficie,
+      lat: tp.lat,
+      lng: tp.lng,
+      score_global: tp.score_final,
+      score_final: tp.score_final,
+      score_amc: 0,
+      score_accessibilite: null,
+      score_positionnement: null,
+      score_topographie: null,
+      score_superficie: null,
+      roi: null,
+      marge: null,
+      benefice_net: null,
+      score_rentabilite: null,
+      type_rentabilite: 'indisponible' as const,
+      prix_terrain: null,
+      infos_generales: {
+        reference_cadastrale: tp.reference_cadastrale || tp.nom,
+        commune: '—',
+        province: '—',
+        region: '—',
+        superficie: `${tp.superficie.toFixed(2)} m²`,
+        perimetre: '—',
+        latitude: tp.lat,
+        longitude: tp.lng,
+        zone_amenagement: '—',
+      },
+      criteres: [],
+      criteres_satisfaits: 0,
+      criteres_total: 0,
+      criteres_conformite: [],
+      classement: tp.rang,
+      points_forts: [],
+      points_faibles: [],
+    }))
+    selectTerrain(result.id)
+    setCadastreEnabled(true)
+  }, [wizardResultats])
+
+  const handleWizardOpenRentabilite = useCallback((terrain: TerrainPondere): void => {
+    setRentaTerrainId(terrain.id)
+    setRentaTerrainNom(terrain.nom)
+    setRentaParcelInfo({
+      nom: terrain.nom,
+      superficie: terrain.superficie,
+      lat: terrain.lat,
+      lng: terrain.lng,
+      ref: terrain.reference_cadastrale || terrain.nom,
+    })
+    setRentaResult(null)
+    setRentaError(null)
+    setRentaNote(null)
+    setRentaModalOpen(true)
+  }, [])
 
   const [rentaTerrainId, setRentaTerrainId] = useState<number | null>(null)
   const [rentaTerrainNom, setRentaTerrainNom] = useState('')
@@ -1399,8 +1598,6 @@ const bindPopupActionButtons = (popup: any): void => {
     }
     popupLayer.addEventListener('click', onPopupLayerClick)
 
-    setupCustomDistances()
-
     const geoParams = new URLSearchParams(window.location.search)
     const geoMode = geoParams.get('mode')
     const geoLat = Number(geoParams.get('terrain_lat'))
@@ -1963,14 +2160,6 @@ const bindPopupActionButtons = (popup: any): void => {
   }, [showSavedBanner])
 
   useEffect(() => {
-    if (!projet) return
-    Object.entries(accordionContentRefs.current).forEach(([section, el]) => {
-      if (!el) return
-      el.style.maxHeight = openSections.includes(section) ? `${el.scrollHeight}px` : '0'
-    })
-  }, [openSections, projet])
-
-  useEffect(() => {
     const onDocClick = (e: MouseEvent): void => {
       const bar = layersBarRef.current
       if (layersPopupOpen && bar && !bar.contains(e.target as Node)) {
@@ -2004,10 +2193,6 @@ const bindPopupActionButtons = (popup: any): void => {
     return () => document.removeEventListener('click', onDocClick)
   }, [legendOpen])
 
-  const toggleAccordion = (section: string): void => {
-    setOpenSections((prev) => (prev.includes(section) ? prev.filter((s) => s !== section) : [...prev, section]))
-  }
-
   const toggleCoucheSection = (key: string): void => {
     setCoucheSectionsOpen((prev) => ({ ...prev, [key]: !prev[key] }))
   }
@@ -2023,41 +2208,6 @@ const bindPopupActionButtons = (popup: any): void => {
     if (opts.zoom !== false) fitToParcelle(terrain)
   }
 
-  const handleAnalyse = async (): Promise<void> => {
-    if (!projetId) return
-    const filtres = collectFilterFiltres()
-    if (!hasAnyFilter(filtres)) {
-      window.alert('Veuillez sélectionner au moins un critère avant de lancer l\'analyse.')
-      return
-    }
-    setCardError(null)
-    setCardMode('loading')
-    setCardHidden(false)
-    try {
-      const response = await fetchAnalyse(projetId, filtres)
-      analyseResultatsRef.current = response.resultats
-      analyseFiltresRef.current = filtres
-      setTypeToggles(layersFromFiltres(filtres))
-
-      if (analyseResultatsRef.current.length === 0) {
-        setCardMode('empty')
-        return
-      }
-
-      if (cadastreLayerRef.current) {
-        colorCadastreParcels()
-        const map = mapRef.current
-        if (map) map.fitBounds(cadastreLayerRef.current.getBounds().pad(0.08))
-      } else {
-        analyzePendingRef.current = true
-      }
-      setCadastreEnabled(true)
-      setCardMode('terrainList')
-    } catch (err) {
-      setCardError(err instanceof Error ? err.message : String(err))
-    }
-  }
-
   const handleSaveClassement = async (): Promise<void> => {
     if (!projetId || analyseResultatsRef.current.length === 0) return
     setSaving(true)
@@ -2071,38 +2221,6 @@ const bindPopupActionButtons = (popup: any): void => {
     } finally {
       setSaving(false)
     }
-  }
-
-  const handleModifyCriteria = (): void => {
-    setCardMode('search')
-    setCardError(null)
-  }
-
-  const handleResetFilters = (): void => {
-    resetFilterDom()
-    setOpenSections(['accessibilite'])
-    setTypeToggles({})
-    setCoucheSectionsOpen({ routes: true, equipements: true })
-    setCadastreEnabled(false)
-    setPaEnabled(false)
-    setCadastreQuery('')
-    setSelectedTerrain(null)
-    setCardMode('search')
-    setCardHidden(false)
-    setCardError(null)
-    setCoord('Lat: — , Lng: —')
-    setSavedAnalyse(null)
-    setSaveError(null)
-    setShowSavedBanner(false)
-    setSaving(false)
-    analyseResultatsRef.current = []
-    analyseFiltresRef.current = null
-    clearTerrainBuffer()
-    clearAffectations()
-    selectedTerrainIdRef.current = null
-    focusParcelleRef.current = null
-    pendingSearchRef.current = null
-    searchParcelleRef.current = null
   }
 
   // Force Leaflet à recalculer sa taille après la fin de la transition CSS du panneau,
@@ -2191,325 +2309,87 @@ const bindPopupActionButtons = (popup: any): void => {
       <div className="geo-layout">
         <div className="geo-body">
           <aside className={`geo-sidebar${sidebarCollapsed ? ' geo-sidebar--collapsed' : ''}`}>
-            <div className="geo-sidebar-scroll">
+            <div className="geo-sidebar-scroll geo-sidebar-scroll--ponderation">
               <div className="geo-sidebar-header">
                 <div className="geo-sidebar-header-row">
-                  <span className="geo-sidebar-header-icon">{icons.filter}</span>
-                  <h2 className="geo-sidebar-title">{t('ranking.filter_title')}</h2>
+                  <span className="geo-sidebar-header-icon">{icons.ranking}</span>
+                  <h2 className="geo-sidebar-title">Analyse Multicritère</h2>
                 </div>
-                <p className="geo-sidebar-desc">{t('ranking.filter_desc')}</p>
+                <p className="geo-sidebar-desc">Définissez vos priorités pour classer les terrains</p>
               </div>
 
-              <div className="geo-accordion" id="filter-accordion">
-                <div className={`geo-accordion-item${openSections.includes('accessibilite') ? ' is-open' : ''}`} data-section="accessibilite">
-                  <button type="button" className="geo-accordion-trigger" onClick={() => toggleAccordion('accessibilite')}>
-                    <span className="geo-accordion-icon geo-accordion-icon--blue">{icons.layers}</span>
-                    <span className="geo-accordion-label">{t('ranking.filter_access')}</span>
-                    <span className="geo-accordion-chevron">{icons.chevron}</span>
-                  </button>
-                  <div className="geo-accordion-content" ref={(el) => { accordionContentRefs.current.accessibilite = el }}>
-                    <div className="geo-filter-group">
-                      <span className="geo-filter-group-title">{t('ranking.filter_road_type')}</span>
-                      {['route_nationale', 'route_regionale', 'route_provinciale', 'route_locale', 'peu_importe'].map((val) => (
-                        <label className="geo-checkbox" key={val}>
-                          <input type="checkbox" name="route_type" value={val} />
-                          <span className="geo-checkbox-mark"></span>
-                          <span className="geo-checkbox-label">{t(`ranking.route_type_${val}`)}</span>
-                        </label>
-                      ))}
-                    </div>
-
-                    <div className="geo-filter-group">
-                      <span className="geo-filter-group-title">{t('ranking.filter_max_distance_road')}</span>
-                      <select className="geo-select" name="distance_route" data-custom-input="distance_route_custom">
-                        <option value="">{t('ranking.filter_any')}</option>
-                        <option value="100">100 m</option>
-                        <option value="250">250 m</option>
-                        <option value="500">500 m</option>
-                        <option value="1000">1 km</option>
-                        <option value="2000">2 km</option>
-                        <option value="__custom__">{t('ranking.distance_custom')}</option>
-                      </select>
-                      <input type="number" min="1" step="1" className="geo-distance-input geo-distance-input--full" name="distance_route_custom" placeholder={t('ranking.distance_custom_placeholder')} hidden />
-                    </div>
-
-                    <div className="geo-filter-divider"></div>
-
-                    <div className="geo-filter-group">
-                      <span className="geo-filter-group-title">{t('ranking.filter_health')}</span>
-                      <div className="geo-filter-row">
-                        <div className="geo-filter-checks">
-                          <label className="geo-checkbox">
-                            <input type="checkbox" name="health" value="hopital" />
-                            <span className="geo-checkbox-mark"></span>
-                            <span className="geo-checkbox-label">{t('ranking.health_hopital')}</span>
-                          </label>
-                          <label className="geo-checkbox">
-                            <input type="checkbox" name="health" value="clinique" />
-                            <span className="geo-checkbox-mark"></span>
-                            <span className="geo-checkbox-label">{t('ranking.health_clinique')}</span>
-                          </label>
-                        </div>
-                        <select className="geo-select" name="distance_health" data-custom-input="distance_health_custom">
-                          <option value="500">500 m</option>
-                          <option value="1000">1 km</option>
-                          <option value="2000">2 km</option>
-                          <option value="5000">5 km</option>
-                          <option value="__custom__">{t('ranking.distance_custom')}</option>
-                        </select>
-                        <input type="number" min="1" step="1" className="geo-distance-input" name="distance_health_custom" placeholder={t('ranking.distance_custom_placeholder')} hidden />
-                      </div>
-                    </div>
-
-                    <div className="geo-filter-group">
-                      <span className="geo-filter-group-title">{t('ranking.filter_education')}</span>
-                      <div className="geo-filter-row">
-                        <div className="geo-filter-checks">
-                          <label className="geo-checkbox">
-                            <input type="checkbox" name="education" value="ecole" />
-                            <span className="geo-checkbox-mark"></span>
-                            <span className="geo-checkbox-label">{t('ranking.edu_ecole')}</span>
-                          </label>
-                          <label className="geo-checkbox">
-                            <input type="checkbox" name="education" value="lycee" />
-                            <span className="geo-checkbox-mark"></span>
-                            <span className="geo-checkbox-label">{t('ranking.edu_lycee')}</span>
-                          </label>
-                          <label className="geo-checkbox">
-                            <input type="checkbox" name="education" value="universite" />
-                            <span className="geo-checkbox-mark"></span>
-                            <span className="geo-checkbox-label">{t('ranking.edu_universite')}</span>
-                          </label>
-                        </div>
-                        <select className="geo-select" name="distance_education" data-custom-input="distance_education_custom">
-                          <option value="500">500 m</option>
-                          <option value="1000">1 km</option>
-                          <option value="2000">2 km</option>
-                          <option value="5000">5 km</option>
-                          <option value="__custom__">{t('ranking.distance_custom')}</option>
-                        </select>
-                        <input type="number" min="1" step="1" className="geo-distance-input" name="distance_education_custom" placeholder={t('ranking.distance_custom_placeholder')} hidden />
-                      </div>
-                    </div>
-
-                    <div className="geo-filter-group">
-                      <span className="geo-filter-group-title">{t('ranking.filter_commerce')}</span>
-                      <div className="geo-filter-row">
-                        <div className="geo-filter-checks">
-                          <label className="geo-checkbox">
-                            <input type="checkbox" name="commerce" value="centre_commercial" />
-                            <span className="geo-checkbox-mark"></span>
-                            <span className="geo-checkbox-label">{t('ranking.commerce_centre')}</span>
-                          </label>
-                          <label className="geo-checkbox">
-                            <input type="checkbox" name="commerce" value="marche" />
-                            <span className="geo-checkbox-mark"></span>
-                            <span className="geo-checkbox-label">{t('ranking.commerce_marche')}</span>
-                          </label>
-                        </div>
-                        <select className="geo-select" name="distance_commerce" data-custom-input="distance_commerce_custom">
-                          <option value="500">500 m</option>
-                          <option value="1000">1 km</option>
-                          <option value="2000">2 km</option>
-                          <option value="5000">5 km</option>
-                          <option value="__custom__">{t('ranking.distance_custom')}</option>
-                        </select>
-                        <input type="number" min="1" step="1" className="geo-distance-input" name="distance_commerce_custom" placeholder={t('ranking.distance_custom_placeholder')} hidden />
-                      </div>
-                    </div>
-
-                    <div className="geo-filter-group">
-                      <span className="geo-filter-group-title">{t('ranking.filter_transport')}</span>
-                      <div className="geo-filter-row">
-                        <div className="geo-filter-checks">
-                          <label className="geo-checkbox">
-                            <input type="checkbox" name="transport" value="gare_routiere" />
-                            <span className="geo-checkbox-mark"></span>
-                            <span className="geo-checkbox-label">{t('ranking.transport_gare')}</span>
-                          </label>
-                          <label className="geo-checkbox">
-                            <input type="checkbox" name="transport" value="arret_bus" />
-                            <span className="geo-checkbox-mark"></span>
-                            <span className="geo-checkbox-label">{t('ranking.transport_bus')}</span>
-                          </label>
-                        </div>
-                        <select className="geo-select" name="distance_transport" data-custom-input="distance_transport_custom">
-                          <option value="250">250 m</option>
-                          <option value="500">500 m</option>
-                          <option value="1000">1 km</option>
-                          <option value="__custom__">{t('ranking.distance_custom')}</option>
-                        </select>
-                        <input type="number" min="1" step="1" className="geo-distance-input" name="distance_transport_custom" placeholder={t('ranking.distance_custom_placeholder')} hidden />
-                      </div>
-                    </div>
-
-                    <div className="geo-filter-group">
-                      <span className="geo-filter-group-title">{t('ranking.filter_admin')}</span>
-                      <div className="geo-filter-row">
-                        <div className="geo-filter-checks">
-                          <label className="geo-checkbox">
-                            <input type="checkbox" name="admin" value="commune" />
-                            <span className="geo-checkbox-mark"></span>
-                            <span className="geo-checkbox-label">{t('ranking.admin_commune')}</span>
-                          </label>
-                          <label className="geo-checkbox">
-                            <input type="checkbox" name="admin" value="poste" />
-                            <span className="geo-checkbox-mark"></span>
-                            <span className="geo-checkbox-label">{t('ranking.admin_poste')}</span>
-                          </label>
-                          <label className="geo-checkbox">
-                            <input type="checkbox" name="admin" value="police" />
-                            <span className="geo-checkbox-mark"></span>
-                            <span className="geo-checkbox-label">{t('ranking.admin_police')}</span>
-                          </label>
-                        </div>
-                        <select className="geo-select" name="distance_admin" data-custom-input="distance_admin_custom">
-                          <option value="1000">1 km</option>
-                          <option value="2000">2 km</option>
-                          <option value="5000">5 km</option>
-                          <option value="__custom__">{t('ranking.distance_custom')}</option>
-                        </select>
-                        <input type="number" min="1" step="1" className="geo-distance-input" name="distance_admin_custom" placeholder={t('ranking.distance_custom_placeholder')} hidden />
-                      </div>
-                    </div>
+              {/* Stepper */}
+              <div className="ponderation-stepper geo-wizard-stepper">
+                {([
+                  { key: 'selection' as WizardStep, label: 'Critères', icon: '1' },
+                  { key: 'ahp' as WizardStep, label: 'Vos priorités', icon: '2' },
+                  { key: 'roc' as WizardStep, label: 'Classement', icon: '3' },
+                  { key: 'resultats' as WizardStep, label: 'Résultats', icon: '4' },
+                ]).map((s, i) => (
+                  <div
+                    key={s.key}
+                    className={`ponderation-stepper-step ${wizardStep === s.key ? 'ponderation-stepper-step--active' : ''} ${
+                      (['selection', 'ahp', 'roc', 'resultats'] as WizardStep[]).indexOf(wizardStep) > i ? 'ponderation-stepper-step--done' : ''
+                    }`}
+                  >
+                    <span className="ponderation-stepper-num">{s.icon}</span>
+                    <span className="ponderation-stepper-label">{s.label}</span>
                   </div>
-                </div>
-
-                <div className={`geo-accordion-item${openSections.includes('positionnement') ? ' is-open' : ''}`} data-section="positionnement">
-                  <button type="button" className="geo-accordion-trigger" onClick={() => toggleAccordion('positionnement')}>
-                    <span className="geo-accordion-icon geo-accordion-icon--green">{icons.mapPin}</span>
-                    <span className="geo-accordion-label">{t('ranking.filter_position')}</span>
-                    <span className="geo-accordion-chevron">{icons.chevron}</span>
-                  </button>
-                  <div className="geo-accordion-content" ref={(el) => { accordionContentRefs.current.positionnement = el }}>
-                    <div className="geo-filter-group">
-                      <span className="geo-filter-group-title">{t('ranking.filter_localisation')}</span>
-                      {['centre_ville', 'periurbaine', 'rurale'].map((val) => (
-                        <label className="geo-checkbox" key={val}>
-                          <input type="checkbox" name="localisation" value={val} />
-                          <span className="geo-checkbox-mark"></span>
-                          <span className="geo-checkbox-label">{t(`ranking.loc_${val}`)}</span>
-                        </label>
-                      ))}
-                    </div>
-
-                    <div className="geo-filter-divider"></div>
-
-                    <div className="geo-filter-group">
-                      <span className="geo-filter-group-title">{t('ranking.filter_distance_poles')}</span>
-                      <div className="geo-poles-grid">
-                        {['pole_centre', 'pole_industriel', 'pole_commercial', 'pole_gare', 'pole_port', 'pole_aeroport'].map((val) => (
-                          <div className="geo-pole-item" key={val}>
-                            <label className="geo-checkbox">
-                              <input type="checkbox" name="pole" value={val} />
-                              <span className="geo-checkbox-mark"></span>
-                              <span className="geo-checkbox-label">{t(`ranking.${val}`)}</span>
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                      <select className="geo-select geo-select--full" name="distance_poles" data-custom-input="distance_poles_custom">
-                        <option value="1000">1 km</option>
-                        <option value="2000">2 km</option>
-                        <option value="5000">5 km</option>
-                        <option value="10000">10 km</option>
-                        <option value="__custom__">{t('ranking.distance_custom')}</option>
-                      </select>
-                      <input type="number" min="1" step="1" className="geo-distance-input geo-distance-input--full" name="distance_poles_custom" placeholder={t('ranking.distance_custom_placeholder')} hidden />
-                    </div>
-
-                    <div className="geo-filter-divider"></div>
-
-                    <div className="geo-filter-group">
-                      <span className="geo-filter-group-title">{t('ranking.filter_situation_admin')}</span>
-                      {['interieur_perimetre', 'exterieur_perimetre'].map((val) => (
-                        <label className="geo-checkbox" key={val}>
-                          <input type="checkbox" name="situation_admin" value={val} />
-                          <span className="geo-checkbox-mark"></span>
-                          <span className="geo-checkbox-label">{t(`ranking.situation_${val}`)}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className={`geo-accordion-item${openSections.includes('topographie') ? ' is-open' : ''}`} data-section="topographie">
-                  <button type="button" className="geo-accordion-trigger" onClick={() => toggleAccordion('topographie')}>
-                    <span className="geo-accordion-icon geo-accordion-icon--amber">{icons.ranking}</span>
-                    <span className="geo-accordion-label">{t('ranking.filter_topo')}</span>
-                    <span className="geo-accordion-chevron">{icons.chevron}</span>
-                  </button>
-                  <div className="geo-accordion-content" ref={(el) => { accordionContentRefs.current.topographie = el }}>
-                    <div className="geo-filter-group">
-                      <span className="geo-filter-group-title">{t('ranking.filter_pente')}</span>
-                      {['0_5', '5_10', '10_15', 'gt15'].map((val) => (
-                        <label className="geo-checkbox" key={val}>
-                          <input type="checkbox" name="pente" value={val} />
-                          <span className="geo-checkbox-mark"></span>
-                          <span className="geo-checkbox-label">{t(`ranking.pente_${val}`)}</span>
-                        </label>
-                      ))}
-                    </div>
-
-                    <div className="geo-filter-divider"></div>
-
-                    <div className="geo-filter-group">
-                      <span className="geo-filter-group-title">{t('ranking.filter_denivele')}</span>
-                      {['lt5', '5_20', 'gt20'].map((val) => (
-                        <label className="geo-checkbox" key={val}>
-                          <input type="checkbox" name="denivele" value={val} />
-                          <span className="geo-checkbox-mark"></span>
-                          <span className="geo-checkbox-label">{t(`ranking.denivele_${val}`)}</span>
-                        </label>
-                      ))}
-                    </div>
-
-                    <div className="geo-filter-divider"></div>
-
-                    <div className="geo-filter-group">
-                      <span className="geo-filter-group-title">{t('ranking.filter_altitude')}</span>
-                      {['any', 'lt100', '100_300', 'gt300'].map((val) => (
-                        <label className="geo-checkbox" key={val}>
-                          <input type="checkbox" name="altitude" value={val} />
-                          <span className="geo-checkbox-mark"></span>
-                          <span className="geo-checkbox-label">{t(`ranking.altitude_${val}`)}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
+
+              {wizardError && (
+                <div className="form-alert form-alert--error" style={{ margin: '0 0 0.75rem', fontSize: '0.8rem' }}>{wizardError}</div>
+              )}
+
+              {wizardLoading && (
+                <div className="ponderation-loading" style={{ padding: '1.5rem 0' }}>
+                  <div className="admin-loading-spinner" />
+                  <p>Analyse en cours…</p>
+                </div>
+              )}
+
+              {!wizardLoading && wizardStep === 'selection' && (
+                <CritereSelectionStep initial={wizardSelections ?? undefined} onComplete={handleWizardSelectionComplete} />
+              )}
+
+              {!wizardLoading && wizardStep === 'ahp' && (
+                <AhpStep
+                  initial={wizardMatriceAhp ?? undefined}
+                  initialOrder={wizardOrdreCategoriesAhp.length === 3 ? wizardOrdreCategoriesAhp : undefined}
+                  onComplete={handleWizardAhpComplete}
+                />
+              )}
+
+              {!wizardLoading && wizardStep === 'roc' && wizardNextRocCat && (
+                <RocStep
+                  key={wizardNextRocCat}
+                  categorie={wizardNextRocCat}
+                  categorieLabel={WIZARD_CATEGORIE_LABELS[wizardNextRocCat] ?? wizardNextRocCat}
+                  criteresInitiaux={wizardOrdresRoc[wizardNextRocCat]}
+                  critereLabels={CRITERE_LABELS}
+                  onComplete={handleWizardRocComplete}
+                />
+              )}
+
+              {!wizardLoading && wizardStep === 'resultats' && wizardResultats && (
+                <ResultatsStep
+                  resultats={wizardResultats.resultats}
+                  poidsGlobaux={wizardResultats.poids_globaux}
+                  poidsAhp={wizardResultats.poids_ahp}
+                  projetId={projetId}
+                  onRestart={handleWizardRestart}
+                  onViewOnMap={handleWizardViewOnMap}
+                  onOpenRentabilite={handleWizardOpenRentabilite}
+                  hideNavLinks
+                />
+              )}
             </div>
 
             <div className="geo-sidebar-footer">
-              <button type="button" className="btn geo-btn-reset" id="filter-reset" onClick={handleResetFilters}>
-                {icons.close} {t('ranking.reset_filters')}
+              <button type="button" className="btn geo-btn-reset" onClick={handleWizardRestart}>
+                {icons.close} Réinitialiser
               </button>
-              {savedAnalyse ? (
-                <>
-                  <button type="button" className="btn geo-btn-analyze geo-btn-modify" id="filter-modify" onClick={handleModifyCriteria}>
-                    {icons.chevron} {t('ranking.modify_criteria')}
-                  </button>
-                  <Link to={`/projets/${projetId}/classement`} className="btn btn-primary geo-btn-analyze" id="filter-view">
-                    {icons.ranking} {t('ranking.view_classement')}
-                  </Link>
-                </>
-              ) : cardMode === 'results' ? (
-                <button type="button" className="btn btn-primary geo-btn-analyze" id="filter-save" onClick={() => { void handleSaveClassement() }} disabled={saving}>
-                  {saving ? '…' : '✓'} {saving ? t('ranking.save_loading') : t('ranking.save_classement')}
-                </button>
-              ) : (
-                <button type="button" className="btn btn-primary geo-btn-analyze" id="filter-analyze" onClick={() => { void handleAnalyse() }} disabled={cardMode === 'loading'}>
-                  {icons.search} {t('ranking.run_analysis')}
-                </button>
-              )}
-              {saveError ? (
-                <div className="geo-save-banner geo-save-banner--error">{saveError}</div>
-              ) : savedAnalyse && showSavedBanner ? (
-                <div className="geo-save-banner geo-save-banner--ok">
-                  ✓ {t('ranking.analyse_saved')}
-                </div>
-              ) : null}
               <Link to={`/projets/${projetId}/classement`} className="geo-back-link">
                 {icons.chevronLeft} {t('ranking.back_to_classement')}
               </Link>
