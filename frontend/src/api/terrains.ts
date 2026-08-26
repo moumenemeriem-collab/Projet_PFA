@@ -187,6 +187,8 @@ export interface AffectationSurface {
   surface_m2: number
   type: 'constructible' | 'non_constructible' | 'parent'
   type_construction: string | null
+  cos: number | null
+  cus: number | null
 }
 
 export interface SurfaceConstructibleResponse {
@@ -195,6 +197,9 @@ export interface SurfaceConstructibleResponse {
   taux: number
   non_construable: number
   affectations: AffectationSurface[]
+  designation_dominante: string | null
+  cos: number | null
+  cus: number | null
 }
 
 export async function fetchSurfaceConstructible(projetId: number, terrainId: number): Promise<SurfaceConstructibleResponse> {

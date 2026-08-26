@@ -11,6 +11,7 @@ import { createAnalyse, fetchAnalyseDetail, type AnalyseDetail, type ResultatAna
 import { createAnalysePondere, type PonderationResponse, type TerrainPondere } from '../api/analyses'
 import { fetchCouches, fetchCoucheGeoJSON, type Couche, type CoucheFeature, type CoucheFeatureCollection } from '../api/couches'
 import { attributeLabel, CADASTRE_ATTRIBUTE_LABELS, PLAN_AMENAGEMENT_ATTRIBUTE_LABELS } from '../utils/attributeLabels'
+import { getReglesPrincipales } from '../utils/reglementationPA'
 import { CritereSelectionStep } from '../components/ponderation/CritereSelectionStep'
 import { AhpStep } from '../components/ponderation/AhpStep'
 import { RocStep } from '../components/ponderation/RocStep'
@@ -324,9 +325,9 @@ function validFeatures(fc: CoucheFeatureCollection): CoucheFeatureCollection {
   return { type: 'FeatureCollection', features: fc.features.filter(isValidGeoJSONFeature) }
 }
 
-function propsToHtml(props: Record<string, unknown>, labels?: Record<string, string>): string {
+function propsToHtml(props: Record<string, unknown>, labels?: Record<string, string>, exclude?: string[]): string {
   return Object.entries(props)
-    .filter(([, v]) => v !== null && v !== undefined && v !== '')
+    .filter(([k, v]) => v !== null && v !== undefined && v !== '' && !(exclude && exclude.includes(k)))
     .map(([k, v]) => `<div><strong>${escapeHtml(attributeLabel(k, labels))}</strong> : ${escapeHtml(v)}</div>`)
     .join('')
 }
@@ -880,6 +881,18 @@ export function GeoportalPage(): React.JSX.Element {
   const [rentaSurfaceLoading, setRentaSurfaceLoading] = useState(false)
 
   useEffect(() => {
+    if (!rentaSurfaceConstructible) return
+    const cosVal = rentaSurfaceConstructible.cos
+    const cusVal = rentaSurfaceConstructible.cus
+    if (cosVal != null && rentaForm.cos === '') {
+      setRentaForm((f) => ({ ...f, cos: String(cosVal) }))
+    }
+    if (cusVal != null && rentaForm.cus === '') {
+      setRentaForm((f) => ({ ...f, cus: String(cusVal) }))
+    }
+  }, [rentaSurfaceConstructible])
+
+  useEffect(() => {
     if (!rentaModalOpen || !projetId) return
     let cancelled = false
     void fetchTerrains(projetId, { page_size: 100 })
@@ -1388,7 +1401,7 @@ export function GeoportalPage(): React.JSX.Element {
       popup.setContent(
         `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(title)}</div>` +
         `${info}` +
-        `<div class="geoportal-popup-coords">${propsToHtml(cadFeat.properties, CADASTRE_ATTRIBUTE_LABELS)}</div>` +
+        `<div class="geoportal-popup-coords">${propsToHtml(cadFeat.properties, CADASTRE_ATTRIBUTE_LABELS, ['fid', 'num'])}</div>` +
         `${buildPopupActions(center.lat, center.lng, ring, title, { idParcelle, computed: pieces.length > 0 }, { nom: title, superficie: surfVal, lat: center.lat, lng: center.lng, ref: idParcelle, ring })}</div>`
       )
       bindPopupActionButtons(popup)
@@ -1838,7 +1851,7 @@ const bindPopupActionButtons = (popup: any): void => {
           const affOpts: PopupAffectationsOpts = { idParcelle: num, computed: num !== '' && affectationsResultRef.current?.terrainNum === num }
           const parcelSuperficie = Number(p.surface) || (ring && ring.length >= 3 ? Math.round(ringAreaM2(ring)) : 0)
           layerItem.bindPopup(
-            `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(idParcelle)}</div><div class="geoportal-popup-coords">${propsToHtml(feature.properties, CADASTRE_ATTRIBUTE_LABELS)}</div>${buildPopupActions(center.lat, center.lng, ring, idParcelle, num ? affOpts : null, ring && ring.length >= 3 ? { nom: idParcelle, superficie: parcelSuperficie, lat: center.lat, lng: center.lng, ref: num, ring } : undefined)}</div>`,
+            `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(idParcelle)}</div><div class="geoportal-popup-coords">${propsToHtml(feature.properties, CADASTRE_ATTRIBUTE_LABELS, ['fid', 'num'])}</div>${buildPopupActions(center.lat, center.lng, ring, idParcelle, num ? affOpts : null, ring && ring.length >= 3 ? { nom: idParcelle, superficie: parcelSuperficie, lat: center.lat, lng: center.lng, ref: num, ring } : undefined)}</div>`,
             { autoPan: false }
           )
         }
@@ -1882,7 +1895,7 @@ const bindPopupActionButtons = (popup: any): void => {
         <div class="geoportal-popup-scores">
           ${(tr.criteres_conformite ?? []).map(c => `<div class="geoportal-popup-row"><span>${escapeHtml(c.label)}</span><strong>${c.pct >= 50 ? '✓' : '✗'}</strong></div>`).join('')}
         </div>
-        <div class="geoportal-popup-coords">${propsToHtml(p, CADASTRE_ATTRIBUTE_LABELS)}</div>
+        <div class="geoportal-popup-coords">${propsToHtml(p, CADASTRE_ATTRIBUTE_LABELS, ['fid', 'num'])}</div>
         ${buildPopupActions(center.lat, center.lng, ring, title, affOpts, { terrainId, nom: tr.nom, superficie: tr.superficie, lat: center.lat, lng: center.lng, ref: String(p.num ?? '') })}
       </div>`
   }
@@ -1937,7 +1950,7 @@ const bindPopupActionButtons = (popup: any): void => {
       : null
     const parcelSuperficie = Number(props.surface) || (ring && ring.length >= 3 ? Math.round(ringAreaM2(ring)) : 0)
     const rentaInfo = ring && ring.length >= 3 ? { nom: idParcelle, superficie: parcelSuperficie, lat: center.lat, lng: center.lng, ref: num, ring } : undefined
-    return `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(idParcelle)}</div><div class="geoportal-popup-coords">${propsToHtml(props, CADASTRE_ATTRIBUTE_LABELS)}</div>${buildPopupActions(center.lat, center.lng, ring, idParcelle, affOpts, rentaInfo)}</div>`
+    return `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(idParcelle)}</div><div class="geoportal-popup-coords">${propsToHtml(props, CADASTRE_ATTRIBUTE_LABELS, ['fid', 'num'])}</div>${buildPopupActions(center.lat, center.lng, ring, idParcelle, affOpts, rentaInfo)}</div>`
   }
 
   const highlightCadastreParcelle = (idParcelle: string): void => {
@@ -2974,6 +2987,24 @@ const bindPopupActionButtons = (popup: any): void => {
                         </strong>
                       </div>
                     ) : null}
+                    {rentaSurfaceConstructible && rentaSurfaceConstructible.designation_dominante && (
+                      <div className="geo-terrain-calc-row">
+                        <span>Désignation dominante</span>
+                        <strong>{rentaSurfaceConstructible.designation_dominante}</strong>
+                      </div>
+                    )}
+                    {rentaSurfaceConstructible && (
+                      <>
+                        <div className="geo-terrain-calc-row">
+                          <span>COS</span>
+                          <strong>{rentaSurfaceConstructible.cos != null ? rentaSurfaceConstructible.cos : 'Non fixé'}</strong>
+                        </div>
+                        <div className="geo-terrain-calc-row">
+                          <span>CUS</span>
+                          <strong>{rentaSurfaceConstructible.cus != null ? rentaSurfaceConstructible.cus : 'Non fixé'}</strong>
+                        </div>
+                      </>
+                    )}
                     {rentaSurfaceConstructible && rentaSurfaceConstructible.affectations.length > 0 && (
                       <div style={{ gridColumn: '1 / -1', marginTop: 4 }}>
                         <button
@@ -2999,6 +3030,8 @@ const bindPopupActionButtons = (popup: any): void => {
                                   <td style={{ padding: '4px 10px', textAlign: 'right' }}>Type</td>
                                   <td style={{ padding: '4px 10px', textAlign: 'right' }}>Surface</td>
                                   <td style={{ padding: '4px 10px', textAlign: 'right' }}>% terrain</td>
+                                  <td style={{ padding: '4px 10px' }}>Conditions</td>
+                                  <td style={{ padding: '4px 10px' }}>Type d'op&eacute;ration</td>
                                 </tr>
                               </thead>
                               <tbody>
@@ -3027,6 +3060,12 @@ const bindPopupActionButtons = (popup: any): void => {
                                         </td>
                                         <td style={{ padding: '4px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                                           {pct.toLocaleString('fr-FR', { maximumFractionDigits: 2 })}%
+                                        </td>
+                                        <td style={{ padding: '4px 10px', fontSize: '0.75rem', color: '#6b7280', maxWidth: 160 }}>
+                                          {a.designation ? (getReglesPrincipales(a.designation)?.conditions || '—') : '—'}
+                                        </td>
+                                        <td style={{ padding: '4px 10px', fontSize: '0.75rem', color: '#6b7280', maxWidth: 160 }}>
+                                          {a.designation ? (getReglesPrincipales(a.designation)?.typeOperation || '—') : '—'}
                                         </td>
                                       </tr>
                                     )

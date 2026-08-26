@@ -3,6 +3,17 @@ Service centralisé de calcul de rentabilité immobilière.
 
 Reçoit les données du projet et retourne un objet complet contenant
 surfaces, revenus, coûts, charges, flux annuels, VAN, TRI/IRR et ROI.
+
+CORRECTIONS APPORTÉES (par rapport à la version initiale) :
+1. La commercialisation démarre 1 an après le lancement du projet
+   (annee == 1), et non après la fin complète de la construction.
+   -> idx_comm = annee - 1  (au lieu de annee - duree_cons)
+2. nb_annees couvre la construction ET la commercialisation qui
+   démarre en année 1 :
+   -> nb_annees = max(duree_cons, 1 + duree_comm)
+3. La CA des équipements ("CA eq") a son propre échéancier
+   (ligne 44 du fichier Excel : 100% en année 1 par défaut),
+   distinct de l'échéancier CA classique (30/30/40).
 """
 from __future__ import annotations
 
@@ -56,7 +67,7 @@ def _van(flows: list[float], taux: float) -> float:
 def calculer_rentabilite_projet(projet) -> dict:
     """
     Fonction principale de calcul de rentabilité.
-    Recoit une instance Projet et retourne un dict complet avec les résultats.
+    Reçoit une instance Projet et retourne un dict complet avec les résultats.
     """
     p = projet
 
@@ -94,7 +105,8 @@ def calculer_rentabilite_projet(projet) -> dict:
     ca_com = surf_com * px_vente_com
     ca_bur = surf_bur * px_vente_bur
     ca_eq = surf_eq * px_vente_eq
-    ca_total = ca_apt + ca_com + ca_bur + ca_eq
+    ca_hors_eq = ca_apt + ca_com + ca_bur  # CA suivant l'échéancier classique (30/30/40)
+    ca_total = ca_hors_eq + ca_eq
 
     # ── 5. Coûts de construction ──
     cout_apt = surf_apt * _d(p.cout_construction_appartement)
@@ -113,6 +125,7 @@ def calculer_rentabilite_projet(projet) -> dict:
     frais_commercialisation = ca_total * taux_comm
 
     # ── 7. Prix d'acquisition foncier ──
+    # Prix / m² * surface brute du foncier * (1 + frais d'acquisition)
     prix_foncier = prix_m2 * surface_brute
     frais_acquisition_montant = prix_foncier * frais_acq_pct
     cout_acquisition = prix_foncier + frais_acquisition_montant
@@ -128,7 +141,14 @@ def calculer_rentabilite_projet(projet) -> dict:
     # ── 9. Paramètres temporels ──
     duree_cons = max(int(p.duree_construction), 1)
     duree_comm = max(int(p.duree_commercialisation), 2)
-    nb_annees = duree_cons + duree_comm
+
+    # CORRECTION : la commercialisation démarre 1 an après le lancement
+    # du projet (annee == 1), pas après la fin de la construction.
+    # nb_annees doit donc couvrir le plus grand des deux horizons :
+    # la fin de la construction, OU la fin de la commercialisation
+    # (qui se termine en année 1 + duree_comm - 1, donc s'étend sur
+    # 1 + duree_comm années au total).
+    nb_annees = max(duree_cons, 1 + duree_comm)
 
     # ── 10. Échelonnement construction (répartition uniforme par défaut) ──
     # Défaut : 50/50 pour 2 ans, répartition égale sinon
@@ -136,8 +156,8 @@ def calculer_rentabilite_projet(projet) -> dict:
     if not rep_cons or not isinstance(rep_cons, list) or len(rep_cons) != duree_cons:
         rep_cons = [round(100.0 / duree_cons, 2)] * duree_cons
 
-    # ── 11. Échelonnement ventes ──
-    # Défaut : 30% / 30% / 40% pour 3 ans
+    # ── 11. Échelonnement ventes (hors équipement) ──
+    # Défaut : 30% / 30% / 40% pour 3 ans, démarrant en année 1
     rep_ventes = p.repartition_ventes
     if not rep_ventes or not isinstance(rep_ventes, list) or len(rep_ventes) != duree_comm:
         if duree_comm == 3:
@@ -155,14 +175,32 @@ def calculer_rentabilite_projet(projet) -> dict:
         if abs(total_def - 100) > 0.01 and total_def > 0:
             rep_ventes = [round(r * 100.0 / total_def, 2) for r in rep_ventes]
 
+    # ── 11bis. Échelonnement CA équipement (ligne "CA eq" du fichier) ──
+    # Défaut : 100% en année 1 (première année de commercialisation)
+    rep_ventes_eq = getattr(p, 'repartition_ventes_equipement', None)
+    if not rep_ventes_eq or not isinstance(rep_ventes_eq, list) or len(rep_ventes_eq) != duree_comm:
+        rep_ventes_eq = [0.0] * duree_comm
+        rep_ventes_eq[0] = 100.0
+
     # ── 12. Tableau des flux ──
     flux = []
     for annee in range(nb_annees):
-        # CA (pendant commercialisation, après construction)
-        ca_annee = 0.0
-        idx_comm = annee - duree_cons
+        # Index dans l'échéancier de commercialisation :
+        # la commercialisation démarre en année 1 (décalage fixe d'1 an
+        # après le lancement du projet, indépendamment de duree_cons)
+        idx_comm = annee - 1
+
+        # CA hors équipement (appartements/commerces/bureaux)
+        ca_hors_eq_annee = 0.0
         if 0 <= idx_comm < duree_comm:
-            ca_annee = ca_total * rep_ventes[idx_comm] / 100.0
+            ca_hors_eq_annee = ca_hors_eq * rep_ventes[idx_comm] / 100.0
+
+        # CA équipement (échéancier propre)
+        ca_eq_annee = 0.0
+        if 0 <= idx_comm < duree_comm:
+            ca_eq_annee = ca_eq * rep_ventes_eq[idx_comm] / 100.0
+
+        ca_annee = ca_hors_eq_annee + ca_eq_annee
 
         # Acquisition foncier (année 0 uniquement)
         acq_annee = cout_acquisition if annee == 0 else 0.0
@@ -178,7 +216,7 @@ def calculer_rentabilite_projet(projet) -> dict:
         # Imprévus (même échelonnement que construction)
         imp_annee = imprevus * rep_cons[annee] / 100.0 if 0 <= annee < duree_cons else 0.0
 
-        # Commercialisation (même échelonnement que ventes)
+        # Commercialisation (même échelonnement que les ventes hors équipement)
         comm_annee = frais_commercialisation * rep_ventes[idx_comm] / 100.0 if 0 <= idx_comm < duree_comm else 0.0
 
         flux_net = ca_annee - acq_annee - cons_annee - etudes_annee - imp_annee - comm_annee
@@ -247,4 +285,5 @@ def calculer_rentabilite_projet(projet) -> dict:
         'flux': flux,
         'repartition_construction': rep_cons,
         'repartition_ventes': rep_ventes,
+        'repartition_ventes_equipement': rep_ventes_eq,
     }

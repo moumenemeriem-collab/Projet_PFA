@@ -793,7 +793,7 @@ class SurfaceConstructibleView(APIView):
     @staticmethod
     def _compute(terrain_wkt: str, terrain_superficie: float):
         sql = """
-            SELECT pa.designation, pa.type_construction,
+            SELECT pa.designation, pa.type_construction, pa.cos, pa.cus,
                 ST_Area(
                     ST_Intersection(
                         ST_SetSRID(ST_GeomFromText(%s), 4326),
@@ -820,25 +820,31 @@ class SurfaceConstructibleView(APIView):
 
         non_constr = 0.0
         affectations = []
-        for designation, type_construction, area_m2 in rows:
+        for designation, type_construction, cos_val, cus_val, area_m2 in rows:
             area = round(float(area_m2), 2)
             if area <= 0:
                 continue
             raw_d = (designation or '').strip()
             raw_tc = (type_construction or '').strip() or None
+            cos_num = None if cos_val is None else float(cos_val)
+            cus_num = None if cus_val is None else float(cus_val)
             if _is_ignorable_designation(raw_d):
-                # Les affectations non définies ou nulles n'ont aucun impact
                 continue
 
             if _is_constructible_designation(raw_d):
-                affectations.append({'designation': raw_d, 'surface_m2': area, 'type': 'constructible', 'type_construction': raw_tc})
+                affectations.append({'designation': raw_d, 'surface_m2': area, 'type': 'constructible', 'type_construction': raw_tc, 'cos': cos_num, 'cus': cus_num})
             else:
-                # Tout le reste est non constructible et soustrait de la surface constructible
                 non_constr += area
-                affectations.append({'designation': raw_d, 'surface_m2': area, 'type': 'non_constructible', 'type_construction': raw_tc})
+                affectations.append({'designation': raw_d, 'surface_m2': area, 'type': 'non_constructible', 'type_construction': raw_tc, 'cos': cos_num, 'cus': cus_num})
 
         surface_constructible = max(0.0, terrain_superficie - non_constr)
         taux = round(surface_constructible / terrain_superficie * 100, 1) if terrain_superficie > 0 else 0.0
+
+        dominant = None
+        if affectations:
+            constr_affectations = [a for a in affectations if a['type'] == 'constructible']
+            if constr_affectations:
+                dominant = max(constr_affectations, key=lambda a: a['surface_m2'])
 
         return Response({
             'surface_constructible': round(surface_constructible, 2),
@@ -846,6 +852,9 @@ class SurfaceConstructibleView(APIView):
             'taux': taux,
             'non_construable': round(non_constr, 2),
             'affectations': affectations,
+            'designation_dominante': dominant['designation'] if dominant else None,
+            'cos': dominant['cos'] if dominant else None,
+            'cus': dominant['cus'] if dominant else None,
         })
 
     @staticmethod

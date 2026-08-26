@@ -4,6 +4,7 @@
 import intersect from '@turf/intersect'
 import { extractRing, polygonAreaM2 } from './terrainDims'
 import { downloadAffectationsPdf } from './pdfPlan'
+import { getReglesPrincipales } from './reglementationPA'
 
 export interface AffectationPiece {
   feature: any
@@ -271,7 +272,7 @@ export function buildAffectationsModalHtml(title: string, terrainRing: number[][
   const terrainArea = polygonAreaM2(terrainRing)
   const piecesArea = pieces.reduce((sum, p) => sum + p.areaM2, 0)
   const columns = collectAffectationColumns(pieces).filter(([k]) => k !== 'designation')
-  const numCols = columns.length + 3
+  const numCols = columns.length + 4
   const rows = pieces
     .map((pc) => {
       const code = pc.designation || ''
@@ -294,6 +295,8 @@ export function buildAffectationsModalHtml(title: string, terrainRing: number[][
         `<td class="geo-aff-cell-num">${escapeAffHtml(formatAffArea(pc.areaM2))}</td>` +
         `<td class="geo-aff-cell-num">${pc.percent.toFixed(1)} %</td>` +
         propCells +
+        `<td class="geo-aff-cell">${escapeAffHtml(code ? (getReglesPrincipales(code)?.conditions || '—') : '—')}</td>` +
+        `<td class="geo-aff-cell">${escapeAffHtml(code ? (getReglesPrincipales(code)?.typeOperation || '—') : '—')}</td>` +
         `</tr>`
       )
     })
@@ -334,14 +337,15 @@ export function buildAffectationsModalHtml(title: string, terrainRing: number[][
     `<thead><tr>` +
     `<th></th><th>Affectation</th><th>Superficie</th><th>Part</th>` +
     columns.map(([key, label]) => `<th class="geo-aff-cell${key === 'definition' ? ' geo-aff-cell--wide' : ''}">${escapeAffHtml(label)}</th>`).join('') +
+    `<th>Conditions</th><th>Type d'op&eacute;ration</th>` +
     `</tr></thead>` +
     `<tbody>` +
     rows +
     emptyRows +
     `<tr class="geo-dims-total"><td></td><td>Total parcelles intersectées</td><td>${escapeAffHtml(formatAffArea(piecesArea))}</td><td></td>` +
-    `<td colspan="${columns.length}"></td></tr>` +
+    `<td colspan="${columns.length + 2}"></td></tr>` +
     `<tr class="geo-dims-total"><td></td><td>Superficie totale du terrain</td><td>${escapeAffHtml(formatAffArea(terrainArea))}</td><td></td>` +
-    `<td colspan="${columns.length}"></td></tr>` +
+    `<td colspan="${columns.length + 2}"></td></tr>` +
     `</tbody>` +
     `</table>` +
     `</div>` +
