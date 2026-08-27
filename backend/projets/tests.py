@@ -181,6 +181,32 @@ class TestSurfaceTotale(SimpleTestCase):
         # Prix du foncier = prix/m² * surface brute (ici 3156)
         r = calculer_rentabilite_projet(_projet(surface_souhaitee=10000, surface_totale=3156, prix_foncier_m2=4000))
         self.assertAlmostEqual(r['acquisition']['prix_foncier'], 3156 * 4000.0, places=2)
+        self.assertIn('cout_acquisition_foncier', r['charges'])
+        self.assertAlmostEqual(r['charges']['cout_acquisition_foncier'], r['acquisition']['cout_total'], places=2)
+
+    def test_flux_structure_isole_equipements_et_autres_charges(self):
+        p = _projet(
+            quote_part_appartement=60,
+            quote_part_commerce=20,
+            quote_part_bureau=10,
+            quote_part_equipement=10,
+            prix_vente_equipement=6000,
+        )
+        r = calculer_rentabilite_projet(p)
+        flux = r['flux']
+        self.assertGreaterEqual(len(flux), 4)
+        # Année 0 : CA commercialisation = 0, CA équipements = 0, Aménagement > 0
+        self.assertEqual(flux[0]['ca_commercialisation'], 0.0)
+        self.assertEqual(flux[0]['ca_equipements'], 0.0)
+        self.assertGreater(flux[0]['autre_charge'], 0.0)
+        # Année 1 : CA commercialisation (30%), CA équipements (100%), autre_charge (50%)
+        self.assertGreater(flux[1]['ca_commercialisation'], 0.0)
+        self.assertGreater(flux[1]['ca_equipements'], 0.0)
+        self.assertGreater(flux[1]['autre_charge'], 0.0)
+        # Années 2 & 3 : CA équipements = 0
+        self.assertEqual(flux[2]['ca_equipements'], 0.0)
+        self.assertEqual(flux[3]['ca_equipements'], 0.0)
+
 
 
 class TestPAClassificationEtFallback(SimpleTestCase):

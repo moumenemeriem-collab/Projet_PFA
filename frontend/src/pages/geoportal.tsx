@@ -7,7 +7,7 @@ import { TerrainGeometryEditor, emptyGeom, type TerrainGeom } from '../component
 import { formatApiErrors } from '../api/auth'
 import { fetchProjet, previewRentabilite, type Projet, type ProjetPayload, type Rentabilite } from '../api/projets'
 import { createTerrain, computeSurfaceConstructible, computeSurfaceEquipement, deleteTerrain, fetchSurfaceConstructible, fetchSurfaceEquipement, fetchTerrains, saveTerrainRentabilite, type AnalyseFiltres, type AnalyseResultat, type SurfaceConstructibleResponse, type SurfaceEquipementResponse, type Terrain } from '../api/terrains'
-import { createAnalyse, fetchAnalyseDetail, type AnalyseDetail, type ResultatAnalyse } from '../api/analyses'
+import { fetchAnalyseDetail, type AnalyseDetail, type ResultatAnalyse } from '../api/analyses'
 import { createAnalysePondere, type PonderationResponse, type TerrainPondere } from '../api/analyses'
 import { fetchCouches, fetchCoucheGeoJSON, type Couche, type CoucheFeature, type CoucheFeatureCollection } from '../api/couches'
 import { attributeLabel, CADASTRE_ATTRIBUTE_LABELS, PLAN_AMENAGEMENT_ATTRIBUTE_LABELS } from '../utils/attributeLabels'
@@ -445,25 +445,6 @@ function toAnalyseResultat(r: ResultatAnalyse): AnalyseResultat {
     points_faibles: r.points_faibles ?? [],
     geom: (r as any).geom ?? (r as any).geometry ?? null,
   }
-}
-
-function renderScoreSummary(tr: AnalyseResultat): React.JSX.Element {
-  const cc = tr.criteres_conformite ?? []
-  const ok = cc.filter(c => c.pct >= 50).length
-  return (
-    <div className="geo-score-summary">
-      <div className="geo-score-summary-item geo-score-summary-item--rang">
-        <span className="geo-score-summary-label">{t('ranking.rang')}</span>
-        <strong className="geo-score-summary-value">#{tr.classement}</strong>
-      </div>
-      {cc.length > 0 ? (
-        <div className="geo-score-summary-item">
-          <span className="geo-score-summary-label">Critères respectés</span>
-          <strong className="geo-score-summary-value">{ok} / {cc.length}</strong>
-        </div>
-      ) : null}
-    </div>
-  )
 }
 
 function CalcRow({ label, value, unit, note }: { label: string; value: number | undefined; unit?: string; note?: string }): React.JSX.Element {
@@ -3990,6 +3971,7 @@ const bindPopupActionButtons = (popup: any): void => {
 
                       <section className="renta-detail-sec">
                         <h5>{t('projects.detail_charges')}</h5>
+                        <CalcRow label="Coût acquisition foncier (DH)" value={rentaResult.charges?.cout_acquisition_foncier ?? rentaResult.acquisition?.cout_total} unit="DH" />
                         <CalcRow label="Études & honoraires (DH)" value={rentaResult.charges?.frais_etudes} unit="DH" />
                         <CalcRow label="Imprévus (DH)" value={rentaResult.charges?.imprevus} unit="DH" />
                         <CalcRow label="Commercialisation (DH)" value={rentaResult.charges?.frais_commercialisation} unit="DH" />
@@ -4014,34 +3996,75 @@ const bindPopupActionButtons = (popup: any): void => {
                         <section className="renta-detail-sec">
                           <h5>{t('projects.detail_flux_table')}</h5>
                           <div className="renta-flux-table-wrap">
-                            <table className="renta-flux-table">
+                            <table className="renta-flux-table renta-flux-table--transposed">
                               <thead>
                                 <tr>
-                                  <th>{t('projects.mark_annee')}</th>
-                                  <th>CA</th>
-                                  <th>Acquisition</th>
-                                  <th>Construction</th>
-                                  <th>Études</th>
-                                  <th>Imprévus</th>
-                                  <th>Commerc.</th>
-                                  <th>Aménag.</th>
-                                  <th>Flux net</th>
+                                  <th>Flux de trésorerie</th>
+                                  {rentaResult.flux.map((f) => (
+                                    <th key={f.annee}>
+                                      {t('projects.mark_annee')} {f.annee}
+                                    </th>
+                                  ))}
                                 </tr>
                               </thead>
                               <tbody>
-                                {rentaResult.flux.map((f) => (
-                                  <tr key={f.annee}>
-                                    <td>{f.annee}</td>
-                                    <td>{f.ca.toLocaleString('fr-FR')}</td>
-                                    <td>{f.acquisition.toLocaleString('fr-FR')}</td>
-                                    <td>{f.construction.toLocaleString('fr-FR')}</td>
-                                    <td>{f.etudes_honoraires.toLocaleString('fr-FR')}</td>
-                                    <td>{f.imprevus.toLocaleString('fr-FR')}</td>
-                                    <td>{f.commercialisation.toLocaleString('fr-FR')}</td>
-                                    <td>{f.amenagement.toLocaleString('fr-FR')}</td>
-                                    <td className="renta-flux-net">{f.flux_net.toLocaleString('fr-FR')}</td>
-                                  </tr>
-                                ))}
+                                <tr>
+                                  <td className="renta-flux-row-label">Commercialisation / CA</td>
+                                  {rentaResult.flux.map((f) => {
+                                    const val = f.ca_commercialisation ?? (f.annee === 0 ? 0 : f.ca)
+                                    return (
+                                      <td key={f.annee}>
+                                        {val.toLocaleString('fr-FR')}
+                                      </td>
+                                    )
+                                  })}
+                                </tr>
+                                <tr>
+                                  <td className="renta-flux-row-label">Équipements (public / privé)</td>
+                                  {rentaResult.flux.map((f) => {
+                                    const val = f.ca_equipements ?? (f.annee === 1 ? (rentaResult.ca?.ca_equipements ?? 0) + (rentaResult.ca?.ca_equipements_prives ?? 0) : 0)
+                                    return (
+                                      <td key={f.annee}>
+                                        {val.toLocaleString('fr-FR')}
+                                      </td>
+                                    )
+                                  })}
+                                </tr>
+                                <tr>
+                                  <td className="renta-flux-row-label">Aménagement (charge)</td>
+                                  {rentaResult.flux.map((f) => (
+                                    <td key={f.annee}>
+                                      {f.amenagement.toLocaleString('fr-FR')}
+                                    </td>
+                                  ))}
+                                </tr>
+                                <tr>
+                                  <td className="renta-flux-row-label">Autre charge (Construction, Études, Imprévus)</td>
+                                  {rentaResult.flux.map((f) => {
+                                    const val = f.autre_charge ?? (f.construction + f.etudes_honoraires + f.imprevus)
+                                    return (
+                                      <td key={f.annee}>
+                                        {val.toLocaleString('fr-FR')}
+                                      </td>
+                                    )
+                                  })}
+                                </tr>
+                                <tr>
+                                  <td className="renta-flux-row-label">Frais de commercialisation</td>
+                                  {rentaResult.flux.map((f) => (
+                                    <td key={f.annee}>
+                                      {f.commercialisation.toLocaleString('fr-FR')}
+                                    </td>
+                                  ))}
+                                </tr>
+                                <tr className="renta-flux-net-row">
+                                  <td className="renta-flux-row-label">Flux net</td>
+                                  {rentaResult.flux.map((f) => (
+                                    <td key={f.annee} className="renta-flux-net">
+                                      {f.flux_net.toLocaleString('fr-FR')}
+                                    </td>
+                                  ))}
+                                </tr>
                               </tbody>
                             </table>
                           </div>

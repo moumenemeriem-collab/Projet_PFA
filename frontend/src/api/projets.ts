@@ -48,6 +48,7 @@ export interface Rentabilite {
     imprevus: number
     frais_commercialisation: number
     amenagement: number
+    cout_acquisition_foncier?: number
   }
   acquisition?: {
     prix_foncier: number
@@ -62,10 +63,14 @@ export interface Rentabilite {
   flux?: Array<{
     annee: number
     ca: number
+    ca_commercialisation?: number
+    ca_equipements?: number
+    ca_total?: number
     acquisition: number
     construction: number
     etudes_honoraires: number
     imprevus: number
+    autre_charge?: number
     commercialisation: number
     amenagement: number
     flux_net: number

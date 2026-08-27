@@ -3830,7 +3830,7 @@
 
 .renta-flux-table th,
 .renta-flux-table td {
-  padding: 6px 8px;
+  padding: 7px 10px;
   border: 1px solid #e2e8f0;
   text-align: right;
   color: #334155;
@@ -3838,17 +3838,43 @@
 
 .renta-flux-table thead th {
   background: #eef2f7;
-  color: #475569;
+  color: #334155;
   font-weight: 700;
+  text-align: center;
+}
+
+.renta-flux-table thead th:first-child {
+  text-align: left;
 }
 
 .renta-flux-table tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+.renta-flux-table tbody tr:hover {
   background: #f1f5f9;
+}
+
+.renta-flux-row-label {
+  text-align: left !important;
+  font-weight: 600;
+  color: #1e293b;
+  background: #fafafa;
+}
+
+.renta-flux-net-row {
+  background: #f1f5f9 !important;
+  border-top: 2px solid #cbd5e1;
+}
+
+.renta-flux-net-row .renta-flux-row-label {
+  font-weight: 700;
+  color: #0f172a;
 }
 
 .renta-flux-net {
   font-weight: 800;
-  color: #1e293b;
+  color: #0f172a;
 }
 
 /* ── Actions bar ─────────────────────────────────── */
