@@ -105,14 +105,15 @@ def calculer_rentabilite_projet(projet) -> dict:
     qp_apt = _d(p.quote_part_appartement) / 100.0
     qp_com = _d(p.quote_part_commerce) / 100.0
     qp_bur = _d(p.quote_part_bureau) / 100.0
-    qp_eq = _d(getattr(p, 'quote_part_equipement', None)) / 100.0
-    qp_eq_prive = _d(getattr(p, 'quote_part_equipement_prive', None)) / 100.0
 
+    # La surface vendable est réservée exclusivement aux appartements, commerces et bureaux
     surf_apt = surface_vendable * qp_apt
     surf_com = surface_vendable * qp_com
     surf_bur = surface_vendable * qp_bur
-    surf_eq = surface_vendable * qp_eq
-    surf_eq_prive = surface_vendable * qp_eq_prive
+
+    # Les équipements ont une surface définie propre et ne prennent pas de la surface vendable
+    surf_eq = _d(getattr(p, 'surface_equipement', None))
+    surf_eq_prive = _d(getattr(p, 'surface_equipement_prive', None))
 
     # ── 4. Chiffre d'affaires ──
     px_vente_apt = _d(p.prix_vente_appartement)
@@ -126,36 +127,41 @@ def calculer_rentabilite_projet(projet) -> dict:
     ca_bur = surf_bur * px_vente_bur
     ca_eq = surf_eq * px_vente_eq
     ca_eq_prive = surf_eq_prive * px_vente_eq_prive
-    ca_hors_eq = ca_apt + ca_com + ca_bur  # CA suivant l'échéancier classique (30/30/40)
-    ca_total = ca_hors_eq + ca_eq + ca_eq_prive
+    ca_hors_eq = ca_apt + ca_com + ca_bur
+
+    # Les frais de commercialisation s'ajoutent au CA (ne sont pas des charges)
+    taux_comm = _d(p.taux_commercialisation) / 100.0
+    frais_commercialisation = (ca_hors_eq + ca_eq + ca_eq_prive) * taux_comm
+    ca_total = ca_hors_eq + ca_eq + ca_eq_prive + frais_commercialisation
 
     # ── 5. Coûts de construction ──
+    # Les équipements n'ont pas de coût de construction
     cout_apt = surf_apt * _d(p.cout_construction_appartement)
     cout_com = surf_com * _d(p.cout_construction_commerce)
     cout_bur = surf_bur * _d(p.cout_construction_bureau)
-    cout_eq = surf_eq * _d(getattr(p, 'cout_construction_equipement', None))
-    cout_eq_prive = surf_eq_prive * _d(getattr(p, 'cout_construction_equipement_prive', None))
-    cout_construction_total = cout_apt + cout_com + cout_bur + cout_eq + cout_eq_prive
+    cout_eq = 0.0
+    cout_eq_prive = 0.0
+    cout_construction_total = cout_apt + cout_com + cout_bur
 
     # ── 6. Charges ──
     taux_etudes = _d(p.taux_etudes_honoraires) / 100.0
     taux_imprevus = _d(p.taux_imprevus) / 100.0
-    taux_comm = _d(p.taux_commercialisation) / 100.0
 
     frais_etudes = cout_construction_total * taux_etudes
     imprevus = cout_construction_total * taux_imprevus
-    frais_commercialisation = ca_total * taux_comm
 
     # ── 6bis. Charge d'aménagement (échelonnement aménagement) ──
     cout_amenagement = 600 * surface_a_amenager * 1.1
 
     # ── 7. Prix d'acquisition foncier ──
     # Prix / m² * surface brute du foncier * (1 + frais d'acquisition)
+    # surface_brute = surface totale réelle du projet issue de la parcelle
     prix_foncier = prix_m2 * surface_brute
     frais_acquisition_montant = prix_foncier * frais_acq_pct
     cout_acquisition = prix_foncier + frais_acquisition_montant
 
     # ── 8. Coût total du projet ──
+    # Les frais de commercialisation ne sont pas inclus dans les charges
     cout_total_projet = (
         cout_acquisition
         + cout_construction_total
@@ -232,7 +238,12 @@ def calculer_rentabilite_projet(projet) -> dict:
         if 0 <= idx_comm < duree_comm:
             ca_eq_prive_annee = ca_eq_prive * rep_ventes_eq_prive[idx_comm] / 100.0
 
-        ca_annee = ca_hors_eq_annee + ca_eq_annee + ca_eq_prive_annee
+        # Commercialisation (s'ajoute au CA)
+        comm_annee = 0.0
+        if 0 <= idx_comm < duree_comm:
+            comm_annee = frais_commercialisation * rep_ventes[idx_comm] / 100.0
+
+        ca_annee = ca_hors_eq_annee + ca_eq_annee + ca_eq_prive_annee + comm_annee
 
         # Acquisition foncier (Année 0 uniquement)
         acq_annee = cout_acquisition if annee == 0 else 0.0
@@ -247,19 +258,15 @@ def calculer_rentabilite_projet(projet) -> dict:
             etudes_annee = frais_etudes * pct_cons
             imp_annee = imprevus * pct_cons
 
-        # Commercialisation (même échelonnement que les ventes hors équipement)
-        comm_annee = 0.0
-        if 0 <= idx_comm < duree_comm:
-            comm_annee = frais_commercialisation * rep_ventes[idx_comm] / 100.0
-
         # Aménagement (100% en Année 0)
         amenagement_annee = cout_amenagement if annee == 0 else 0.0
 
-        flux_net = ca_annee - acq_annee - cons_annee - etudes_annee - imp_annee - comm_annee - amenagement_annee
+        # Total des charges (SANS frais de commercialisation)
+        total_charges_annee = acq_annee + amenagement_annee + cons_annee + etudes_annee + imp_annee
+        flux_net = ca_annee - total_charges_annee
 
         cons_imp_etudes_annee = cons_annee + etudes_annee + imp_annee
         ca_eq_total_annee = ca_eq_annee + ca_eq_prive_annee
-        total_charges_annee = acq_annee + amenagement_annee + cons_annee + etudes_annee + imp_annee + comm_annee
 
         flux.append({
             'annee': annee,
@@ -267,6 +274,7 @@ def calculer_rentabilite_projet(projet) -> dict:
             'ca_equipement_public': round(ca_eq_annee, 2),
             'ca_equipement_prive': round(ca_eq_prive_annee, 2),
             'ca_equipements': round(ca_eq_total_annee, 2),
+            'frais_commercialisation': round(comm_annee, 2),
             'ca_total': round(ca_annee, 2),
             'ca': round(ca_annee, 2),
             'acquisition': round(acq_annee, 2),
@@ -274,8 +282,7 @@ def calculer_rentabilite_projet(projet) -> dict:
             'etudes_honoraires': round(etudes_annee, 2),
             'imprevus': round(imp_annee, 2),
             'autre_charge': round(cons_imp_etudes_annee, 2),
-            'commercialisation': round(comm_annee, 2),
-            'frais_commercialisation': round(comm_annee, 2),
+            'commercialisation': 0.0,
             'amenagement': round(amenagement_annee, 2),
             'total_charges': round(total_charges_annee, 2),
             'flux_net': round(flux_net, 2),

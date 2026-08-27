@@ -1366,36 +1366,8 @@ export function GeoportalPage(): React.JSX.Element {
       quote_part_appartement: numRenta(rentaForm.quotePartApp),
       quote_part_commerce: numRenta(rentaForm.quotePartCommerce),
       quote_part_bureau: numRenta(rentaForm.quotePartBureau),
-      quote_part_equipement: rentaForm.hasEquipement ? (() => {
-        const cosVal = numRenta(rentaForm.cos) ?? 0
-        const surfConstr = rentaSurfaceConstructible?.surface_constructible && rentaSurfaceConstructible.surface_constructible > 0
-          ? rentaSurfaceConstructible.surface_constructible
-          : baseSurf
-        const sVoie = rentaSurfaceEquipement?.surface_voie ?? 0
-        const sEv = rentaSurfaceEquipement?.surface_espace_vert ?? 0
-        const tChute = (numRenta(rentaForm.tauxChute) ?? 0) / 100
-        const shon = (sVoie > 0 || sEv > 0)
-          ? cosVal * surfConstr * (1 - tChute)
-          : cosVal * surfConstr
-        const surfaceVendable = shon * 0.9
-        const surfEq = rentaSurfaceEquipement?.surface_equipement ?? 0
-        return surfaceVendable > 0 && surfEq > 0 ? Math.round(surfEq / surfaceVendable * 10000) / 100 : 0
-      })() : 0,
-      quote_part_equipement_prive: rentaForm.hasEquipementPrive ? (() => {
-        const cosVal = numRenta(rentaForm.cos) ?? 0
-        const surfConstr = rentaSurfaceConstructible?.surface_constructible && rentaSurfaceConstructible.surface_constructible > 0
-          ? rentaSurfaceConstructible.surface_constructible
-          : baseSurf
-        const sVoie = rentaSurfaceEquipement?.surface_voie ?? 0
-        const sEv = rentaSurfaceEquipement?.surface_espace_vert ?? 0
-        const tChute = (numRenta(rentaForm.tauxChute) ?? 0) / 100
-        const shon = (sVoie > 0 || sEv > 0)
-          ? cosVal * surfConstr * (1 - tChute)
-          : cosVal * surfConstr
-        const surfaceVendable = shon * 0.9
-        const surfEqPrive = rentaSurfaceEquipement?.surface_equipement_prive ?? 0
-        return surfaceVendable > 0 && surfEqPrive > 0 ? Math.round(surfEqPrive / surfaceVendable * 10000) / 100 : 0
-      })() : 0,
+      quote_part_equipement: 0,
+      quote_part_equipement_prive: 0,
       prix_vente_appartement: numRenta(rentaForm.prixVenteApp),
       prix_vente_commerce: numRenta(rentaForm.prixVenteCommerce),
       prix_vente_bureau: numRenta(rentaForm.prixVenteBureau),

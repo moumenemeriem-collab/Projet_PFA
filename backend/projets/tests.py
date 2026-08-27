@@ -192,14 +192,14 @@ class TestSurfaceTotale(SimpleTestCase):
         p = _projet(
             quote_part_appartement=60,
             quote_part_commerce=20,
-            quote_part_bureau=10,
-            quote_part_equipement=10,
+            quote_part_bureau=20,
+            surface_equipement=500,
             prix_vente_equipement=6000,
         )
         r = calculer_rentabilite_projet(p)
         flux = r['flux']
         self.assertGreaterEqual(len(flux), 4)
-        # Année 0 : CA commercialisation = 0, CA équipements = 0, Aménagement > 0
+        # Année 0 : CA commercialisation = 0, CA équipements = 0
         self.assertEqual(flux[0]['ca_commercialisation'], 0.0)
         self.assertEqual(flux[0]['ca_equipements'], 0.0)
         self.assertGreater(flux[0]['autre_charge'], 0.0)
