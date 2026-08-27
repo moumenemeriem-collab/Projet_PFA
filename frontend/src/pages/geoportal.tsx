@@ -4015,7 +4015,7 @@ const bindPopupActionButtons = (popup: any): void => {
                                 </tr>
                                 <tr>
                                   <td className="renta-flux-row-label">
-                                    Prix d'acquisition du foncier brut (Prix / m² * surface brute du foncier * (1+ frais d'acquisition))
+                                    Prix d'acquisition du foncier brut
                                   </td>
                                   <td className="renta-flux-row-note"></td>
                                   {rentaResult.flux.map((f) => (
@@ -4031,7 +4031,7 @@ const bindPopupActionButtons = (popup: any): void => {
                                 </tr>
                                 <tr>
                                   <td className="renta-flux-row-label">
-                                    Aménagement (600*SURFACE A AMENAGER *1,1)
+                                    Aménagement
                                   </td>
                                   <td className="renta-flux-row-note"></td>
                                   {rentaResult.flux.map((f) => (
