@@ -4047,7 +4047,7 @@ const bindPopupActionButtons = (popup: any): void => {
                                 </tr>
                                 <tr>
                                   <td className="renta-flux-row-label">Coût de constructions</td>
-                                  <td className="renta-flux-row-note">En fonction de la durée du projet (Cas de deux années)</td>
+                                  <td className="renta-flux-row-note"></td>
                                   {rentaResult.flux.map((f) => {
                                     const pct = f.annee < 2 ? '50%' : undefined
                                     return (
@@ -4064,7 +4064,7 @@ const bindPopupActionButtons = (popup: any): void => {
                                 </tr>
                                 <tr>
                                   <td className="renta-flux-row-label">Frais des études et honoraires des professionnels</td>
-                                  <td className="renta-flux-row-note">En fonction de la durée du projet (Cas de deux années)</td>
+                                  <td className="renta-flux-row-note"></td>
                                   {rentaResult.flux.map((f) => {
                                     const pct = f.annee < 2 ? '50%' : undefined
                                     return (
@@ -4081,7 +4081,7 @@ const bindPopupActionButtons = (popup: any): void => {
                                 </tr>
                                 <tr>
                                   <td className="renta-flux-row-label">Imprévus</td>
-                                  <td className="renta-flux-row-note">En fonction de la durée du projet (Cas de deux années)</td>
+                                  <td className="renta-flux-row-note"></td>
                                   {rentaResult.flux.map((f) => {
                                     const pct = f.annee < 2 ? '50%' : undefined
                                     return (
@@ -4103,7 +4103,7 @@ const bindPopupActionButtons = (popup: any): void => {
                                 </tr>
                                 <tr>
                                   <td className="renta-flux-row-label">CA</td>
-                                  <td className="renta-flux-row-note">En fonction de la durée du projet (Cas de 3 années)</td>
+                                  <td className="renta-flux-row-note"></td>
                                   {rentaResult.flux.map((f) => {
                                     const val = f.ca_commercialisation ?? (f.annee === 0 ? 0 : f.ca)
                                     const pct = f.annee === 1 ? '30%' : f.annee === 2 ? '30%' : f.annee === 3 ? '40%' : undefined
@@ -4121,7 +4121,7 @@ const bindPopupActionButtons = (popup: any): void => {
                                 </tr>
                                 <tr>
                                   <td className="renta-flux-row-label">Frais de commercialisation</td>
-                                  <td className="renta-flux-row-note">En fonction de la durée du projet (Cas de deux années)</td>
+                                  <td className="renta-flux-row-note"></td>
                                   {rentaResult.flux.map((f) => {
                                     const val = f.frais_commercialisation ?? f.commercialisation
                                     const pct = f.annee === 1 ? '30%' : f.annee === 2 ? '30%' : f.annee === 3 ? '40%' : undefined
@@ -4175,7 +4175,7 @@ const bindPopupActionButtons = (popup: any): void => {
                                 {/* ── Total : Flux de trésorerie ── */}
                                 <tr className="renta-flux-net-row">
                                   <td className="renta-flux-row-label">Flux de trésorerie</td>
-                                  <td className="renta-flux-row-note">chiffre d'affaires - charges</td>
+                                  <td className="renta-flux-row-note"></td>
                                   {rentaResult.flux.map((f) => (
                                     <td key={f.annee} className="renta-flux-net">
                                       <div className="renta-flux-val">
