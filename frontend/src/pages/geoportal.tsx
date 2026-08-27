@@ -4004,16 +4004,7 @@ const bindPopupActionButtons = (popup: any): void => {
                       disabled={rentaGeneratingPdf}
                       title="Télécharger directement le rapport PDF d'étude de rentabilité"
                     >
-                      <span className="renta-pdf-badge">PDF</span>
-                      {rentaGeneratingPdf ? (
-                        <div className="renta-pdf-spinner" aria-hidden="true" />
-                      ) : (
-                        <div className="renta-pdf-icon-wrap" aria-hidden="true">
-                          <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M2 1.5A1.5 1.5 0 0 1 3.5 0H10l4 4v10.5A1.5 1.5 0 0 1 12.5 16h-9A1.5 1.5 0 0 1 2 14.5v-13zM10 0.5V4a1 1 0 0 0 1 1h3.5L10 0.5zM9 7v5.3L7.1 10.4a.6.6 0 1 0-.85.85l2.6 2.6a.6.6 0 0 0 .85 0l2.6-2.6a.6.6 0 1 0-.85-.85L10 12.3V7a.6.6 0 1 0-1 0z" />
-                          </svg>
-                        </div>
-                      )}
+                      {rentaGeneratingPdf && <div className="renta-pdf-spinner" aria-hidden="true" />}
                       <span>{rentaGeneratingPdf ? 'Génération en cours...' : 'Télécharger le rapport (PDF)'}</span>
                     </button>
 
@@ -4032,17 +4023,8 @@ const bindPopupActionButtons = (popup: any): void => {
                           disabled={rentaGeneratingPdf}
                           title="Télécharger le rapport PDF complet de rentabilité"
                         >
-                          <span className="renta-pdf-badge">PDF</span>
-                          {rentaGeneratingPdf ? (
-                            <div className="renta-pdf-spinner" aria-hidden="true" />
-                          ) : (
-                            <div className="renta-pdf-icon-wrap" aria-hidden="true">
-                              <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M2 1.5A1.5 1.5 0 0 1 3.5 0H10l4 4v10.5A1.5 1.5 0 0 1 12.5 16h-9A1.5 1.5 0 0 1 2 14.5v-13zM10 0.5V4a1 1 0 0 0 1 1h3.5L10 0.5zM9 7v5.3L7.1 10.4a.6.6 0 1 0-.85.85l2.6 2.6a.6.6 0 0 0 .85 0l2.6-2.6a.6.6 0 1 0-.85-.85L10 12.3V7a.6.6 0 1 0-1 0z" />
-                              </svg>
-                            </div>
-                          )}
-                          <span>{rentaGeneratingPdf ? 'Génération...' : 'Télécharger (PDF)'}</span>
+                          {rentaGeneratingPdf && <div className="renta-pdf-spinner" aria-hidden="true" />}
+                          <span>{rentaGeneratingPdf ? 'Génération...' : 'Télécharger le rapport (PDF)'}</span>
                         </button>
                       </div>
 
