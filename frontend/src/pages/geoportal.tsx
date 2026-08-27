@@ -816,7 +816,7 @@ export function GeoportalPage(): React.JSX.Element {
     setRentaInputsSaved(null)
     setRentaUsingCachedSurface(false)
     setRentaViewMode(false)
-    setRentaSidebarOpen(true)
+    setRentaSidebarOpen(false)
     setRentaModalOpen(true)
     setRentaForm((f) => ({
       ...f,
@@ -938,6 +938,7 @@ export function GeoportalPage(): React.JSX.Element {
     setRentaSurfaceEquipement(null)
     setRentaAffectationsOpen(false)
     setRentaSurfaceLoading(true)
+    setRentaSidebarOpen(false)
     setRentaModalOpen(true)
   }
 
@@ -970,7 +971,7 @@ export function GeoportalPage(): React.JSX.Element {
   const [rentaRing, setRentaRing] = useState<number[][]>([])
   const [rentaAffectationsOpen, setRentaAffectationsOpen] = useState(false)
   const [rentaSurfaceLoading, setRentaSurfaceLoading] = useState(false)
-  const [rentaSidebarOpen, setRentaSidebarOpen] = useState(true)
+  const [rentaSidebarOpen, setRentaSidebarOpen] = useState(false)
   const [rentaDetailOpen, setRentaDetailOpen] = useState(false)
   const [rentaGeneratingPdf, setRentaGeneratingPdf] = useState(false)
 
@@ -1148,7 +1149,7 @@ export function GeoportalPage(): React.JSX.Element {
       setRentaInputsSaved(null)
       setRentaUsingCachedSurface(false)
       setRentaViewMode(false)
-      setRentaSidebarOpen(true)
+      setRentaSidebarOpen(false)
       setRentaModalOpen(true)
       setRentaForm((f) => ({
         ...f,
@@ -3352,11 +3353,16 @@ const bindPopupActionButtons = (popup: any): void => {
               <span style={{ fontSize: '0.7rem', opacity: 0.8, fontWeight: 400 }}>{rentaParcelInfo?.ref || rentaTerrainNom || rentaParcelInfo?.nom || ''}</span>
             </div>
             <div className="geo-dims-header-actions">
-              {!rentaSidebarOpen && (
-                <button type="button" className="renta-sidebar-reopen" title="Afficher la liste des terrains" onClick={() => setRentaSidebarOpen(true)}>
-                  {icons.building} <span style={{ fontSize: '0.78rem' }}>Terrains</span>
-                </button>
-              )}
+              <button
+                type="button"
+                className={`renta-sidebar-toggle-btn${rentaSidebarOpen ? ' renta-sidebar-toggle-btn--active' : ''}`}
+                title={rentaSidebarOpen ? 'Masquer la liste des terrains' : 'Afficher la liste des terrains'}
+                onClick={() => setRentaSidebarOpen((v) => !v)}
+              >
+                {icons.building}
+                <span>Terrains du projet</span>
+                <span className="renta-sidebar-toggle-count">{rentaTerrains.length}</span>
+              </button>
               <button type="button" className="geo-dims-close" data-dims-close aria-label="Fermer" onClick={() => setRentaModalOpen(false)}>&times;</button>
             </div>
           </div>
@@ -4284,16 +4290,24 @@ const bindPopupActionButtons = (popup: any): void => {
 
               {rentaSidebarOpen && <div className="renta-modal-sidebar">
                 <div className="renta-sidebar-header">
-                  <div>
-                    <h4>{icons.building} Terrains du projet</h4>
-                    <span>{rentaTerrains.length} terrain{rentaTerrains.length !== 1 ? 's' : ''} enregistré{rentaTerrains.length !== 1 ? 's' : ''}</span>
+                  <div className="renta-sidebar-header-info">
+                    <div className="renta-sidebar-header-badge">
+                      {icons.building}
+                    </div>
+                    <div>
+                      <h4 className="renta-sidebar-header-title">Terrains du projet</h4>
+                      <span className="renta-sidebar-header-sub">
+                        {rentaTerrains.length} terrain{rentaTerrains.length > 1 ? 's' : ''} enregistré{rentaTerrains.length > 1 ? 's' : ''}
+                      </span>
+                    </div>
                   </div>
-                  <button type="button" className="renta-sidebar-close" aria-label="Fermer la liste" onClick={() => setRentaSidebarOpen(false)}>&times;</button>
+                  <button type="button" className="renta-sidebar-close" title="Fermer la liste" aria-label="Fermer la liste" onClick={() => setRentaSidebarOpen(false)}>&times;</button>
                 </div>
               {rentaTerrains.length === 0 ? (
                 <div className="renta-sidebar-empty">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>
-                  <p>Aucun terrain enregistré pour ce projet.<br/>Calculez la rentabilité d'un terrain puis enregistrez-le.</p>
+                  <div className="renta-sidebar-empty-icon">{icons.building}</div>
+                  <h5>Aucun terrain enregistré</h5>
+                  <p>Calculez la rentabilité financière d'un terrain puis cliquez sur <strong>Enregistrer</strong> pour l'ajouter à cette liste comparative.</p>
                 </div>
               ) : (
                 <div className="renta-sidebar-list">
