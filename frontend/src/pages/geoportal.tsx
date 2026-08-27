@@ -4316,34 +4316,49 @@ const bindPopupActionButtons = (popup: any): void => {
                         >
                           <div className="renta-terrain-card-top">
                             <span className="renta-terrain-card-rank">#{i + 1}</span>
-                            <div className="renta-terrain-card-name">{tr.nom || tr.num_titre_foncier || `Terrain #${tr.id}`}</div>
+                            <div className="renta-terrain-card-title-wrap">
+                              <div className="renta-terrain-card-name" title={tr.nom || tr.num_titre_foncier || `Terrain #${tr.id}`}>
+                                {tr.nom || tr.num_titre_foncier || `Terrain #${tr.id}`}
+                              </div>
+                              <span className="renta-terrain-card-surf">
+                                {Number(tr.superficie).toLocaleString('fr-FR')} m²
+                              </span>
+                            </div>
+                            <div className="renta-terrain-card-actions" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                className="renta-terrain-icon-btn renta-terrain-icon-btn--edit"
+                                title="Modifier ce terrain"
+                                aria-label="Modifier"
+                                onClick={() => { handleSelectRentaTerrain(tr); setRentaViewMode(false) }}
+                              >
+                                {icons.edit}
+                              </button>
+                              <button
+                                type="button"
+                                className="renta-terrain-icon-btn renta-terrain-icon-btn--del"
+                                title="Supprimer ce terrain"
+                                aria-label="Supprimer"
+                                onClick={() => { void handleDeleteRentaTerrain(tr.id) }}
+                              >
+                                {icons.trash}
+                              </button>
+                            </div>
                           </div>
-                          <div className="renta-terrain-card-surf">{Number(tr.superficie).toLocaleString('fr-FR')} m²</div>
+
                           <div className="renta-terrain-card-data">
-                            <div className="renta-terrain-card-datum">
-                              <span>TRI</span>
-                              <strong className={hasRenta ? (tri! >= 0 ? 'text-success' : 'text-error') : 'text-muted'}>{hasRenta ? `${tri!.toFixed(2)}%` : '—'}</strong>
+                            <div className={`renta-terrain-card-kpi${hasRenta ? (tri! >= 0 ? ' renta-terrain-card-kpi--pos' : ' renta-terrain-card-kpi--neg') : ''}`}>
+                              <span className="renta-terrain-card-kpi-label">TRI</span>
+                              <strong className="renta-terrain-card-kpi-val">
+                                {hasRenta ? `${tri!.toFixed(2)}%` : '—'}
+                              </strong>
                             </div>
-                            <div className="renta-terrain-card-datum">
-                              <span>Bénéfice net</span>
-                              <strong className={benefice != null ? (benefice >= 0 ? 'text-success' : 'text-error') : 'text-muted'}>{benefice != null ? `${benefice.toLocaleString('fr-FR')} DH` : '—'}</strong>
+                            <div className={`renta-terrain-card-kpi${benefice != null ? (benefice >= 0 ? ' renta-terrain-card-kpi--pos' : ' renta-terrain-card-kpi--neg') : ''}`}>
+                              <span className="renta-terrain-card-kpi-label">Bénéfice net</span>
+                              <strong className="renta-terrain-card-kpi-val">
+                                {benefice != null ? `${benefice.toLocaleString('fr-FR')} DH` : '—'}
+                              </strong>
                             </div>
-                          </div>
-                          <div className="renta-terrain-card-actions" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              type="button"
-                              className="renta-terrain-card-btn renta-terrain-card-btn--edit"
-                              onClick={() => { handleSelectRentaTerrain(tr); setRentaViewMode(false) }}
-                            >
-                              Modifier
-                            </button>
-                            <button
-                              type="button"
-                              className="renta-terrain-card-btn renta-terrain-card-btn--del"
-                              onClick={() => { void handleDeleteRentaTerrain(tr.id) }}
-                            >
-                              Supprimer
-                            </button>
                           </div>
                         </div>
                       )
