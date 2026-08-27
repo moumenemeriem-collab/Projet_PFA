@@ -7,7 +7,7 @@ import { TerrainGeometryEditor, emptyGeom, type TerrainGeom } from '../component
 import { formatApiErrors } from '../api/auth'
 import { fetchProjet, previewRentabilite, type Projet, type ProjetPayload, type Rentabilite } from '../api/projets'
 import { createTerrain, computeSurfaceConstructible, computeSurfaceEquipement, fetchSurfaceConstructible, fetchSurfaceEquipement, fetchTerrains, saveTerrainRentabilite, type AnalyseFiltres, type AnalyseResultat, type SurfaceConstructibleResponse, type SurfaceEquipementResponse, type Terrain } from '../api/terrains'
-import { createAnalyse, fetchAnalyseDetail, type AnalyseDetail, type ResultatAnalyse } from '../api/analyses'
+import { fetchAnalyseDetail, type AnalyseDetail, type ResultatAnalyse } from '../api/analyses'
 import { createAnalysePondere, type PonderationResponse, type TerrainPondere } from '../api/analyses'
 import { fetchCouches, fetchCoucheGeoJSON, type Couche, type CoucheFeature, type CoucheFeatureCollection } from '../api/couches'
 import { attributeLabel, CADASTRE_ATTRIBUTE_LABELS, PLAN_AMENAGEMENT_ATTRIBUTE_LABELS } from '../utils/attributeLabels'
@@ -345,151 +345,6 @@ function ordinalSuffix(n: number): string {
   return 'ᵉ'
 }
 
-function collectFilterFiltres(): AnalyseFiltres {
-  const f: AnalyseFiltres = {}
-
-  const getChecked = (name: string): string[] =>
-    Array.from(document.querySelectorAll<HTMLInputElement>(`input[name="${name}"]:checked`)).map((cb) => cb.value)
-
-  const getDistance = (name: string): string | undefined => {
-    const sel = document.querySelector<HTMLSelectElement>(`select[name="${name}"]`)
-    if (!sel) return undefined
-    if (sel.value === '__custom__') {
-      const input = document.querySelector<HTMLInputElement>(`input[name="${name}_custom"]`)
-      const v = input?.value.trim()
-      return v ? v : undefined
-    }
-    return sel.value || undefined
-  }
-
-  const routes = getChecked('route_type')
-  if (routes.length > 0) f.route_type = routes
-  f.distance_route = getDistance('distance_route')
-
-  const health = getChecked('health')
-  if (health.length > 0) f.health = health
-  f.distance_health = getDistance('distance_health')
-
-  const edu = getChecked('education')
-  if (edu.length > 0) f.education = edu
-  f.distance_education = getDistance('distance_education')
-
-  const commerce = getChecked('commerce')
-  if (commerce.length > 0) f.commerce = commerce
-  f.distance_commerce = getDistance('distance_commerce')
-
-  const transport = getChecked('transport')
-  if (transport.length > 0) f.transport = transport
-  f.distance_transport = getDistance('distance_transport')
-
-  const admin = getChecked('admin')
-  if (admin.length > 0) f.admin = admin
-  f.distance_admin = getDistance('distance_admin')
-
-  const pole = getChecked('pole')
-  if (pole.length > 0) f.pole = pole
-  f.distance_poles = getDistance('distance_poles')
-
-  const loc = getChecked('localisation')
-  if (loc.length > 0) f.localisation = loc
-
-  const pente = getChecked('pente')
-  if (pente.length > 0) f.pente = pente
-
-  const denivele = getChecked('denivele')
-  if (denivele.length > 0) f.denivele = denivele
-
-  const altitude = getChecked('altitude')
-  if (altitude.length > 0) f.altitude = altitude
-
-  return f
-}
-
-function renderInfoGenerale(tr: AnalyseResultat): React.JSX.Element {
-  const info = tr.infos_generales
-  return (
-    <div className="geo-sr-card">
-      <div className="geo-sr-card-header">
-        <span className="geo-sr-card-header-icon">{icons.mapPin}</span>
-        <h4 className="geo-sr-card-title">{t('ranking.terrain_infos')}</h4>
-      </div>
-      <div className="geo-sr-card-body">
-        <div className="geo-sr-info-grid">
-          <div className="geo-sr-info-item">
-            <span className="geo-sr-info-label">{t('ranking.terrain_reference')}</span>
-            <span className="geo-sr-info-value">{info.reference_cadastrale}</span>
-          </div>
-          <div className="geo-sr-info-item">
-            <span className="geo-sr-info-label">{t('ranking.terrain_surface')}</span>
-            <span className="geo-sr-info-value">{info.superficie}</span>
-          </div>
-          <div className="geo-sr-info-item geo-sr-info-item--full">
-            <span className="geo-sr-info-label">{t('ranking.terrain_centre')}</span>
-            <span className="geo-sr-info-value">{info.latitude.toFixed(6)}, {info.longitude.toFixed(6)}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function renderDetailCriteres(tr: AnalyseResultat): React.JSX.Element | null {
-  const cc = tr.criteres_conformite ?? []
-  if (cc.length === 0) return null
-  const ok = cc.filter(c => c.pct >= 50).length
-  return (
-    <div className="geo-sr-card">
-      <div className="geo-sr-card-header">
-        <span className="geo-sr-card-header-icon">{icons.layers}</span>
-        <h4 className="geo-sr-card-title">Détail des critères</h4>
-      </div>
-      <div className="geo-sr-card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {cc.map(c => {
-          const isOk = c.pct >= 50
-          const icon = isOk ? '✓' : '✗'
-          const iconColor = isOk ? '#16a34a' : '#dc2626'
-          const bgColor = isOk ? '#f0fdf4' : '#fef2f2'
-          const borderColor = isOk ? '#bbf7d0' : '#fecaca'
-          const isDist = c.unite === 'm'
-          const isSurf = c.unite === 'm²'
-          const isPente = c.unite === '%'
-          return (
-            <div key={c.cle} style={{ display: 'flex', alignItems: 'stretch', gap: 10, background: bgColor, border: `1px solid ${borderColor}`, borderRadius: 10, overflow: 'hidden' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, fontSize: '1.2rem', fontWeight: 800, color: iconColor, flexShrink: 0 }}>
-                {icon}
-              </div>
-              <div style={{ flex: 1, padding: '10px 12px 10px 0', display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e293b' }}>{c.label}</div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                  {isDist ? (
-                    <>
-                      <span>Distance mesurée : <strong style={{ color: '#334155' }}>{c.valeur.toLocaleString('fr-FR')} m</strong></span>
-                      <span>Distance souhaitée : <strong style={{ color: '#334155' }}>≤ {Number(c.cible).toLocaleString('fr-FR')} m</strong></span>
-                    </>
-                  ) : isSurf ? (
-                    <>
-                      <span>Surface du terrain : <strong style={{ color: '#334155' }}>{c.valeur.toLocaleString('fr-FR')} m²</strong></span>
-                      <span>Surface souhaitée : <strong style={{ color: '#334155' }}>{Number(c.cible).toLocaleString('fr-FR')} m²</strong></span>
-                    </>
-                  ) : isPente ? (
-                    <>
-                      <span>Pente mesurée : <strong style={{ color: '#334155' }}>{c.valeur.toFixed(1)}%</strong></span>
-                      <span>Pente souhaitée : <strong style={{ color: '#334155' }}>{Array.isArray(c.cible) ? c.cible.join(', ') : c.cible}</strong></span>
-                    </>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          )
-        })}
-        <div style={{ fontSize: '0.8rem', color: '#64748b', textAlign: 'center', paddingTop: 4 }}>
-          {t('ranking.conclusion_conforme').replace('{s}', String(ok)).replace('{t}', String(cc.length))}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function toAnalyseResultat(r: ResultatAnalyse): AnalyseResultat {
   return {
     id: r.id_parcelle != null ? Number(r.id_parcelle) : 0,
@@ -528,29 +383,9 @@ function toAnalyseResultat(r: ResultatAnalyse): AnalyseResultat {
     classement: r.rang ?? 0,
     points_forts: r.points_forts ?? [],
     points_faibles: r.points_faibles ?? [],
+    geom: (r as any).geom ?? (r as any).geometry ?? null,
   }
 }
-
-function renderScoreSummary(tr: AnalyseResultat): React.JSX.Element {
-  const cc = tr.criteres_conformite ?? []
-  const ok = cc.filter(c => c.pct >= 50).length
-  return (
-    <div className="geo-score-summary">
-      <div className="geo-score-summary-item geo-score-summary-item--rang">
-        <span className="geo-score-summary-label">{t('ranking.rang')}</span>
-        <strong className="geo-score-summary-value">#{tr.classement}</strong>
-      </div>
-      {cc.length > 0 ? (
-        <div className="geo-score-summary-item">
-          <span className="geo-score-summary-label">Critères respectés</span>
-          <strong className="geo-score-summary-value">{ok} / {cc.length}</strong>
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-
 
 export function GeoportalPage(): React.JSX.Element {
   const navigate = useNavigate()
@@ -564,6 +399,7 @@ export function GeoportalPage(): React.JSX.Element {
   const [selectedTerrain, setSelectedTerrain] = useState<AnalyseResultat | null>(null)
   const [selectedPonderationTerrain, setSelectedPonderationTerrain] = useState<TerrainPondere | null>(null)
   const [cardError, setCardError] = useState<string | null>(null)
+  const [geomMissing, setGeomMissing] = useState(false)
   const [coord, setCoord] = useState('Lat: — , Lng: —')
   const [layersPopupOpen, setLayersPopupOpen] = useState(false)
   const [basemapMenuOpen, setBasemapMenuOpen] = useState(false)
@@ -580,8 +416,6 @@ export function GeoportalPage(): React.JSX.Element {
   const [cadastreFc, setCadastreFc] = useState<CoucheFeatureCollection | null>(null)
   const [paEnabled, setPaEnabled] = useState(false)
   const [savedAnalyse, setSavedAnalyse] = useState<AnalyseDetail | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [_saveError, setSaveError] = useState<string | null>(null)
   const [showSavedBanner, setShowSavedBanner] = useState(false)
   const [cadastreQuery, setCadastreQuery] = useState('')
   const [coucheCounts, setCoucheCounts] = useState<Record<string, number>>({})
@@ -592,6 +426,8 @@ export function GeoportalPage(): React.JSX.Element {
   const currentLayerRef = useRef<any>(null)
   const analyzePendingRef = useRef(false)
   const selectedTerrainIdRef = useRef<number | null>(null)
+  const selectedMarkerRef = useRef<any>(null)
+  const selectedGeomLayerRef = useRef<any>(null)
   const focusParcelleRef = useRef<number | null>(null)
   const analyseResultatsRef = useRef<AnalyseResultat[]>([])
   const overlayLayersRef = useRef<Record<string, any>>({})
@@ -642,7 +478,7 @@ export function GeoportalPage(): React.JSX.Element {
     accessibilite: string[]
     route_type: string
     localisation: string
-    pente: string[]
+    altitude: string[]
   } | null>(null)
   const [wizardMatriceAhp, setWizardMatriceAhp] = useState<[number, number] | null>(null)
   const [wizardOrdreCategoriesAhp, setWizardOrdreCategoriesAhp] = useState<string[]>([])
@@ -663,7 +499,7 @@ export function GeoportalPage(): React.JSX.Element {
     administration: 'Administration',
     routes: 'Routes',
     localisation: 'Localisation',
-    pente: 'Pente',
+    altitude: 'Altitude',
   }
 
   const handleWizardSelectionComplete = useCallback((sel: typeof wizardSelections & {}): void => {
@@ -681,8 +517,8 @@ export function GeoportalPage(): React.JSX.Element {
       newOrdres.accessibilite = [...wizardSelections.accessibilite]
     }
     newOrdres.positionnement = ['localisation']
-    if (wizardSelections.pente.length > 0) {
-      newOrdres.topographie = ['pente']
+    if (wizardSelections.altitude.length > 0) {
+      newOrdres.topographie = ['altitude']
     }
     setWizardOrdresRoc(newOrdres)
     setWizardRocStepsDone([])
@@ -727,9 +563,8 @@ export function GeoportalPage(): React.JSX.Element {
           },
           preferences_localisation: {
             localisation: wizardSelections?.localisation ?? '',
-            situation_administrative: 'intra_perimetre',
           },
-          preferences_pente: Array.isArray(wizardSelections?.pente) ? wizardSelections!.pente : [],
+          preferences_altitude: Array.isArray(wizardSelections?.altitude) ? wizardSelections!.altitude : [],
           seuil: 0,
         })
         setWizardResultats(response)
@@ -833,9 +668,55 @@ export function GeoportalPage(): React.JSX.Element {
       classement: tp.rang,
       points_forts: [],
       points_faibles: [],
+      geom: (tp as any).geom ?? (tp as any).geometry ?? null,
     }))
     selectTerrain(result.id)
     setCadastreEnabled(true)
+  }, [wizardResultats])
+
+  // Rend les terrains du wizard disponibles pour la mise en évidence et le cadrage
+  // géométrique (clic dans la liste) sans recharge ni requête supplémentaire.
+  useEffect(() => {
+    if (!wizardResultats) return
+    analyseResultatsRef.current = wizardResultats.resultats.map((tp) => ({
+      id: tp.id,
+      nom: tp.nom,
+      superficie: tp.superficie,
+      lat: tp.lat,
+      lng: tp.lng,
+      score_global: tp.score_final,
+      score_final: tp.score_final,
+      score_amc: 0,
+      score_accessibilite: null,
+      score_positionnement: null,
+      score_topographie: null,
+      score_superficie: null,
+      roi: null,
+      marge: null,
+      benefice_net: null,
+      score_rentabilite: null,
+      type_rentabilite: 'indisponible' as const,
+      prix_terrain: null,
+      infos_generales: {
+        reference_cadastrale: tp.reference_cadastrale || tp.nom,
+        commune: '—',
+        province: '—',
+        region: '—',
+        superficie: `${tp.superficie.toFixed(2)} m²`,
+        perimetre: '—',
+        latitude: tp.lat,
+        longitude: tp.lng,
+        zone_amenagement: '—',
+      },
+      criteres: [],
+      criteres_satisfaits: 0,
+      criteres_total: 0,
+      criteres_conformite: [],
+      classement: tp.rang,
+      points_forts: [],
+      points_faibles: [],
+      geom: (tp as any).geom ?? (tp as any).geometry ?? null,
+    }))
   }, [wizardResultats])
 
   const handleWizardOpenRentabilite = useCallback((terrain: TerrainPondere): void => {
@@ -853,6 +734,120 @@ export function GeoportalPage(): React.JSX.Element {
     setRentaNote(null)
     setRentaModalOpen(true)
   }, [])
+
+  const toPct100 = (v: number | null | undefined): number => {
+    if (v == null || !Number.isFinite(v)) return 0
+    return v <= 1 ? Math.round(v * 100) : Math.round(v)
+  }
+
+  const buildPondereVM = (tp: TerrainPondere) => ({
+    reference: tp.reference_cadastrale || tp.nom,
+    superficie: tp.superficie,
+    lat: tp.lat,
+    lng: tp.lng,
+    rang: tp.rang,
+    scorePct: toPct100(tp.score_final),
+    criteres: (tp.contributions ?? []).map((c) => ({ label: CRITERE_LABELS[c.critere] || c.critere, pct: toPct100(c.score) })),
+  })
+
+  const buildResultatVM = (tr: AnalyseResultat) => ({
+    reference: tr.infos_generales?.reference_cadastrale || tr.nom,
+    superficie: tr.superficie,
+    lat: tr.lat,
+    lng: tr.lng,
+    rang: tr.classement,
+    scorePct: toPct100(tr.score_final),
+    criteres: (tr.criteres_conformite ?? []).map((c) => ({ label: c.label, pct: Math.round(c.pct) })),
+  })
+
+  const renderAnalyseDeTerrainCard = (
+    data: { reference: string; superficie: number; lat: number; lng: number; rang: number; scorePct: number; criteres: { label: string; pct: number }[] },
+    onRentabilite: () => void,
+  ): React.JSX.Element => {
+    const scoreCol = data.scorePct >= 70 ? '#16a34a' : data.scorePct >= 40 ? '#d97706' : '#dc2626'
+    return (
+      <div className="geo-analyse-popup">
+        <div className="geo-analyse-stats">
+          <span className="geo-analyse-stat">
+            <span className="geo-analyse-stat-label">Rang</span>
+            <span className="geo-analyse-stat-value">#{data.rang}</span>
+          </span>
+          <span className="geo-analyse-stat-sep" />
+          <span className="geo-analyse-stat">
+            <span className="geo-analyse-stat-label">Score</span>
+            <span className="geo-analyse-stat-value" style={{ color: scoreCol }}>{data.scorePct}%</span>
+          </span>
+        </div>
+
+        <div className="geo-analyse-section">
+          <h4 className="geo-analyse-section-title">{t('ranking.terrain_infos')}</h4>
+          <div className="geo-analyse-rows">
+            <div className="geo-analyse-row">
+              <span className="geo-analyse-row-icon">{icons.document}</span>
+              <span className="geo-analyse-row-label">{t('ranking.terrain_reference')}</span>
+              <span className="geo-analyse-row-value">{data.reference || '—'}</span>
+            </div>
+            <div className="geo-analyse-row">
+              <span className="geo-analyse-row-icon">{icons.layers}</span>
+              <span className="geo-analyse-row-label">{t('ranking.terrain_surface')}</span>
+              <span className="geo-analyse-row-value">{Number(data.superficie).toLocaleString('fr-FR')} m²</span>
+            </div>
+            <div className="geo-analyse-row">
+              <span className="geo-analyse-row-icon">{icons.mapPin}</span>
+              <span className="geo-analyse-row-label">{t('ranking.terrain_centre')}</span>
+              <span className="geo-analyse-row-value">{data.lat.toFixed(6)}, {data.lng.toFixed(6)}</span>
+            </div>
+          </div>
+        </div>
+
+        {data.criteres.length > 0 && (
+          <div className="geo-analyse-section">
+            <h4 className="geo-analyse-section-title">Détail par critère</h4>
+            <div className="geo-analyse-criteria">
+              {[...data.criteres].sort((a, b) => b.pct - a.pct).map((c, i) => (
+                <div key={i} className="geo-analyse-criterion">
+                  <div className="geo-analyse-criterion-header">
+                    <span className="geo-analyse-criterion-name">{c.label}</span>
+                    <span className="geo-analyse-criterion-pct">{c.pct}%</span>
+                  </div>
+                  <div className="geo-analyse-progress-track">
+                    <div className="geo-analyse-progress-fill" style={{ width: `${c.pct}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="geo-analyse-actions">
+          <button type="button" className="btn btn-primary" onClick={onRentabilite}>
+            Calculer la rentabilité
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const openRentabiliteFromResultat = (tr: AnalyseResultat): void => {
+    setRentaTerrainId(tr.id)
+    setRentaTerrainNom(tr.nom)
+    setRentaRing([])
+    setRentaParcelInfo({
+      nom: tr.nom,
+      superficie: tr.superficie,
+      lat: tr.lat,
+      lng: tr.lng,
+      ref: tr.infos_generales?.reference_cadastrale || tr.nom,
+    })
+    setRentaResult(null)
+    setRentaError(null)
+    setRentaNote(null)
+    setRentaSurfaceConstructible(null)
+    setRentaSurfaceEquipement(null)
+    setRentaAffectationsOpen(false)
+    setRentaSurfaceLoading(true)
+    setRentaModalOpen(true)
+  }
 
   const [rentaTerrainId, setRentaTerrainId] = useState<number | null>(null)
   const [rentaTerrainNom, setRentaTerrainNom] = useState('')
@@ -1917,14 +1912,29 @@ const bindPopupActionButtons = (popup: any): void => {
       const tr = byId.get(String(idP))
       if (!tr) return
       const isSel = selectedId != null && tr.id === selectedId
-      const color = getScoreColor(tr.score_global)
-      l.setStyle({
-        color,
-        weight: isSel ? 4 : 1.6,
-        opacity: isSel ? 1 : 0.9,
-        fillColor: color,
-        fillOpacity: isSel ? 0.6 : 0.4,
-      })
+      const el = l.getElement?.() as SVGElement | null
+      if (isSel) {
+        l.setStyle({
+          color: '#ea580c',
+          weight: 6,
+          opacity: 1,
+          fillColor: '#f97316',
+          fillOpacity: 0.35,
+          dashArray: '10 6',
+        })
+        l.bringToFront?.()
+        el?.classList.add('geo-cadastre-selected')
+      } else {
+        const color = getScoreColor(tr.score_global)
+        l.setStyle({
+          color,
+          weight: 1.6,
+          opacity: 0.9,
+          fillColor: color,
+          fillOpacity: 0.4,
+        })
+        el?.classList.remove('geo-cadastre-selected')
+      }
       l.bindPopup(buildParcellePopup(tr, props, extractRing(l.feature?.geometry), undefined), { autoPan: false })
     })
   }
@@ -1934,12 +1944,104 @@ const bindPopupActionButtons = (popup: any): void => {
     const map = mapRef.current
     if (!layer || !map) return
     const ref = tr.infos_generales?.reference_cadastrale
+    let zoomed = false
     layer.eachLayer((l: any) => {
       const idP = l.feature?.properties?.num
       if (idP != null && String(idP) === String(ref)) {
-        overlayFlyToBounds(map, l.getBounds().pad(0.2), { duration: 0.8, easeLinearity: 0.25, maxZoom: 19 })
+        // Cadrage strict sur la géométrie réelle du terrain (marge + zoom max pour garder le contexte)
+        overlayFlyToBounds(map, l.getBounds().pad(0.25), { duration: 0.8, easeLinearity: 0.25, maxZoom: 18 })
+        zoomed = true
       }
     })
+    // Repli : si la parcelle n'est pas dans le cadastre chargé, on zoome sur le point centre
+    if (!zoomed && tr.lat != null && tr.lng != null) {
+      map.flyTo([tr.lat, tr.lng], Math.min(17, Math.max(map.getZoom(), 15)), { duration: 0.8 })
+    }
+  }
+
+  const findCadastreLayerByRef = (ref: string | null | undefined): any | null => {
+    const layer = cadastreLayerRef.current
+    if (!layer || ref == null) return null
+    let found: any = null
+    layer.eachLayer((l: any) => {
+      const idP = l.feature?.properties?.num
+      if (idP != null && String(idP) === String(ref)) found = l
+    })
+    return found
+  }
+
+  const clearSelectedMarker = (): void => {
+    if (selectedMarkerRef.current) {
+      selectedMarkerRef.current.remove()
+      selectedMarkerRef.current = null
+    }
+  }
+
+  const clearSelectedGeom = (): void => {
+    if (selectedGeomLayerRef.current) {
+      selectedGeomLayerRef.current.remove()
+      selectedGeomLayerRef.current = null
+    }
+  }
+
+  // Met en évidence le terrain sur SA géométrie réelle (contour du polygone).
+  // Priorité : polygone propre du terrain > parcelle cadastre correspondante > signalement explicite.
+  // Aucun cercle « générique » n'est affiché : si aucune géométrie n'existe, on prévient l'utilisateur.
+  const focusTerrainOnMap = (tr: AnalyseResultat): void => {
+    selectedTerrainIdRef.current = tr.id
+    showTerrainBuffer(tr)
+    clearSelectedMarker()
+    clearSelectedGeom()
+    const map = mapRef.current
+    const geom = (tr as any).geom ?? (tr as any).geometry
+    const isPoly = !!geom && (geom.type === 'Polygon' || geom.type === 'MultiPolygon')
+    if (isPoly) {
+      clearSelectedGeom()
+      selectedGeomLayerRef.current = L.geoJSON(geom, {
+        style: {
+          color: '#ea580c',
+          weight: 6,
+          opacity: 1,
+          fillColor: '#f97316',
+          fillOpacity: 0.35,
+          dashArray: '10 6',
+        },
+      }).addTo(map)
+      selectedGeomLayerRef.current.eachLayer((l: any) => {
+        const el = l.getElement?.() as SVGElement | null
+        el?.classList.add('geo-cadastre-selected')
+      })
+      selectedGeomLayerRef.current.bringToFront?.()
+      colorCadastreParcels(undefined)
+      setGeomMissing(false)
+      if (map) {
+        const b = selectedGeomLayerRef.current.getBounds()
+        overlayFlyToBounds(map, b.pad(0.25), { duration: 0.8, easeLinearity: 0.25, maxZoom: 18 })
+      }
+      console.info(
+        `[geoportal] Contour réel du terrain affiché : « ${tr.nom} » (réf. ${tr.infos_generales?.reference_cadastrale}).`,
+      )
+      return
+    }
+    // Repli : parcelle cadastre correspondante (si la référence matche)
+    const layer = findCadastreLayerByRef(tr.infos_generales?.reference_cadastrale)
+    if (layer) {
+      colorCadastreParcels(tr.id)
+      if (map) overlayFlyToBounds(map, layer.getBounds().pad(0.25), { duration: 0.8, easeLinearity: 0.25, maxZoom: 18 })
+      setGeomMissing(false)
+      return
+    }
+    // Aucune géométrie disponible : on signale explicitement (pas de cercle trompeur)
+    colorCadastreParcels(undefined)
+    clearSelectedGeom()
+    setGeomMissing(true)
+    console.warn(
+      `[geoportal] Aucune géométrie de polygone disponible pour le terrain « ${tr.nom} » ` +
+        `(réf. ${tr.infos_generales?.reference_cadastrale}). Impossible de mettre en évidence le contour réel.`,
+    )
+    if (map && tr.lat != null && tr.lng != null) {
+      map.flyTo([tr.lat, tr.lng], Math.min(16, Math.max(map.getZoom(), 14)), { duration: 0.8 })
+    }
   }
 
   const cadastreParcelPopup = (props: Record<string, unknown>, ring?: number[][] | null): string => {
@@ -2234,26 +2336,13 @@ const bindPopupActionButtons = (popup: any): void => {
   const selectTerrain = (terrainId: number, opts: { zoom?: boolean } = {}): void => {
     const terrain = analyseResultatsRef.current.find((tr) => tr.id === terrainId)
     if (!terrain) return
-    selectedTerrainIdRef.current = terrainId
-    colorCadastreParcels(terrainId)
-    showTerrainBuffer(terrain)
     setSelectedTerrain(terrain)
     setCardMode('results')
-    if (opts.zoom !== false) fitToParcelle(terrain)
-  }
-
-  const handleSaveClassement = async (): Promise<void> => {
-    if (!projetId || analyseResultatsRef.current.length === 0) return
-    setSaving(true)
-    setSaveError(null)
-    try {
-      const saved = await createAnalyse(projetId, collectFilterFiltres())
-      setSavedAnalyse(saved)
-      setShowSavedBanner(true)
-    } catch (err) {
-      setSaveError(err instanceof Error ? err.message : String(err))
-    } finally {
-      setSaving(false)
+    if (opts.zoom !== false) focusTerrainOnMap(terrain)
+    else {
+      selectedTerrainIdRef.current = terrainId
+      colorCadastreParcels(terrainId)
+      showTerrainBuffer(terrain)
     }
   }
 
@@ -2287,9 +2376,17 @@ const bindPopupActionButtons = (popup: any): void => {
     setCardMode('ponderationDetail')
     setCardHidden(false)
     refreshMapSize()
-    // Center map on terrain
-    if (mapRef.current && terrain.lat && terrain.lng) {
-      mapRef.current.flyTo([terrain.lat, terrain.lng], 16, { duration: 0.8 })
+    // Cadrage sur la géométrie réelle du terrain + mise en évidence (si la parcelle est connue)
+    const match = analyseResultatsRef.current.find(
+      (tr) =>
+        (terrain.reference_cadastrale != null &&
+          String(tr.infos_generales?.reference_cadastrale) === String(terrain.reference_cadastrale)) ||
+        tr.nom === terrain.nom,
+    )
+    if (match) {
+      focusTerrainOnMap(match)
+    } else if (mapRef.current && terrain.lat && terrain.lng) {
+      mapRef.current.flyTo([terrain.lat, terrain.lng], Math.min(17, Math.max(mapRef.current.getZoom(), 15)), { duration: 0.8 })
     }
   }
 
@@ -2316,7 +2413,7 @@ const bindPopupActionButtons = (popup: any): void => {
   }
 
   const currentBasemap = BASEMAPS.find((b) => b.id === basemapId) ?? BASEMAPS[0]
-  const cardTitle = cardMode === 'search' ? t('ranking.terrain_info') : cardMode === 'addTerrain' ? t('ranking.add_terrain_title') : cardMode === 'terrainList' ? `Resultats (${analyseResultatsRef.current.length})` : cardMode === 'ponderationDetail' && selectedPonderationTerrain ? `Analyse — ${selectedPonderationTerrain.nom}` : t('ranking.analyse_title')
+  const cardTitle = cardMode === 'search' ? t('ranking.terrain_info') : cardMode === 'addTerrain' ? t('ranking.add_terrain_title') : cardMode === 'terrainList' ? `Resultats (${analyseResultatsRef.current.length})` : cardMode === 'ponderationDetail' && selectedPonderationTerrain ? `Analyse de terrain ${selectedPonderationTerrain.nom}` : cardMode === 'results' && selectedTerrain ? `Analyse de terrain ${selectedTerrain.nom}` : t('ranking.analyse_title')
 
   const BUFFER_LEGEND: { key: string; label: string }[] = [
     { key: 'distance_route', label: t('ranking.filter_max_distance_road') },
@@ -2520,6 +2617,13 @@ const bindPopupActionButtons = (popup: any): void => {
                 </nav>
 
                 <div className="geo-coord-display" id="coord-display">{coord}</div>
+
+                {geomMissing ? (
+                  <div className="geo-geom-missing" role="alert">
+                    <strong>Contour indisponible</strong> — ce terrain n'a pas de polygone enregistré ;
+                    impossible d'afficher son contour réel. Vérifiez la géométrie source de la parcelle.
+                  </div>
+                ) : null}
 
                 {drawMode || drawFinished ? (
                   <div className="geo-draw-panel">
@@ -2866,12 +2970,23 @@ const bindPopupActionButtons = (popup: any): void => {
                   {icons.menu}
                 </button>
 
-                <div className={`geo-terrain-card${cardHidden ? ' geo-terrain-card--hidden' : ''}${cardMode === 'addTerrain' ? ' geo-terrain-card--add' : ''}`} id="terrain-card">
-                  <div className="geo-terrain-card-header">
-                    <h3 id="card-title">{cardTitle}</h3>
+                <div className={`geo-terrain-card${cardHidden ? ' geo-terrain-card--hidden' : ''}${cardMode === 'addTerrain' ? ' geo-terrain-card--add' : ''}${(cardMode === 'ponderationDetail' && selectedPonderationTerrain) || (cardMode === 'results' && selectedTerrain) ? ' geo-terrain-card--analyse' : ''}`} id="terrain-card">
+                  <div className={`geo-terrain-card-header${(cardMode === 'ponderationDetail' && selectedPonderationTerrain) || (cardMode === 'results' && selectedTerrain) ? ' geo-terrain-card-header--analyse' : ''}`}>
+                    {(cardMode === 'ponderationDetail' && selectedPonderationTerrain) || (cardMode === 'results' && selectedTerrain) ? (
+                      <div className="geo-analyse-header-content">
+                        <div className="geo-analyse-header-badge">
+                          {icons.building}
+                        </div>
+                        <div className="geo-analyse-header-text">
+                          <h3 id="card-title" className="geo-analyse-header-title">{cardTitle}</h3>
+                          <span className="geo-analyse-header-sub">{cardMode === 'ponderationDetail' && selectedPonderationTerrain ? (selectedPonderationTerrain.reference_cadastrale || selectedPonderationTerrain.zone_localisation) : (selectedTerrain?.infos_generales?.reference_cadastrale || '')}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <h3 id="card-title">{cardTitle}</h3>
+                    )}
                     <div className="geo-card-header-actions">
-                      <button type="button" className="geo-card-back" id="card-back-btn" hidden={cardMode === 'search' || cardMode === 'terrainList'} onClick={() => { if (cardMode === 'ponderationDetail') { setCardMode('search'); setSelectedPonderationTerrain(null); setCardHidden(true) } else if (cardMode === 'results') { setCardMode('terrainList'); setSelectedTerrain(null) } else if (cardMode === 'addTerrain') { setCardMode('search'); setCardHidden(true) } else { setCardMode('search') } }}>{icons.chevronLeft}</button>
-                      <button type="button" className="geo-terrain-card-close" id="terrain-card-toggle" onClick={closeTerrainCard}>
+                      <button type="button" className={`geo-terrain-card-close${(cardMode === 'ponderationDetail' || cardMode === 'results') ? ' geo-terrain-card-close--analyse' : ''}`} id="terrain-card-toggle" onClick={closeTerrainCard}>
                         {icons.close}
                       </button>
                     </div>
@@ -2889,139 +3004,11 @@ const bindPopupActionButtons = (popup: any): void => {
                           <span className="geo-sr-empty-icon">{icons.search}</span>
                           <p className="geo-sr-empty-text">{t('ranking.no_terrains_found')}</p>
                         </div>
-                      ) : cardMode === 'terrainList' ? (
-                        (() => {
-                          const sorted = [...analyseResultatsRef.current].sort((a, b) => {
-                            if (b.score_final !== a.score_final) return b.score_final - a.score_final
-                            return b.superficie - a.superficie
-                          })
-                          return (
-                            <div className="geo-terrain-list">
-                              {savedAnalyse && showSavedBanner ? (
-                                <div className="geo-save-banner geo-save-banner--ok geo-save-banner--card">
-                                  ✓ {t('ranking.analyse_saved')}
-                                </div>
-                              ) : null}
-                              <div className="geo-terrain-list-header">
-                                <div>
-                                  <span className="geo-terrain-list-count">{sorted.length} {sorted.length > 1 ? 'parcelles' : 'parcelle'} classees</span>
-                                </div>
-                                <button type="button" className="geo-terrain-list-save" disabled={saving || !!savedAnalyse} onClick={() => { void handleSaveClassement() }}>
-                                  {saving ? '...' : icons.save} {savedAnalyse ? 'Sauvegarde ✓' : 'Sauvegarder'}
-                                </button>
-                              </div>
-                              {sorted.map((tr, i) => (
-                                  <button
-                                    key={tr.id}
-                                    type="button"
-                                    className="geo-terrain-list-item"
-                                    onClick={() => selectTerrain(tr.id)}
-                                  >
-                                    <div className="geo-terrain-list-rank">
-                                      <span className="geo-terrain-list-rank-num">#{i + 1}</span>
-                                    </div>
-                                    <div className="geo-terrain-list-info">
-                                      <div className="geo-terrain-list-name">{tr.infos_generales.reference_cadastrale || tr.nom}</div>
-                                      <div className="geo-terrain-list-meta">
-                                        {tr.infos_generales.commune} &middot; {tr.superficie.toLocaleString('fr-FR')} m&sup2;
-                                      </div>
-                                    </div>
-                                    <div className="geo-terrain-list-arrow">{icons.chevron}</div>
-                                  </button>
-                              ))}
-                            </div>
-                          )
-                        })()
                       ) : cardMode === 'ponderationDetail' && selectedPonderationTerrain ? (
-                        (() => {
-                          const tp = selectedPonderationTerrain
-                          const pct = Math.round(tp.score_final * 100)
-                          const scoreCol = pct >= 70 ? '#16a34a' : pct >= 40 ? '#d97706' : '#dc2626'
-                          return (
-                            <div className="geo-ponderation-detail">
-                              {/* Score summary */}
-                              <div className="geo-sr-card">
-                                <div className="geo-sr-card-body">
-                                  <div className="geo-sr-info-grid">
-                                    <div className="geo-sr-info-item">
-                                      <span className="geo-sr-info-label">Rang</span>
-                                      <span className="geo-sr-info-value" style={{ fontSize: '1.3rem', fontWeight: 800, color: '#4A7FE0' }}>#{tp.rang}</span>
-                                    </div>
-                                    <div className="geo-sr-info-item">
-                                      <span className="geo-sr-info-label">Score global</span>
-                                      <span className="geo-sr-info-value" style={{ fontSize: '1.3rem', fontWeight: 800, color: scoreCol }}>{pct}%</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Infos terrain */}
-                              <div className="geo-sr-card">
-                                <div className="geo-sr-card-header">
-                                  <h4 className="geo-sr-card-title">{t('ranking.terrain_infos')}</h4>
-                                </div>
-                                <div className="geo-sr-card-body">
-                                  <div className="geo-sr-info-grid">
-                                    <div className="geo-sr-info-item">
-                                      <span className="geo-sr-info-label">{t('ranking.terrain_reference')}</span>
-                                      <span className="geo-sr-info-value">{tp.reference_cadastrale || '—'}</span>
-                                    </div>
-                                    <div className="geo-sr-info-item">
-                                      <span className="geo-sr-info-label">{t('ranking.terrain_surface')}</span>
-                                      <span className="geo-sr-info-value">{Number(tp.superficie).toLocaleString('fr-FR')} m²</span>
-                                    </div>
-                                    <div className="geo-sr-info-item geo-sr-info-item--full">
-                                      <span className="geo-sr-info-label">{t('ranking.terrain_centre')}</span>
-                                      <span className="geo-sr-info-value">{tp.lat.toFixed(6)}, {tp.lng.toFixed(6)}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Détail des contributions par critère */}
-                              {tp.contributions.length > 0 && (
-                                <div className="geo-sr-card">
-                                  <div className="geo-sr-card-header">
-                                    <h4 className="geo-sr-card-title">Détail par critère</h4>
-                                  </div>
-                                  <div className="geo-sr-card-body">
-                                    {[...tp.contributions]
-                                      .sort((a, b) => b.contribution - a.contribution)
-                                      .map((c) => (
-                                        <div key={c.critere} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #f0f5fd' }}>
-                                          <span style={{ flex: 1, fontSize: '0.82rem', fontWeight: 600, color: '#1a2744' }}>
-                                            {CRITERE_LABELS[c.critere] || c.critere}
-                                          </span>
-                                          <div style={{ width: 100, height: 6, background: '#e0e7f2', borderRadius: 3, overflow: 'hidden' }}>
-                                            <div style={{ height: '100%', width: `${c.score * 100}%`, background: 'linear-gradient(90deg, #4A7FE0, #6B9CF0)', borderRadius: 3 }} />
-                                          </div>
-                                          <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#1a2744', minWidth: 40, textAlign: 'right' }}>{Math.round(c.score * 100)}%</span>
-                                        </div>
-                                      ))}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Actions */}
-                              <div className="geo-ponderation-actions">
-                                <button
-                                  type="button"
-                                  className="btn btn-secondary"
-                                  onClick={() => handleWizardViewOnMap(tp)}
-                                >
-                                  Voir sur la carte SIG
-                                </button>
-                                <button
-                                  type="button"
-                                  className="btn btn-primary"
-                                  onClick={() => handleWizardOpenRentabilite(tp)}
-                                >
-                                  Calculer la rentabilité
-                                </button>
-                              </div>
-                            </div>
-                          )
-                        })()
+                        renderAnalyseDeTerrainCard(
+                          buildPondereVM(selectedPonderationTerrain),
+                          () => handleWizardOpenRentabilite(selectedPonderationTerrain),
+                        )
                       ) : cardMode === 'results' && selectedTerrain ? (
                         <>
                           {savedAnalyse && showSavedBanner ? (
@@ -3029,9 +3016,7 @@ const bindPopupActionButtons = (popup: any): void => {
                               ✓ {t('ranking.analyse_saved')}
                             </div>
                           ) : null}
-                          {renderScoreSummary(selectedTerrain)}
-                          {renderInfoGenerale(selectedTerrain)}
-                          {renderDetailCriteres(selectedTerrain)}
+                          {renderAnalyseDeTerrainCard(buildResultatVM(selectedTerrain), () => openRentabiliteFromResultat(selectedTerrain))}
                         </>
                       ) : (
                         <div className="geo-sr-empty">

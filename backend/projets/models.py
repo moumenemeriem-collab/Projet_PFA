@@ -127,6 +127,11 @@ class Terrain(models.Model):
         ('mixte', 'Mixte'),
     ]
 
+    ZONE_LOCALISATION_CHOICES = [
+        ('centre_ville', 'Centre-ville'),
+        ('periurbaine', 'Périphérie'),
+    ]
+
     projet = models.ForeignKey(
         Projet,
         on_delete=models.CASCADE,
@@ -166,6 +171,13 @@ class Terrain(models.Model):
     num_parcelle = models.CharField(max_length=255, blank=True, default='')
     # Polygone du terrain (PostGIS, EPSG:4326)
     geometry = PolygonField(srid=4326, spatial_index=True, null=True, blank=True)
+
+    # Données géospatiales calculées une fois (plan d'aménagement + MNT) et persistées
+    zone_localisation_calculee = models.CharField(
+        max_length=20, choices=ZONE_LOCALISATION_CHOICES, blank=True, default=''
+    )
+    altitude_calculee = models.FloatField(null=True, blank=True)
+    derniere_maj_geo = models.DateTimeField(null=True, blank=True)
 
     accessibilite = models.IntegerField(choices=SCORE_CHOICES, default=5)
     positionnement = models.IntegerField(choices=SCORE_CHOICES, default=5)
@@ -370,11 +382,11 @@ class PonderationPreference(models.Model):
     )
     preferences_localisation = models.JSONField(
         default=dict,
-        help_text='{"localisation": "centre_ville", "situation_administrative": "intra_perimetre"}',
+        help_text='{"localisation": "centre_ville"}',
     )
-    preferences_pente = models.JSONField(
+    preferences_altitude = models.JSONField(
         default=list,
-        help_text='["0_5", "5_10"]',
+        help_text='["lt100", "100_300", "gt300"]',
     )
     seuil = models.FloatField(default=0.3)
     date_creation = models.DateTimeField(auto_now_add=True)

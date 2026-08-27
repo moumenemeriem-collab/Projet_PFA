@@ -23,8 +23,8 @@ def calculer_poids_globaux(
         poids_ahp: {"accessibilite": 0.4, "positionnement": 0.35, "topographie": 0.25}
         ordres_roc: {
             "accessibilite": ["Enseignement", "Routes", "Santé"],
-            "positionnement": ["Localisation", "Situation administrative"],
-            "topographie": ["Pente"],
+            "positionnement": ["localisation"],
+            "topographie": ["Altitude"],
         }
 
     Returns:
@@ -83,8 +83,8 @@ def calculer_score_terrain(
     score = Σ (poids_global_i × score_normalisé_i)
 
     Args:
-        scores_normalises: { "Enseignement": 0.85, "Pente": 1.0, ... }
-        poids_globaux: { "Enseignement": 0.244, "Pente": 0.25, ... }
+        scores_normalises: { "Enseignement": 0.85, "Altitude": 1.0, ... }
+        poids_globaux: { "Enseignement": 0.244, "Altitude": 0.25, ... }
 
     Returns:
         Score composite dans [0, 1].

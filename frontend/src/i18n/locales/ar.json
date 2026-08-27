@@ -573,7 +573,6 @@
     "filter_localisation": "الموقع الجغرافي",
     "loc_centre_ville": "وسط المدينة",
     "loc_periurbaine": "ضواحي حضرية",
-    "loc_rurale": "منطقة ريفية",
     "filter_distance_poles": "المسافة إلى الأقطاب",
     "pole_centre": "وسط المدينة",
     "pole_industriel": "منطقة صناعية",
@@ -581,9 +580,6 @@
     "pole_gare": "محطة قطار",
     "pole_port": "ميناء",
     "pole_aeroport": "مطار",
-    "filter_situation_admin": "الوضع الإداري",
-    "situation_interieur_perimetre": "داخل النطاق الحضري",
-    "situation_exterieur_perimetre": "خارج النطاق الحضري",
     "filter_pente": "الميل",
     "pente_0_5": "0–5 %",
     "pente_5_10": "5–10 %",
@@ -942,9 +938,8 @@
     "critere_access_desc": "اختر البنية التحتية والمرافق القريبة.",
     "route_type": "نوع الطريق المفضل",
     "localisation": "الموقع الجغرافي",
-    "situation_admin": "الوضع الإداري",
-    "pente": "ميل الأرض",
-    "pente_desc": "اختر نطاقات الميل المقبولة.",
+    "altitude": "ارتفاع الأرض",
+    "altitude_desc": "اختر نطاقات الارتفاع المقبولة.",
     "ahp_title": "أولوياتك بين الفئات",
     "ahp_desc": "قم أولاً بترتيب الفئات الثلاث حسب الأهمية، ثم حدد قوة تفضيلك لكل زوج متتالي.",
     "ahp_equal": "أهمية متساوية",
@@ -966,7 +961,6 @@
     "no_results": "لا توجد أراضي تتجاوز الحد الأدنى المحدد.",
     "contributions": "تفاصيل المساهمات",
     "zone": "المنطقة",
-    "pente_label": "الميل",
     "altitude_label": "الارتفاع"
   }
 }

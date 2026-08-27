@@ -88,7 +88,6 @@ export interface AnalyseFiltres {
   pole?: string[]
   distance_poles?: string
   localisation?: string[]
-  pente?: string[]
   denivele?: string[]
   altitude?: string[]
 }
@@ -130,6 +129,8 @@ export interface AnalyseResultat {
   classement: number
   points_forts: string[]
   points_faibles: string[]
+  /** Géométrie réelle du terrain (polygone GeoJSON) si disponible. */
+  geom?: Record<string, unknown> | null
 }
 
 export interface CritereConformite {

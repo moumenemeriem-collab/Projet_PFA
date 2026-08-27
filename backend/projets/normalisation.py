@@ -4,13 +4,11 @@ Calcul pur sans effet de bord. Chaque sous-critère est transformé en
 un score dans [0, 1] par terrain, sans demande de seuil à l'utilisateur.
 
 - Équipements / Routes : min-max sur les distances réelles
-- Localisation / Situation administrative : binaire (0 ou 1)
-- Pente : binaire (0 ou 1) selon la plage choisie
+- Localisation : binaire (0 ou 1)
+- Altitude : binaire (0 ou 1) selon la plage choisie
 """
 
 from __future__ import annotations
-
-import math
 
 
 # ---------------------------------------------------------------------------
@@ -56,7 +54,7 @@ def normaliser_distances_par_categorie(
 
 
 # ---------------------------------------------------------------------------
-# Scores binaires (localisation, situation administrative, pente)
+# Scores binaires (localisation, altitude)
 # ---------------------------------------------------------------------------
 
 def score_binaire(condition: bool) -> float:
@@ -64,52 +62,37 @@ def score_binaire(condition: bool) -> float:
     return 1.0 if condition else 0.0
 
 
-def score_localisation(zone_terrain: str, choix_utilisateur: str | list[str]) -> float:
-    """Score pour la localisation (centre-ville, périphérie, zone rurale).
+def score_localisation(zone_terrain: str | None, choix_utilisateur: str | list[str]) -> float:
+    """Score pour la localisation (centre-ville, périphérie).
 
     Args:
-        zone_terrain: zone calculée du terrain ('centre_ville', 'periurbaine', 'rurale')
+        zone_terrain: zone calculée du terrain ('centre_ville', 'periurbaine'),
+            ou None si indéterminée (centroïde hors de toute zone du plan d'aménagement).
         choix_utilisateur: zone(s) choisie(s) par l'utilisateur
     """
+    if zone_terrain is None:
+        return 0.0
     if isinstance(choix_utilisateur, str):
         choix_utilisateur = [choix_utilisateur]
     return score_binaire(zone_terrain in choix_utilisateur)
 
 
-def score_situation_administrative(
-    dans_perimetre: bool, choix_utilisateur: str
-) -> float:
-    """Score pour la situation administrative (intra/extra périmètre urbain).
+def score_altitude(altitude_terrain: float | None, plages_choisies: list[str]) -> float:
+    """Score pour l'altitude selon les plages sélectionnées.
 
     Args:
-        dans_perimetre: True si le terrain est à l'intérieur du périmètre
-        choix_utilisateur: 'intra_perimetre' ou 'extra_perimetre'
+        altitude_terrain: altitude (m) du terrain (None si inconnue)
+        plages_choisies: ['lt100', '100_300', 'gt300']
     """
-    if choix_utilisateur == 'intra_perimetre':
-        return score_binaire(dans_perimetre)
-    return score_binaire(not dans_perimetre)
-
-
-def score_pente(pente_terrain: float | None, plages_choisies: list[str]) -> float:
-    """Score pour la pente selon les plages sélectionnées.
-
-    Args:
-        pente_terrain: pente en % du terrain (None si inconnue)
-        plages_choisies: ['0_5', '5_10', '10_15', 'gt15']
-    """
-    if pente_terrain is None or not plages_choisies:
+    if altitude_terrain is None or not plages_choisies:
         return 0.0
 
-    plages = {
-        '0_5': (0, 5),
-        '5_10': (5, 10),
-        '10_15': (10, 15),
-        'gt15': (15, 100),
-    }
-
     for plage_key in plages_choisies:
-        lo, hi = plages.get(plage_key, (0, 100))
-        if lo <= pente_terrain <= hi:
+        if plage_key == 'lt100' and altitude_terrain < 100:
+            return 1.0
+        if plage_key == '100_300' and 100 <= altitude_terrain <= 300:
+            return 1.0
+        if plage_key == 'gt300' and altitude_terrain > 300:
             return 1.0
 
     return 0.0
@@ -124,10 +107,8 @@ def normaliser_terrain(
     distances_par_categorie: dict[str, float] | None,
     choix_localisation: str | list[str] | None,
     zone_terrain: str | None,
-    choix_situation_admin: str | None,
-    dans_perimetre: bool | None,
-    pente_terrain: float | None,
-    plages_pente: list[str] | None,
+    altitude_terrain: float | None,
+    plages_altitude: list[str] | None,
     criteres_actifs: dict[str, bool],
 ) -> dict[str, float]:
     """Calcule les scores normalisés (0-1) pour un terrain donné.
@@ -137,14 +118,12 @@ def normaliser_terrain(
         distances_par_categorie: { "enseignement": distance, "sante": distance, ... }
         choix_localisation: choix radio de l'utilisateur
         zone_terrain: zone calculée du terrain
-        choix_situation_admin: choix radio
-        dans_perimetre: résultat du calcul SIG
-        pente_terrain: pente en %
-        plages_pente: plages choisies
+        altitude_terrain: altitude en m
+        plages_altitude: plages choisies
         criteres_actifs: { "enseignement": True, "sante": False, ... }
 
     Returns:
-        { "enseignement": 0.85, "localisation": 1.0, "pente": 0.0, ... }
+        { "enseignement": 0.85, "localisation": 1.0, "altitude": 0.0, ... }
     """
     scores = {}
 
@@ -158,15 +137,8 @@ def normaliser_terrain(
     if criteres_actifs.get('localisation', False) and zone_terrain and choix_localisation:
         scores['localisation'] = score_localisation(zone_terrain, choix_localisation)
 
-    # Situation administrative
-    if (criteres_actifs.get('situation_administrative', False)
-            and dans_perimetre is not None and choix_situation_admin):
-        scores['situation_administrative'] = score_situation_administrative(
-            dans_perimetre, choix_situation_admin
-        )
-
-    # Pente
-    if criteres_actifs.get('pente', False) and pente_terrain is not None and plages_pente:
-        scores['pente'] = score_pente(pente_terrain, plages_pente)
+    # Altitude
+    if criteres_actifs.get('altitude', False) and altitude_terrain is not None and plages_altitude:
+        scores['altitude'] = score_altitude(altitude_terrain, plages_altitude)
 
     return scores

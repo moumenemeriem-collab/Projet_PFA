@@ -573,7 +573,6 @@
     "filter_localisation": "Localisation",
     "loc_centre_ville": "Centre-ville",
     "loc_periurbaine": "Périphérie urbaine",
-    "loc_rurale": "Zone rurale",
     "filter_distance_poles": "Distance aux pôles",
     "pole_centre": "Centre-ville",
     "pole_industriel": "Zone industrielle",
@@ -581,9 +580,6 @@
     "pole_gare": "Gare",
     "pole_port": "Port",
     "pole_aeroport": "Aéroport",
-    "filter_situation_admin": "Situation administrative",
-    "situation_interieur_perimetre": "À l'intérieur du périmètre urbain",
-    "situation_exterieur_perimetre": "Hors périmètre urbain",
     "filter_pente": "Pente",
     "pente_0_5": "0–5 %",
     "pente_5_10": "5–10 %",
@@ -942,9 +938,8 @@
     "critere_access_desc": "Sélectionnez les équipements et infrastructures à proximité du terrain.",
     "route_type": "Type de route privilégié",
     "localisation": "Localisation",
-    "situation_admin": "Situation administrative",
-    "pente": "Pente du terrain",
-    "pente_desc": "Sélectionnez les plages de pente acceptables.",
+    "altitude": "Altitude du terrain",
+    "altitude_desc": "Sélectionnez les plages d'altitude acceptables.",
     "ahp_title": "Vos priorités entre catégories",
     "ahp_desc": "Classez d'abord les 3 catégories par ordre d'importance, puis indiquez l'intensité de votre préférence pour chaque paire consécutive.",
     "ahp_equal": "Importance égale",
@@ -966,7 +961,6 @@
     "no_results": "Aucun terrain ne dépasse le seuil sélectionné.",
     "contributions": "Détail des contributions",
     "zone": "Zone",
-    "pente_label": "Pente",
     "altitude_label": "Altitude"
   }
 }

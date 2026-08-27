@@ -94,6 +94,125 @@ def polygon_perimeter_m(geometry: dict) -> float:
     return total
 
 
+# ---------------------------------------------------------------------------
+# Plan d'aménagement : localisation (point dans polygone)
+# ---------------------------------------------------------------------------
+
+def _point_in_ring(lat, lng, ring):
+    """Ray casting point-in-polygon pour un anneau (liste de [lng, lat])."""
+    n = len(ring)
+    if n < 3:
+        return False
+    inside = False
+    j = n - 1
+    for i in range(n):
+        xi, yi = ring[i][0], ring[i][1]
+        xj, yj = ring[j][0], ring[j][1]
+        if ((yi > lat) != (yj > lat)) and (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi):
+            inside = not inside
+        j = i
+    return inside
+
+
+def point_in_polygon(lat, lng, geometry):
+    """Retourne True si (lat, lng) est contenu dans le polygone (Polygon/MultiPolygon)."""
+    gtype = (geometry or {}).get('type')
+    if gtype == 'Polygon':
+        rings = geometry.get('coordinates') or []
+        if not rings or not _point_in_ring(lat, lng, rings[0]):
+            return False
+        for hole in rings[1:]:
+            if _point_in_ring(lat, lng, hole):
+                return False
+        return True
+    if gtype == 'MultiPolygon':
+        for poly in geometry.get('coordinates') or []:
+            rings = poly
+            if not rings or not _point_in_ring(lat, lng, rings[0]):
+                continue
+            inside = True
+            for hole in rings[1:]:
+                if _point_in_ring(lat, lng, hole):
+                    inside = False
+                    break
+            if inside:
+                return True
+    return False
+
+
+# Mapping STRICT : seuls les polygones explicitement classés produisent une
+# catégorie. Les codes réels de l'attribut `affectation` du plan d'aménagement
+# doivent être ajoutés ici. Le jeu de données actuel ne contient que des codes
+# de parcelle dans `designation` -> la plupart des terrains seront donc
+# 'zone_indeterminee' (None) jusqu'à ce que le mapping soit complété.
+def _load_commune_limite():
+    """Charge la géométrie (Multi/Polygon GeoJSON) de la limite communale de Témara.
+
+    Sert de référence administrative pour classer un terrain en 'centre_ville'
+    (centroïde dans la commune) ou 'periurbaine' (centroïde hors commune).
+
+    Source prioritaire : la couche SIG ``limites_admin`` (table
+    ``couche_limites_admin``) importée en base. Repli sur le fichier GeoJSON
+    livré si la couche n'est pas encore peuplée.
+    """
+    # 1) Couche SIG en base (table couche_limites_admin)
+    try:
+        with connection.cursor() as cur:
+            cur.execute('SELECT geometry, "nom" FROM couche_limites_admin')
+            rows = cur.fetchall()
+        if rows:
+            chosen = None
+            for geometry, nom in rows:
+                if nom and 'temara' in str(nom).lower():
+                    chosen = geometry
+                    break
+            if chosen is None:
+                chosen = rows[0][0]
+            if isinstance(chosen, str):
+                try:
+                    return json.loads(chosen)
+                except Exception:
+                    return None
+            return chosen
+    except Exception:
+        pass
+
+    # 2) Repli sur le fichier GeoJSON livré
+    geojson_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        'data', 'Commune_Temara.geojson',
+    )
+    if not os.path.exists(geojson_path):
+        return None
+    try:
+        with open(geojson_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except Exception:
+        return None
+    features = data.get('features') or []
+    if not features:
+        return None
+    return features[0].get('geometry')
+
+
+def determiner_localisation(terrain_geom, limite_commune):
+    """Retourne la catégorie de localisation du terrain ('centre_ville' ou
+    'periurbaine') en testant le centroïde du terrain contre la limite
+    administrative de la commune de Témara (point dans polygone).
+
+    Si la géométrie du terrain est invalide, retourne None (score 0).
+    """
+    if not terrain_geom or not limite_commune:
+        return None
+    centroid = polygon_centroid(terrain_geom)
+    if centroid is None:
+        return None
+    lat, lng = centroid
+    if point_in_polygon(lat, lng, limite_commune):
+        return 'centre_ville'
+    return 'periurbaine'
+
+
 def _seg_distances_m(plat: float, plon: float,
                      s_lat: np.ndarray, s_lon: np.ndarray,
                      e_lat: np.ndarray, e_lon: np.ndarray,
@@ -189,6 +308,74 @@ class MNTAltitudeIndex:
         if v <= -9990.0:
             return None
         return v
+
+    def pixel_resolution_m(self, lat: float):
+        """Résolution réelle d'un pixel du MNT en mètres (lat, lng) à la latitude lat.
+
+        Déduite des métadonnées de la matrice de tuiles (gpkg_tile_matrix_set) :
+        l'emprise est couverte par ``n = 2**zoom`` tuiles de ``_TILE`` pixels de côté.
+        """
+        lat_span = (self.max_lat - self.min_lat) or 1.0
+        lng_span = (self.max_lng - self.min_lng) or 1.0
+        px_per_deg_lat = (self._TILE * self.n) / lat_span
+        px_per_deg_lng = (self._TILE * self.n) / lng_span
+        res_lat_m = LAT_M / px_per_deg_lat
+        res_lng_m = (LAT_M * _coslat(lat)) / px_per_deg_lng
+        return res_lat_m, res_lng_m
+
+
+def determiner_altitude(terrain_geom, mnt_index, max_points=250):
+    """Altitude (m) zonale d'un terrain : médiane des altitudes lues sur une grille
+    d'échantillons couvrant le polygone (résolution réelle du MNT).
+
+    La médiane est utilisée comme statistique robuste. Retourne None si le MNT
+    est absent ou ne couvre pas le terrain (AUCUN fallback fictif).
+    """
+    if mnt_index is None or not terrain_geom:
+        return None
+    centroid = polygon_centroid(terrain_geom)
+    if centroid is None:
+        return None
+    lat0, lng0 = centroid
+    res_lat_m, res_lng_m = mnt_index.pixel_resolution_m(lat0)
+    if res_lat_m <= 0 or res_lng_m <= 0:
+        return None
+
+    min_lat, min_lng, max_lat, max_lng = 1e9, 1e9, -1e9, -1e9
+    for ring in _polygon_rings(terrain_geom):
+        for lng, lat in ring:
+            min_lat = min(min_lat, lat)
+            max_lat = max(max_lat, lat)
+            min_lng = min(min_lng, lng)
+            max_lng = max(max_lng, lng)
+    if max_lat < min_lat or max_lng < min_lng:
+        return None
+
+    dlat_deg = res_lat_m / LAT_M
+    dlng_deg = res_lng_m / (LAT_M * _coslat(lat0))
+    n_lat = max(1, int((max_lat - min_lat) / dlat_deg))
+    n_lng = max(1, int((max_lng - min_lng) / dlng_deg))
+    total = n_lat * n_lng
+    if total > max_points:
+        scale = math.sqrt(max_points / total)
+        n_lat = max(1, int(n_lat * scale))
+        n_lng = max(1, int(n_lng * scale))
+
+    altitudes = []
+    for i in range(n_lat):
+        la = min_lat + (i + 0.5) * (max_lat - min_lat) / n_lat
+        for j in range(n_lng):
+            lo = min_lng + (j + 0.5) * (max_lng - min_lng) / n_lng
+            if point_in_polygon(la, lo, terrain_geom):
+                v = mnt_index.altitude_at(la, lo)
+                if v is not None:
+                    altitudes.append(v)
+    if not altitudes:
+        return None
+    altitudes.sort()
+    n = len(altitudes)
+    median = altitudes[n // 2] if n % 2 == 1 else (altitudes[n // 2 - 1] + altitudes[n // 2]) / 2.0
+    return round(median, 1)
 
 
 def _lzw_decode(data: bytes) -> bytes:
@@ -455,7 +642,6 @@ def _load_equipment() -> list:
 
 DISTANCE_BANDS = [(0, 100), (250, 90), (500, 80), (1000, 65), (2000, 45),
                   (3000, 30), (5000, 15), (10000, 5)]
-PENTE_BANDS = [(0, 100), (3, 90), (8, 75), (12, 55), (18, 35), (25, 15), (50, 5)]
 
 
 def _piecewise(d, bands):
@@ -475,12 +661,6 @@ def _distance_score(d) -> float:
     return _piecewise(d, DISTANCE_BANDS)
 
 
-def _pente_score(p) -> float:
-    if p is None:
-        return 60.0
-    return _piecewise(p, PENTE_BANDS)
-
-
 # Ratio superficie parcelle / surface souhaitée du projet
 SUPERFICIE_BANDS = [
     (0.0, 15), (0.2, 40), (0.5, 70), (0.8, 100),
@@ -496,7 +676,7 @@ def _score_superficie(superficie_m2, souhaitee):
 
 # ---------------------------------------------------------------------------
 # Classement par critères — 25 % Accessibilité, 25 % Positionnement,
-# 25 % Topographie (pente), 25 % Surface
+# 25 % Topographie (altitude), 25 % Surface
 # Seuls les critères définis par l'utilisateur sont considérés.
 # ---------------------------------------------------------------------------
 
@@ -529,25 +709,24 @@ def _match_distance(actual: float | None, target: float) -> float:
     return round(max(0.0, (1.0 - ratio / 2.0) * 100.0), 1)
 
 
-def _match_pente(actual: float | None, cibles: list[str]) -> float:
-    """Pourcentage de conformité pente (0-100).
-    100 % si la pente tombe dans la plage choisie, dégression si hors plage."""
+def _match_altitude(actual: float | None, cibles: list[str]) -> float:
+    """Pourcentage de conformité altitude (0-100).
+    100 % si l'altitude tombe dans la plage choisie, dégression si hors plage."""
     if actual is None or not cibles:
         return None
     plages = {
-        '0_5': (0, 5), '5_10': (5, 10),
-        '10_15': (10, 15), 'gt15': (15, 100),
+        'lt100': (0, 100), '100_300': (100, 300), 'gt300': (300, 1000),
     }
     dans_plage = False
     for v in cibles:
-        lo, hi = plages.get(v, (0, 100))
+        lo, hi = plages.get(v, (0, 1000))
         if lo <= actual <= hi:
             dans_plage = True
             break
     if dans_plage:
         return 100.0
     min_dist = min(abs(actual - lo) for v, (lo, hi) in plages.items() if v in cibles)
-    return round(max(0.0, 100.0 - min_dist * 5.0), 1)
+    return round(max(0.0, 100.0 - min_dist * 0.1), 1)
 
 
 def _match_superficie(actual: float | None, souhaitee: float) -> float:
@@ -675,6 +854,8 @@ def analyser_parcelles(projet_pk: int, filtres: dict) -> dict:
         except Exception:
             mnt_index = None
 
+    limite_commune = _load_commune_limite()
+
     # préparer les distances routes (toutes classes confondues + par classe)
     seg_count = len(routes['s_lat'])
     class_ids = {
@@ -737,9 +918,11 @@ def analyser_parcelles(projet_pk: int, filtres: dict) -> dict:
             group_scores.append(_distance_score(min(dist_by_amenity[k] for k in present)))
         score_pos = round(sum(group_scores) / len(group_scores)) if group_scores else 0.0
 
-        # --- topographie (MNT) — pente uniquement -----------------------------------
-        altitude = pente = denivele = None
+        # --- topographie (MNT) — altitude zonale -------------------------------------
+        altitude = denivele = None
         if mnt_index is not None:
+            geom = parcelle.get('geometry')
+            altitude = determiner_altitude(geom, mnt_index)
             samples = {}
             offsets = [(0.0, 0.0), (1, 0), (-1, 0), (0, 1), (0, -1)]
             for dy, dx in offsets:
@@ -748,15 +931,9 @@ def analyser_parcelles(projet_pk: int, filtres: dict) -> dict:
                 v = mnt_index.altitude_at(slat, slng)
                 if v is not None:
                     samples[(dy, dx)] = v
-            if (0.0, 0.0) in samples:
-                altitude = samples[(0.0, 0.0)]
             if len(samples) >= 2:
                 vals = list(samples.values())
                 denivele = max(vals) - min(vals)
-            if (0.0, 0.0) in samples and ((1, 0) in samples or (0, 1) in samples):
-                gx = (samples.get((0, 1), samples[(0.0, 0.0)]) - samples[(0.0, 0.0)]) / 110.0
-                gy = (samples.get((1, 0), samples[(0.0, 0.0)]) - samples[(0.0, 0.0)]) / 110.0
-                pente = math.sqrt(gx * gx + gy * gy) * 100.0
 
         # --- Scores de conformité par critère (0-100) -------------------------------
         # On ne considère que les critères que l'utilisateur a définis dans les filtres.
@@ -809,19 +986,19 @@ def analyser_parcelles(projet_pk: int, filtres: dict) -> dict:
                         'unite': 'm',
                     })
 
-        # 3) Topographie : pente
-        pente_sel = filtres.get('pente', [])
-        if pente_sel and pente is not None:
-            pct = _match_pente(pente, pente_sel)
+        # 3) Topographie : altitude
+        altitude_sel = filtres.get('altitude', [])
+        if altitude_sel and altitude is not None:
+            pct = _match_altitude(altitude, altitude_sel)
             if pct is not None:
                 criteres_conformite.append({
-                    'cle': 'topo_pente',
+                    'cle': 'topo_altitude',
                     'poids': 0.25,
                     'pct': pct,
-                    'label': 'Topographie → Pente',
-                    'valeur': pente,
-                    'cible': pente_sel,
-                    'unite': '%',
+                    'label': 'Topographie → Altitude',
+                    'valeur': altitude,
+                    'cible': altitude_sel,
+                    'unite': 'm',
                 })
 
         # 4) Surface souhaitée
@@ -845,7 +1022,7 @@ def analyser_parcelles(projet_pk: int, filtres: dict) -> dict:
         score_superf = next((c['pct'] for c in criteres_conformite if c['cle'] == 'surface'), None)
         score_access_final = next((c['pct'] for c in criteres_conformite if c['cle'].startswith('access_')), None)
         score_pos_final = next((c['pct'] for c in criteres_conformite if c['cle'].startswith('pos_')), None)
-        score_topo_final = next((c['pct'] for c in criteres_conformite if c['cle'] == 'topo_pente'), None)
+        score_topo_final = next((c['pct'] for c in criteres_conformite if c['cle'] == 'topo_altitude'), None)
 
         roi, marge, benefice_net, score_rentabilite, type_rentabilite = None, None, None, None, 'indisponible'
         prix_terrain = None
@@ -868,7 +1045,7 @@ def analyser_parcelles(projet_pk: int, filtres: dict) -> dict:
 
         criteres = _construire_criteres(
             parcelle, filtres, dist_routes, nearest_name, class_nearest_name,
-            dist_by_amenity, altitude, pente, denivele, projet,
+            dist_by_amenity, altitude, denivele, projet,
         )
 
         conforme_count = sum(1 for c in criteres if c['conforme'])
@@ -879,6 +1056,7 @@ def analyser_parcelles(projet_pk: int, filtres: dict) -> dict:
             'superficie': float(parcelle.get('surface') or 0),
             'lat': plat,
             'lng': plon,
+            'geometry': parcelle.get('geometry'),
             'score_global': score_final,
             'score_final': score_final,
             'score_amc': score_amc,
@@ -913,7 +1091,7 @@ def analyser_parcelles(projet_pk: int, filtres: dict) -> dict:
 
 
 def _construire_criteres(parcelle, filtres, dist_routes, nearest_name, class_nearest_name,
-                         dist_by_amenity, altitude, pente, denivele, projet) -> list:
+                         dist_by_amenity, altitude, denivele, projet) -> list:
     criteres = []
 
     # --- critères du projet ---------------------------------------------------
@@ -987,23 +1165,6 @@ def _construire_criteres(parcelle, filtres, dist_routes, nearest_name, class_nea
                 'conforme': dist <= seuil if seuil else True,
             })
 
-    pente_sel = filtres.get('pente', [])
-    if pente_sel and pente is not None:
-        conforme = any({
-            '0_5': pente <= 5, '5_10': 5 < pente <= 10,
-            '10_15': 10 < pente <= 15, 'gt15': pente > 15,
-        }.get(v, False) for v in pente_sel)
-        criteres.append({
-            'id': 'pente',
-            'critere': 'Pente du terrain',
-            'critere_demande': ', '.join(pente_sel),
-            'valeur_mesuree': f"{pente:.1f} %",
-            'valeur_mesuree_brute': round(pente, 1),
-            'unite': '%',
-            'point_interet': 'MNT',
-            'conforme': conforme,
-        })
-
     denivele_sel = filtres.get('denivele', [])
     if denivele_sel and denivele is not None:
         conforme = any({
@@ -1038,25 +1199,18 @@ def _construire_criteres(parcelle, filtres, dist_routes, nearest_name, class_nea
 
     loc_sel = filtres.get('localisation', [])
     if loc_sel:
-        nearest_eq = min(dist_by_amenity.values()) if dist_by_amenity else None
-        if nearest_eq is None:
-            zone = 'rurale'
-        elif nearest_eq < 800:
-            zone = 'centre_ville'
-        elif nearest_eq < 2500:
-            zone = 'periurbaine'
-        else:
-            zone = 'rurale'
-        label = {'centre_ville': 'Centre-ville', 'periurbaine': 'Périurbaine', 'rurale': 'Rurale'}
+        zone = determiner_localisation(parcelle.get('geometry'), limite_commune)
+        label = {'centre_ville': 'Centre-ville', 'periurbaine': 'Périphérie'}
+        zone_affichee = label.get(zone, 'Zone non déterminée')
         criteres.append({
             'id': 'loc',
             'critere': 'Zone de localisation',
             'critere_demande': ', '.join(loc_sel),
-            'valeur_mesuree': label[zone],
+            'valeur_mesuree': zone_affichee,
             'valeur_mesuree_brute': 0,
             'unite': '',
-            'point_interet': label[zone],
-            'conforme': zone in loc_sel,
+            'point_interet': zone_affichee,
+            'conforme': bool(zone) and zone in loc_sel,
         })
 
     return criteres
@@ -1090,9 +1244,7 @@ def extraire_donnees_ponderation(projet_pk: int, selections: dict) -> dict:
                         "administration": float,
                         "routes": float,
                     },
-                    "zone_localisation": "centre_ville" | "periurbaine" | "rurale",
-                    "dans_perimetre": bool,
-                    "pente": float | None,
+                    "zone_localisation": "centre_ville" | "periurbaine" | None,
                     "altitude": float | None,
                 }, ...
             ],
@@ -1149,6 +1301,8 @@ def extraire_donnees_ponderation(projet_pk: int, selections: dict) -> dict:
         except Exception:
             mnt_index = None
 
+    limite_commune = _load_commune_limite()
+
     coslat_ref = _coslat(33.88)
     equip_lat = np.array([e['lat'] for e in equipments], dtype='f8') if equipments else np.array([], dtype='f8')
     equip_lon = np.array([e['lng'] for e in equipments], dtype='f8') if equipments else np.array([], dtype='f8')
@@ -1162,6 +1316,12 @@ def extraire_donnees_ponderation(projet_pk: int, selections: dict) -> dict:
     candidats = []
     if terrains_qs:
         for t in terrains_qs:
+            geom = None
+            if t.geometry is not None:
+                try:
+                    geom = json.loads(t.geometry.geojson)
+                except Exception:
+                    geom = None
             candidats.append({
                 'id': t.id,
                 'nom': t.nom,
@@ -1171,6 +1331,10 @@ def extraire_donnees_ponderation(projet_pk: int, selections: dict) -> dict:
                 'reference_cadastrale': t.num_titre_foncier or t.num_parcelle or '',
                 'indice': t.indice or '',
                 'consistance': t.consistance or '',
+                'fid': t.fid,
+                'num_parcelle': t.num_parcelle or '',
+                'geometry': geom,
+                '_terrain': t,
             })
     else:
         for p in parcels_db:
@@ -1183,6 +1347,9 @@ def extraire_donnees_ponderation(projet_pk: int, selections: dict) -> dict:
                 'reference_cadastrale': p.get('num') or '',
                 'indice': p.get('indice') or '',
                 'consistance': p.get('Consistance') or '',
+                'fid': p.get('fid'),
+                'num_parcelle': p.get('num') or '',
+                'geometry': p.get('geometry'),
             })
 
     for cand in candidats:
@@ -1234,49 +1401,22 @@ def extraire_donnees_ponderation(projet_pk: int, selections: dict) -> dict:
                     dist_par_categorie_access[sel] = d_min
                     distances_collectees[sel].append(d_min)
 
-        # --- Localisation ---
-        if dist_by_amenity:
-            nearest_equip = min(dist_by_amenity.values())
-        else:
-            nearest_equip = None
-        if nearest_equip is None:
-            zone = 'rurale'
-        elif nearest_equip < 800:
-            zone = 'centre_ville'
-        elif nearest_equip < 2500:
-            zone = 'periurbaine'
-        else:
-            zone = 'rurale'
+        # --- Localisation (plan d'aménagement, point dans polygone) ---
+        t_obj = cand.get('_terrain')
+        zone = None
+        if t_obj is not None and t_obj.derniere_maj_geo:
+            zone = t_obj.zone_localisation_calculee or None
+        if zone is None:
+            zone = determiner_localisation(cand.get('geometry'), limite_commune)
 
-        # --- Pente et altitude (MNT) ---
-        altitude = pente = None
-        if mnt_index is not None:
-            samples = {}
-            offsets = [(0.0, 0.0), (1, 0), (-1, 0), (0, 1), (0, -1)]
-            for dy, dx in offsets:
-                slat = plat + dy * 110.0 / LAT_M
-                slng = plon + dx * 110.0 / (LAT_M * coslat_ref)
-                v = mnt_index.altitude_at(slat, slng)
-                if v is not None:
-                    samples[(dy, dx)] = v
-            if (0.0, 0.0) in samples:
-                altitude = samples[(0.0, 0.0)]
-            if (0.0, 0.0) in samples and ((1, 0) in samples or (0, 1) in samples):
-                gx = (samples.get((0, 1), samples[(0.0, 0.0)]) - samples[(0.0, 0.0)]) / 110.0
-                gy = (samples.get((1, 0), samples[(0.0, 0.0)]) - samples[(0.0, 0.0)]) / 110.0
-                pente = math.sqrt(gx * gx + gy * gy) * 100.0
-
-        if pente is None:
-            # Pente estimée par défaut dans la plage faible (0-5%)
-            pente = round(1.5 + (abs(hash(str(tid))) % 30) / 10.0, 1)
-
-        # --- Situation administrative ---
-        admin_amenities = GROUPES_EQUIPEMENTS.get('services', [])
-        dist_admin = min(
-            (dist_by_amenity[k] for k in admin_amenities if k in dist_by_amenity),
-            default=None,
-        )
-        dans_perimetre = dist_admin is not None and dist_admin < 2500
+        # --- Altitude (MNT) ---
+        altitude = None
+        if t_obj is not None and t_obj.derniere_maj_geo and t_obj.altitude_calculee is not None:
+            altitude = t_obj.altitude_calculee
+        if altitude is None and mnt_index is not None:
+            altitude = determiner_altitude(cand.get('geometry'), mnt_index)
+        # altitude reste None si le MNT est absent / ne couvre pas le terrain
+        # (aucun fallback fictif — voir B4)
 
         resultats_terrains.append({
             'id': tid,
@@ -1287,6 +1427,9 @@ def extraire_donnees_ponderation(projet_pk: int, selections: dict) -> dict:
             'reference_cadastrale': cand['reference_cadastrale'],
             'indice': cand['indice'],
             'consistance': cand['consistance'],
+            'fid': cand.get('fid'),
+            'num_parcelle': cand.get('num_parcelle') or '',
+            'geometry': cand.get('geometry'),
             'distances': {
                 'enseignement': dist_par_categorie_access.get('enseignement'),
                 'sante': dist_par_categorie_access.get('sante'),
@@ -1294,8 +1437,6 @@ def extraire_donnees_ponderation(projet_pk: int, selections: dict) -> dict:
                 'routes': dist_route if 'routes' in selections_access else None,
             },
             'zone_localisation': zone,
-            'dans_perimetre': dans_perimetre,
-            'pente': pente,
             'altitude': altitude,
         })
 
