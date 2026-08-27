@@ -257,10 +257,13 @@ def calculer_rentabilite_projet(projet) -> dict:
 
         cons_imp_etudes_annee = cons_annee + etudes_annee + imp_annee
         ca_eq_total_annee = ca_eq_annee + ca_eq_prive_annee
+        total_charges_annee = acq_annee + amenagement_annee + cons_annee + etudes_annee + imp_annee + comm_annee
 
         flux.append({
             'annee': annee,
             'ca_commercialisation': round(ca_hors_eq_annee, 2),
+            'ca_equipement_public': round(ca_eq_annee, 2),
+            'ca_equipement_prive': round(ca_eq_prive_annee, 2),
             'ca_equipements': round(ca_eq_total_annee, 2),
             'ca_total': round(ca_annee, 2),
             'ca': round(ca_annee, 2),
@@ -270,7 +273,9 @@ def calculer_rentabilite_projet(projet) -> dict:
             'imprevus': round(imp_annee, 2),
             'autre_charge': round(cons_imp_etudes_annee, 2),
             'commercialisation': round(comm_annee, 2),
+            'frais_commercialisation': round(comm_annee, 2),
             'amenagement': round(amenagement_annee, 2),
+            'total_charges': round(total_charges_annee, 2),
             'flux_net': round(flux_net, 2),
         })
 

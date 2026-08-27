@@ -64,6 +64,8 @@ export interface Rentabilite {
     annee: number
     ca: number
     ca_commercialisation?: number
+    ca_equipement_public?: number
+    ca_equipement_prive?: number
     ca_equipements?: number
     ca_total?: number
     acquisition: number
@@ -72,7 +74,9 @@ export interface Rentabilite {
     imprevus: number
     autre_charge?: number
     commercialisation: number
+    frais_commercialisation?: number
     amenagement: number
+    total_charges?: number
     flux_net: number
   }>
   repartition_construction?: number[]

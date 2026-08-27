@@ -4000,68 +4000,188 @@ const bindPopupActionButtons = (popup: any): void => {
                               <thead>
                                 <tr>
                                   <th>Flux de trésorerie</th>
+                                  <th>Année</th>
                                   {rentaResult.flux.map((f) => (
                                     <th key={f.annee}>
-                                      {t('projects.mark_annee')} {f.annee}
+                                      {f.annee}
                                     </th>
                                   ))}
                                 </tr>
                               </thead>
                               <tbody>
-                                <tr>
-                                  <td className="renta-flux-row-label">Commercialisation / CA</td>
-                                  {rentaResult.flux.map((f) => {
-                                    const val = f.ca_commercialisation ?? (f.annee === 0 ? 0 : f.ca)
-                                    return (
-                                      <td key={f.annee}>
-                                        {val.toLocaleString('fr-FR')}
-                                      </td>
-                                    )
-                                  })}
+                                {/* ── Section : Les charges ── */}
+                                <tr className="renta-flux-section-header">
+                                  <td colSpan={2 + rentaResult.flux.length}>Les charges</td>
                                 </tr>
                                 <tr>
-                                  <td className="renta-flux-row-label">Équipements (public / privé)</td>
-                                  {rentaResult.flux.map((f) => {
-                                    const val = f.ca_equipements ?? (f.annee === 1 ? (rentaResult.ca?.ca_equipements ?? 0) + (rentaResult.ca?.ca_equipements_prives ?? 0) : 0)
-                                    return (
-                                      <td key={f.annee}>
-                                        {val.toLocaleString('fr-FR')}
-                                      </td>
-                                    )
-                                  })}
-                                </tr>
-                                <tr>
-                                  <td className="renta-flux-row-label">Aménagement (charge)</td>
+                                  <td className="renta-flux-row-label">
+                                    Prix d'acquisition du foncier brut (Prix / m² * surface brute du foncier * (1+ frais d'acquisition))
+                                  </td>
+                                  <td className="renta-flux-row-note"></td>
                                   {rentaResult.flux.map((f) => (
                                     <td key={f.annee}>
-                                      {f.amenagement.toLocaleString('fr-FR')}
+                                      {f.annee === 0 && f.acquisition > 0 ? (
+                                        <div className="renta-flux-val">
+                                          <span>{f.acquisition.toLocaleString('fr-FR')}</span>
+                                          <span className="renta-flux-pct">(100%)</span>
+                                        </div>
+                                      ) : '—'}
                                     </td>
                                   ))}
                                 </tr>
                                 <tr>
-                                  <td className="renta-flux-row-label">Autre charge (Construction, Études, Imprévus)</td>
+                                  <td className="renta-flux-row-label">
+                                    Aménagement (600*SURFACE A AMENAGER *1,1)
+                                  </td>
+                                  <td className="renta-flux-row-note"></td>
+                                  {rentaResult.flux.map((f) => (
+                                    <td key={f.annee}>
+                                      {f.annee === 0 && f.amenagement > 0 ? (
+                                        <div className="renta-flux-val">
+                                          <span>{f.amenagement.toLocaleString('fr-FR')}</span>
+                                          <span className="renta-flux-pct">(100%)</span>
+                                        </div>
+                                      ) : '—'}
+                                    </td>
+                                  ))}
+                                </tr>
+                                <tr>
+                                  <td className="renta-flux-row-label">Coût de constructions</td>
+                                  <td className="renta-flux-row-note">En fonction de la durée du projet (Cas de deux années)</td>
                                   {rentaResult.flux.map((f) => {
-                                    const val = f.autre_charge ?? (f.construction + f.etudes_honoraires + f.imprevus)
+                                    const pct = f.annee < 2 ? '50%' : undefined
                                     return (
                                       <td key={f.annee}>
-                                        {val.toLocaleString('fr-FR')}
+                                        {f.construction > 0 ? (
+                                          <div className="renta-flux-val">
+                                            <span>{f.construction.toLocaleString('fr-FR')}</span>
+                                            {pct ? <span className="renta-flux-pct">({pct})</span> : null}
+                                          </div>
+                                        ) : '—'}
+                                      </td>
+                                    )
+                                  })}
+                                </tr>
+                                <tr>
+                                  <td className="renta-flux-row-label">Frais des études et honoraires des professionnels</td>
+                                  <td className="renta-flux-row-note">En fonction de la durée du projet (Cas de deux années)</td>
+                                  {rentaResult.flux.map((f) => {
+                                    const pct = f.annee < 2 ? '50%' : undefined
+                                    return (
+                                      <td key={f.annee}>
+                                        {f.etudes_honoraires > 0 ? (
+                                          <div className="renta-flux-val">
+                                            <span>{f.etudes_honoraires.toLocaleString('fr-FR')}</span>
+                                            {pct ? <span className="renta-flux-pct">({pct})</span> : null}
+                                          </div>
+                                        ) : '—'}
+                                      </td>
+                                    )
+                                  })}
+                                </tr>
+                                <tr>
+                                  <td className="renta-flux-row-label">Imprévus</td>
+                                  <td className="renta-flux-row-note">En fonction de la durée du projet (Cas de deux années)</td>
+                                  {rentaResult.flux.map((f) => {
+                                    const pct = f.annee < 2 ? '50%' : undefined
+                                    return (
+                                      <td key={f.annee}>
+                                        {f.imprevus > 0 ? (
+                                          <div className="renta-flux-val">
+                                            <span>{f.imprevus.toLocaleString('fr-FR')}</span>
+                                            {pct ? <span className="renta-flux-pct">({pct})</span> : null}
+                                          </div>
+                                        ) : '—'}
+                                      </td>
+                                    )
+                                  })}
+                                </tr>
+
+                                {/* ── Section : Chiffre d'affaire ── */}
+                                <tr className="renta-flux-section-header">
+                                  <td colSpan={2 + rentaResult.flux.length}>Chiffre d'affaire</td>
+                                </tr>
+                                <tr>
+                                  <td className="renta-flux-row-label">CA</td>
+                                  <td className="renta-flux-row-note">En fonction de la durée du projet (Cas de 3 années)</td>
+                                  {rentaResult.flux.map((f) => {
+                                    const val = f.ca_commercialisation ?? (f.annee === 0 ? 0 : f.ca)
+                                    const pct = f.annee === 1 ? '30%' : f.annee === 2 ? '30%' : f.annee === 3 ? '40%' : undefined
+                                    return (
+                                      <td key={f.annee}>
+                                        {val > 0 ? (
+                                          <div className="renta-flux-val">
+                                            <span>{val.toLocaleString('fr-FR')}</span>
+                                            {pct ? <span className="renta-flux-pct">({pct})</span> : null}
+                                          </div>
+                                        ) : '—'}
                                       </td>
                                     )
                                   })}
                                 </tr>
                                 <tr>
                                   <td className="renta-flux-row-label">Frais de commercialisation</td>
-                                  {rentaResult.flux.map((f) => (
-                                    <td key={f.annee}>
-                                      {f.commercialisation.toLocaleString('fr-FR')}
-                                    </td>
-                                  ))}
+                                  <td className="renta-flux-row-note">En fonction de la durée du projet (Cas de deux années)</td>
+                                  {rentaResult.flux.map((f) => {
+                                    const val = f.frais_commercialisation ?? f.commercialisation
+                                    const pct = f.annee === 1 ? '30%' : f.annee === 2 ? '30%' : f.annee === 3 ? '40%' : undefined
+                                    return (
+                                      <td key={f.annee}>
+                                        {val > 0 ? (
+                                          <div className="renta-flux-val">
+                                            <span>{val.toLocaleString('fr-FR')}</span>
+                                            {pct ? <span className="renta-flux-pct">({pct})</span> : null}
+                                          </div>
+                                        ) : '—'}
+                                      </td>
+                                    )
+                                  })}
                                 </tr>
+                                <tr>
+                                  <td className="renta-flux-row-label">Prix unitaire (equipement public)</td>
+                                  <td className="renta-flux-row-note"></td>
+                                  {rentaResult.flux.map((f) => {
+                                    const val = f.ca_equipement_public ?? (f.annee === 1 ? (rentaResult.ca?.ca_equipements ?? 0) : 0)
+                                    return (
+                                      <td key={f.annee}>
+                                        {val > 0 ? (
+                                          <div className="renta-flux-val">
+                                            <span>{val.toLocaleString('fr-FR')}</span>
+                                            <span className="renta-flux-pct">(100%)</span>
+                                          </div>
+                                        ) : '—'}
+                                      </td>
+                                    )
+                                  })}
+                                </tr>
+                                <tr>
+                                  <td className="renta-flux-row-label">Prix unitaire (equipement privé)</td>
+                                  <td className="renta-flux-row-note"></td>
+                                  {rentaResult.flux.map((f) => {
+                                    const val = f.ca_equipement_prive ?? (f.annee === 1 ? (rentaResult.ca?.ca_equipements_prives ?? 0) : 0)
+                                    return (
+                                      <td key={f.annee}>
+                                        {val > 0 ? (
+                                          <div className="renta-flux-val">
+                                            <span>{val.toLocaleString('fr-FR')}</span>
+                                            <span className="renta-flux-pct">(100%)</span>
+                                          </div>
+                                        ) : '—'}
+                                      </td>
+                                    )
+                                  })}
+                                </tr>
+
+                                {/* ── Total : Flux de trésorerie ── */}
                                 <tr className="renta-flux-net-row">
-                                  <td className="renta-flux-row-label">Flux net</td>
+                                  <td className="renta-flux-row-label">Flux de trésorerie</td>
+                                  <td className="renta-flux-row-note">chiffre d'affaires - charges</td>
                                   {rentaResult.flux.map((f) => (
                                     <td key={f.annee} className="renta-flux-net">
-                                      {f.flux_net.toLocaleString('fr-FR')}
+                                      <div className="renta-flux-val">
+                                        <span>{f.flux_net.toLocaleString('fr-FR')}</span>
+                                        <span className="renta-flux-pct">DH</span>
+                                      </div>
                                     </td>
                                   ))}
                                 </tr>
