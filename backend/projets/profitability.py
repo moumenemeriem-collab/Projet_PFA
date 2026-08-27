@@ -83,14 +83,23 @@ def calculer_rentabilite_projet(projet) -> dict:
     cus = _d(p.cus)
 
     # ── 2. Surfaces ──
-    # SHON/SHOB conservés à titre informatif
-    shon = surface_brute * cos if cos > 0 else 0
-    shob = shon * 1.2
-    # Surface vendable : COS * surface constructible * (1 - taux de chute) * 0.9
+    surface_voie = _d(getattr(p, 'surface_voie', None))
+    surface_espace_vert = _d(getattr(p, 'surface_espace_vert', None))
     surface_constructible = _d(getattr(p, 'surface_constructible', None))
     if surface_constructible <= 0:
         surface_constructible = surface_brute
-    surface_vendable = cos * surface_constructible * (1 - taux_chute_pct) * 0.9
+
+    has_voie_ou_espace_vert = (surface_voie > 0 or surface_espace_vert > 0)
+    if has_voie_ou_espace_vert:
+        shon = cos * surface_constructible * (1.0 - taux_chute_pct)
+        shob = shon * 1.2
+        surface_vendable = shon * 0.9
+        surface_a_amenager = surface_voie + surface_espace_vert + (taux_chute_pct * surface_constructible)
+    else:
+        shon = cos * surface_constructible
+        shob = shon * 1.2
+        surface_vendable = shon * 0.9
+        surface_a_amenager = 0.0
 
     # ── 3. Répartition par destination ──
     qp_apt = _d(p.quote_part_appartement) / 100.0
@@ -138,10 +147,6 @@ def calculer_rentabilite_projet(projet) -> dict:
     frais_commercialisation = ca_total * taux_comm
 
     # ── 6bis. Charge d'aménagement (échelonnement aménagement) ──
-    # surface_a_amenager = (surface_voie + surface_espace_vert) * (1 + taux_chute)
-    surface_voie = _d(getattr(p, 'surface_voie', None))
-    surface_espace_vert = _d(getattr(p, 'surface_espace_vert', None))
-    surface_a_amenager = (surface_voie + surface_espace_vert) * (1 + taux_chute_pct)
     cout_amenagement = 600 * surface_a_amenager * 1.1
 
     # ── 7. Prix d'acquisition foncier ──
