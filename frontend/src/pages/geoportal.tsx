@@ -34,6 +34,7 @@ import {
   type AffectationPiece,
   type PreparedPAZone,
 } from '../utils/affectations'
+import { generateAndDownloadRentaPdfReport } from '../utils/rentaPdfReport'
 
 import osmImg from '../assets/features/OSM.png'
 import satImg from '../assets/features/osm_sat.jpg'
@@ -971,6 +972,7 @@ export function GeoportalPage(): React.JSX.Element {
   const [rentaSurfaceLoading, setRentaSurfaceLoading] = useState(false)
   const [rentaSidebarOpen, setRentaSidebarOpen] = useState(true)
   const [rentaDetailOpen, setRentaDetailOpen] = useState(false)
+  const [rentaGeneratingPdf, setRentaGeneratingPdf] = useState(false)
 
   // Reconstruit le résultat d'intersection terrain×PA depuis le cache stocké
   // dans `inputs`. Les terrains créés depuis le popup n'ont pas de géométrie en
@@ -1546,6 +1548,56 @@ export function GeoportalPage(): React.JSX.Element {
       refreshRentaTerrains()
     } catch (err) {
       setRentaError(formatApiErrors(err))
+    }
+  }
+
+  const handleDownloadRentaReport = async (): Promise<void> => {
+    if (!rentaResult?.ok) return
+    setRentaGeneratingPdf(true)
+    try {
+      let polygonCoords: number[][] | undefined = rentaRing && rentaRing.length >= 3 ? rentaRing : undefined
+      if (!polygonCoords && rentaParcelInfo?.ref) {
+        const cadastreId = couchesDispo.find((c) => c.nom === 'cadastre')?.id
+        const cadFeat = cadastreId != null
+          ? coucheDataRef.current[cadastreId]?.features.find((f) => String(f.properties?.num) === String(rentaParcelInfo.ref))
+          : undefined
+        if (cadFeat?.geometry) {
+          polygonCoords = extractRing(cadFeat.geometry) ?? undefined
+        }
+      }
+      if (!polygonCoords && selectedTerrain?.geom) {
+        polygonCoords = extractRing(selectedTerrain.geom) ?? undefined
+      }
+
+      await generateAndDownloadRentaPdfReport({
+        projectName: projet?.nom,
+        terrainNom: rentaTerrainNom || rentaParcelInfo?.nom || 'Terrain',
+        reference: rentaParcelInfo?.ref,
+        superficie: rentaParcelInfo?.superficie,
+        lat: rentaParcelInfo?.lat,
+        lng: rentaParcelInfo?.lng,
+        polygonCoords,
+        rentaResult,
+        rentaForm: {
+          ...rentaForm,
+          prixFoncierM2: rentaInputsSaved?.form.prixFoncierM2 ?? rentaForm.prixFoncierM2,
+          fraisAcquisition: rentaInputsSaved?.form.fraisAcquisition ?? rentaForm.fraisAcquisition,
+          tauxChute: rentaInputsSaved?.form.tauxChute ?? rentaForm.tauxChute,
+          cos: rentaInputsSaved?.form.cos ?? rentaForm.cos,
+          cus: rentaInputsSaved?.form.cus ?? rentaForm.cus,
+          tauxEtudes: rentaInputsSaved?.form.tauxEtudes ?? rentaForm.tauxEtudes,
+          tauxImprevus: rentaInputsSaved?.form.tauxImprevus ?? rentaForm.tauxImprevus,
+          tauxCommercialisation: rentaInputsSaved?.form.tauxCommercialisation ?? rentaForm.tauxCommercialisation,
+          tauxActualisation: rentaInputsSaved?.form.tauxActualisation ?? rentaForm.tauxActualisation,
+          dureeConstruction: rentaInputsSaved?.form.dureeConstruction ?? rentaForm.dureeConstruction,
+          dureeCommercialisation: rentaInputsSaved?.form.dureeCommercialisation ?? rentaForm.dureeCommercialisation,
+        },
+      })
+    } catch (err) {
+      console.error('[pdf-report] error generating report:', err)
+      setRentaError('Erreur lors de la génération du rapport PDF')
+    } finally {
+      setRentaGeneratingPdf(false)
     }
   }
 
@@ -3931,7 +3983,21 @@ const bindPopupActionButtons = (popup: any): void => {
                   </button>
                   {rentaDetailOpen ? (
                     <div className="renta-detail-panel">
-                      <h4 className="renta-detail-title">{t('projects.detail_calc_title')}</h4>
+                      <div className="renta-detail-panel-header">
+                        <h4 className="renta-detail-title">{t('projects.detail_calc_title')}</h4>
+                        <button
+                          type="button"
+                          className="geo-dims-download renta-pdf-download-btn"
+                          onClick={handleDownloadRentaReport}
+                          disabled={rentaGeneratingPdf}
+                          title="Télécharger le rapport PDF complet de rentabilité"
+                        >
+                          <svg className="geo-dims-pdf-icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path d="M2 1.5A1.5 1.5 0 0 1 3.5 0H10l4 4v10.5A1.5 1.5 0 0 1 12.5 16h-9A1.5 1.5 0 0 1 2 14.5v-13zM10 0.5V4a1 1 0 0 0 1 1h3.5L10 0.5zM9 7v5.3L7.1 10.4a.6.6 0 1 0-.85.85l2.6 2.6a.6.6 0 0 0 .85 0l2.6-2.6a.6.6 0 1 0-.85-.85L10 12.3V7a.6.6 0 1 0-1 0z" />
+                          </svg>
+                          <span>{rentaGeneratingPdf ? 'Génération du rapport...' : 'Télécharger le rapport (PDF)'}</span>
+                        </button>
+                      </div>
 
                       <section className="renta-detail-sec">
                         <h5>{t('projects.detail_parametres')}</h5>
