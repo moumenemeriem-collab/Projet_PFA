@@ -4056,7 +4056,8 @@ const bindPopupActionButtons = (popup: any): void => {
                                 <tr>
                                   <td className="renta-flux-row-label">Coût de construction</td>
                                   {rentaResult.flux.map((f) => {
-                                    const pct = f.annee < 2 ? '50%' : undefined
+                                    const pctVal = rentaResult.repartition_construction?.[f.annee]
+                                    const pct = pctVal != null && pctVal > 0 ? `${pctVal}%` : undefined
                                     return (
                                       <td key={f.annee}>
                                         {f.construction > 0 ? (
@@ -4072,7 +4073,8 @@ const bindPopupActionButtons = (popup: any): void => {
                                 <tr>
                                   <td className="renta-flux-row-label">Études et honoraires</td>
                                   {rentaResult.flux.map((f) => {
-                                    const pct = f.annee < 2 ? '50%' : undefined
+                                    const pctVal = rentaResult.repartition_construction?.[f.annee]
+                                    const pct = pctVal != null && pctVal > 0 ? `${pctVal}%` : undefined
                                     return (
                                       <td key={f.annee}>
                                         {f.etudes_honoraires > 0 ? (
@@ -4088,7 +4090,8 @@ const bindPopupActionButtons = (popup: any): void => {
                                 <tr>
                                   <td className="renta-flux-row-label">Imprévus</td>
                                   {rentaResult.flux.map((f) => {
-                                    const pct = f.annee < 2 ? '50%' : undefined
+                                    const pctVal = rentaResult.repartition_construction?.[f.annee]
+                                    const pct = pctVal != null && pctVal > 0 ? `${pctVal}%` : undefined
                                     return (
                                       <td key={f.annee}>
                                         {f.imprevus > 0 ? (
@@ -4110,7 +4113,9 @@ const bindPopupActionButtons = (popup: any): void => {
                                   <td className="renta-flux-row-label">Chiffre d'affaires (hors équipements)</td>
                                   {rentaResult.flux.map((f) => {
                                     const val = f.ca_commercialisation ?? (f.annee === 0 ? 0 : f.ca)
-                                    const pct = f.annee === 1 ? '30%' : f.annee === 2 ? '30%' : f.annee === 3 ? '40%' : undefined
+                                    const idx = f.annee - 1
+                                    const pctVal = idx >= 0 ? rentaResult.repartition_ventes?.[idx] : undefined
+                                    const pct = pctVal != null && pctVal > 0 ? `${pctVal}%` : undefined
                                     return (
                                       <td key={f.annee}>
                                         {val > 0 ? (
@@ -4127,7 +4132,9 @@ const bindPopupActionButtons = (popup: any): void => {
                                   <td className="renta-flux-row-label">Frais de commercialisation</td>
                                   {rentaResult.flux.map((f) => {
                                     const val = f.frais_commercialisation ?? f.commercialisation
-                                    const pct = f.annee === 1 ? '30%' : f.annee === 2 ? '30%' : f.annee === 3 ? '40%' : undefined
+                                    const idx = f.annee - 1
+                                    const pctVal = idx >= 0 ? rentaResult.repartition_ventes?.[idx] : undefined
+                                    const pct = pctVal != null && pctVal > 0 ? `${pctVal}%` : undefined
                                     return (
                                       <td key={f.annee}>
                                         {val > 0 ? (
@@ -4144,12 +4151,15 @@ const bindPopupActionButtons = (popup: any): void => {
                                   <td className="renta-flux-row-label">Ventes équipements publics</td>
                                   {rentaResult.flux.map((f) => {
                                     const val = f.ca_equipement_public ?? (f.annee === 1 ? (rentaResult.ca?.ca_equipements ?? 0) : 0)
+                                    const idx = f.annee - 1
+                                    const pctVal = idx >= 0 ? rentaResult.repartition_ventes_equipement?.[idx] : undefined
+                                    const pct = pctVal != null && pctVal > 0 ? `${pctVal}%` : undefined
                                     return (
                                       <td key={f.annee}>
                                         {val > 0 ? (
                                           <div className="renta-flux-val">
                                             <span>{val.toLocaleString('fr-FR')}</span>
-                                            <span className="renta-flux-pct">(100%)</span>
+                                            {pct ? <span className="renta-flux-pct">({pct})</span> : null}
                                           </div>
                                         ) : '—'}
                                       </td>
@@ -4160,12 +4170,15 @@ const bindPopupActionButtons = (popup: any): void => {
                                   <td className="renta-flux-row-label">Ventes équipements privés</td>
                                   {rentaResult.flux.map((f) => {
                                     const val = f.ca_equipement_prive ?? (f.annee === 1 ? (rentaResult.ca?.ca_equipements_prives ?? 0) : 0)
+                                    const idx = f.annee - 1
+                                    const pctVal = idx >= 0 ? rentaResult.repartition_ventes_equipement_prive?.[idx] : undefined
+                                    const pct = pctVal != null && pctVal > 0 ? `${pctVal}%` : undefined
                                     return (
                                       <td key={f.annee}>
                                         {val > 0 ? (
                                           <div className="renta-flux-val">
                                             <span>{val.toLocaleString('fr-FR')}</span>
-                                            <span className="renta-flux-pct">(100%)</span>
+                                            {pct ? <span className="renta-flux-pct">({pct})</span> : null}
                                           </div>
                                         ) : '—'}
                                       </td>
