@@ -3999,25 +3999,21 @@ const bindPopupActionButtons = (popup: any): void => {
                             <table className="renta-flux-table renta-flux-table--transposed">
                               <thead>
                                 <tr>
-                                  <th>Flux de trésorerie</th>
-                                  <th>Année</th>
+                                  <th>Poste</th>
                                   {rentaResult.flux.map((f) => (
                                     <th key={f.annee}>
-                                      {f.annee}
+                                      Année {f.annee}
                                     </th>
                                   ))}
                                 </tr>
                               </thead>
                               <tbody>
-                                {/* ── Section : Les charges ── */}
+                                {/* ── Section : Charges ── */}
                                 <tr className="renta-flux-section-header">
-                                  <td colSpan={2 + rentaResult.flux.length}>Les charges</td>
+                                  <td colSpan={1 + rentaResult.flux.length}>Charges</td>
                                 </tr>
                                 <tr>
-                                  <td className="renta-flux-row-label">
-                                    Prix d'acquisition du foncier brut
-                                  </td>
-                                  <td className="renta-flux-row-note"></td>
+                                  <td className="renta-flux-row-label">Acquisition du foncier</td>
                                   {rentaResult.flux.map((f) => (
                                     <td key={f.annee}>
                                       {f.annee === 0 && f.acquisition > 0 ? (
@@ -4030,10 +4026,7 @@ const bindPopupActionButtons = (popup: any): void => {
                                   ))}
                                 </tr>
                                 <tr>
-                                  <td className="renta-flux-row-label">
-                                    Aménagement
-                                  </td>
-                                  <td className="renta-flux-row-note"></td>
+                                  <td className="renta-flux-row-label">Aménagement</td>
                                   {rentaResult.flux.map((f) => (
                                     <td key={f.annee}>
                                       {f.annee === 0 && f.amenagement > 0 ? (
@@ -4046,8 +4039,7 @@ const bindPopupActionButtons = (popup: any): void => {
                                   ))}
                                 </tr>
                                 <tr>
-                                  <td className="renta-flux-row-label">Coût de constructions</td>
-                                  <td className="renta-flux-row-note"></td>
+                                  <td className="renta-flux-row-label">Coût de construction</td>
                                   {rentaResult.flux.map((f) => {
                                     const pct = f.annee < 2 ? '50%' : undefined
                                     return (
@@ -4063,8 +4055,7 @@ const bindPopupActionButtons = (popup: any): void => {
                                   })}
                                 </tr>
                                 <tr>
-                                  <td className="renta-flux-row-label">Frais des études et honoraires des professionnels</td>
-                                  <td className="renta-flux-row-note"></td>
+                                  <td className="renta-flux-row-label">Études et honoraires</td>
                                   {rentaResult.flux.map((f) => {
                                     const pct = f.annee < 2 ? '50%' : undefined
                                     return (
@@ -4081,7 +4072,6 @@ const bindPopupActionButtons = (popup: any): void => {
                                 </tr>
                                 <tr>
                                   <td className="renta-flux-row-label">Imprévus</td>
-                                  <td className="renta-flux-row-note"></td>
                                   {rentaResult.flux.map((f) => {
                                     const pct = f.annee < 2 ? '50%' : undefined
                                     return (
@@ -4097,13 +4087,12 @@ const bindPopupActionButtons = (popup: any): void => {
                                   })}
                                 </tr>
 
-                                {/* ── Section : Chiffre d'affaire ── */}
+                                {/* ── Section : Chiffre d'affaires ── */}
                                 <tr className="renta-flux-section-header">
-                                  <td colSpan={2 + rentaResult.flux.length}>Chiffre d'affaire</td>
+                                  <td colSpan={1 + rentaResult.flux.length}>Chiffre d'affaires</td>
                                 </tr>
                                 <tr>
-                                  <td className="renta-flux-row-label">CA</td>
-                                  <td className="renta-flux-row-note"></td>
+                                  <td className="renta-flux-row-label">Chiffre d'affaires (hors équipements)</td>
                                   {rentaResult.flux.map((f) => {
                                     const val = f.ca_commercialisation ?? (f.annee === 0 ? 0 : f.ca)
                                     const pct = f.annee === 1 ? '30%' : f.annee === 2 ? '30%' : f.annee === 3 ? '40%' : undefined
@@ -4121,7 +4110,6 @@ const bindPopupActionButtons = (popup: any): void => {
                                 </tr>
                                 <tr>
                                   <td className="renta-flux-row-label">Frais de commercialisation</td>
-                                  <td className="renta-flux-row-note"></td>
                                   {rentaResult.flux.map((f) => {
                                     const val = f.frais_commercialisation ?? f.commercialisation
                                     const pct = f.annee === 1 ? '30%' : f.annee === 2 ? '30%' : f.annee === 3 ? '40%' : undefined
@@ -4138,8 +4126,7 @@ const bindPopupActionButtons = (popup: any): void => {
                                   })}
                                 </tr>
                                 <tr>
-                                  <td className="renta-flux-row-label">Prix unitaire (equipement public)</td>
-                                  <td className="renta-flux-row-note"></td>
+                                  <td className="renta-flux-row-label">Ventes équipements publics</td>
                                   {rentaResult.flux.map((f) => {
                                     const val = f.ca_equipement_public ?? (f.annee === 1 ? (rentaResult.ca?.ca_equipements ?? 0) : 0)
                                     return (
@@ -4155,8 +4142,7 @@ const bindPopupActionButtons = (popup: any): void => {
                                   })}
                                 </tr>
                                 <tr>
-                                  <td className="renta-flux-row-label">Prix unitaire (equipement privé)</td>
-                                  <td className="renta-flux-row-note"></td>
+                                  <td className="renta-flux-row-label">Ventes équipements privés</td>
                                   {rentaResult.flux.map((f) => {
                                     const val = f.ca_equipement_prive ?? (f.annee === 1 ? (rentaResult.ca?.ca_equipements_prives ?? 0) : 0)
                                     return (
@@ -4172,10 +4158,9 @@ const bindPopupActionButtons = (popup: any): void => {
                                   })}
                                 </tr>
 
-                                {/* ── Total : Flux de trésorerie ── */}
+                                {/* ── Total : Flux net de trésorerie ── */}
                                 <tr className="renta-flux-net-row">
-                                  <td className="renta-flux-row-label">Flux de trésorerie</td>
-                                  <td className="renta-flux-row-note"></td>
+                                  <td className="renta-flux-row-label">Flux net de trésorerie</td>
                                   {rentaResult.flux.map((f) => (
                                     <td key={f.annee} className="renta-flux-net">
                                       <div className="renta-flux-val">
