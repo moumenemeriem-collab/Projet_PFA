@@ -472,7 +472,7 @@ def _generer_resultats_criteres(terrain: Terrain, filtres: dict) -> list:
         })
 
     for ltype in filtres.get('localisation', []):
-        label = {'centre_ville': 'Centre-ville', 'periurbaine': 'Périurbaine', 'rurale': 'Rurale'}
+        label = {'centre_ville': 'Centre-ville', 'periurbaine': 'Périphérie'}
         resultats.append({
             'id': f'loc_{ltype}',
             'critere': 'Zone de localisation',
@@ -484,21 +484,21 @@ def _generer_resultats_criteres(terrain: Terrain, filtres: dict) -> list:
             'conforme': True,
         })
 
-    pente_val = round(rng.uniform(0.5, 18), 1)
-    pente_sel = filtres.get('pente', [])
-    if pente_sel:
+    altitude_val = round(rng.uniform(20, 450), 1)
+    altitude_sel = filtres.get('altitude', [])
+    if altitude_sel:
         conforme = any({
-            '0_5': pente_val <= 5, '5_10': 5 < pente_val <= 10,
-            '10_15': 10 < pente_val <= 15, 'gt15': pente_val > 15,
-        }.get(v, False) for v in pente_sel)
-        demande = ', '.join(pente_sel)
+            'lt100': altitude_val < 100, '100_300': 100 <= altitude_val <= 300,
+            'gt300': altitude_val > 300,
+        }.get(v, False) for v in altitude_sel)
+        demande = ', '.join(altitude_sel)
         resultats.append({
-            'id': 'pente',
-            'critere': 'Pente du terrain',
+            'id': 'altitude',
+            'critere': 'Altitude du terrain',
             'critere_demande': demande,
-            'valeur_mesuree': f"{pente_val} %",
-            'valeur_mesuree_brute': pente_val,
-            'unite': '%',
+            'valeur_mesuree': f"{altitude_val} m",
+            'valeur_mesuree_brute': altitude_val,
+            'unite': 'm',
             'point_interet': 'Terrain',
             'conforme': conforme,
         })
@@ -1432,8 +1432,7 @@ class AnalysePondereeView(APIView):
             from .ahp import calculer_poids_ahp
             from .scoring import calculer_poids_globaux, calculer_score_terrain, calculer_contributions
             from .normalisation import (
-                normaliser_distances, score_localisation,
-                score_situation_administrative, score_pente,
+                normaliser_distances, score_localisation, score_altitude,
             )
 
             matrice_ahp = data['matrice_ahp']
@@ -1441,7 +1440,7 @@ class AnalysePondereeView(APIView):
             ordres_roc = data['ordres_roc']
             selections = data['selections_criteres']
             prefs_loc = data['preferences_localisation']
-            plages_pente = data['preferences_pente']
+            plages_altitude = data['preferences_altitude']
             seuil = data['seuil']
 
             # 1. Poids AHP
@@ -1490,16 +1489,9 @@ class AnalysePondereeView(APIView):
                 if choix_loc and 'localisation' in poids_globaux:
                     scores_norm['localisation'] = score_localisation(zone_terrain, choix_loc)
 
-                # Situation administrative
-                choix_sit = prefs_loc.get('situation_administrative')
-                if choix_sit and 'situation_administrative' in poids_globaux:
-                    scores_norm['situation_administrative'] = score_situation_administrative(
-                        t['dans_perimetre'], choix_sit
-                    )
-
-                # Pente
-                if plages_pente and t['pente'] is not None and 'pente' in poids_globaux:
-                    scores_norm['pente'] = score_pente(t['pente'], plages_pente)
+                # Altitude
+                if plages_altitude and t['altitude'] is not None and 'altitude' in poids_globaux:
+                    scores_norm['altitude'] = score_altitude(t['altitude'], plages_altitude)
 
                 score = calculer_score_terrain(scores_norm, poids_globaux)
 
@@ -1517,10 +1509,12 @@ class AnalysePondereeView(APIView):
                     'reference_cadastrale': t.get('reference_cadastrale', ''),
                     'indice': t.get('indice', ''),
                     'consistance': t.get('consistance', ''),
+                    'fid': t.get('fid'),
+                    'num_parcelle': t.get('num_parcelle', ''),
+                    'geometry': t.get('geometry'),
                     'score_final': round(score, 4),
                     'distances': t['distances'],
                     'zone_localisation': zone_terrain,
-                    'pente': t['pente'],
                     'altitude': t['altitude'],
                     'contributions': contributions,
                 })
@@ -1540,7 +1534,7 @@ class AnalysePondereeView(APIView):
                         'ordres_roc': ordres_roc,
                         'selections_criteres': selections,
                         'preferences_localisation': prefs_loc,
-                        'preferences_pente': plages_pente,
+                        'preferences_altitude': plages_altitude,
                         'seuil': seuil,
                     },
                 )

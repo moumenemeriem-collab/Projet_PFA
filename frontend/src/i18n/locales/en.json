@@ -590,7 +590,6 @@
     "filter_localisation": "Location",
     "loc_centre_ville": "City center",
     "loc_periurbaine": "Urban outskirts",
-    "loc_rurale": "Rural area",
     "filter_distance_poles": "Distance to poles",
     "pole_centre": "City center",
     "pole_industriel": "Industrial zone",
@@ -598,9 +597,6 @@
     "pole_gare": "Train station",
     "pole_port": "Port",
     "pole_aeroport": "Airport",
-    "filter_situation_admin": "Administrative status",
-    "situation_interieur_perimetre": "Within urban perimeter",
-    "situation_exterieur_perimetre": "Outside urban perimeter",
     "filter_pente": "Slope",
     "pente_0_5": "0–5 %",
     "pente_5_10": "5–10 %",
@@ -959,9 +955,8 @@
     "critere_access_desc": "Select the nearby equipment and infrastructure.",
     "route_type": "Preferred road type",
     "localisation": "Location",
-    "situation_admin": "Administrative status",
-    "pente": "Terrain slope",
-    "pente_desc": "Select the acceptable slope ranges.",
+    "altitude": "Terrain altitude",
+    "altitude_desc": "Select the acceptable altitude ranges.",
     "ahp_title": "Your priorities between categories",
     "ahp_desc": "First rank the 3 categories by importance, then indicate the intensity of your preference for each consecutive pair.",
     "ahp_equal": "Equal importance",
@@ -983,7 +978,6 @@
     "no_results": "No terrains exceed the selected threshold.",
     "contributions": "Contribution details",
     "zone": "Zone",
-    "pente_label": "Slope",
     "altitude_label": "Altitude"
   }
 }

@@ -6,7 +6,7 @@ interface SelectionsInitiales {
   accessibilite: string[]
   route_type: string
   localisation: string
-  pente: string[]
+  altitude: string[]
 }
 
 interface CritereSelectionStepProps {
@@ -34,18 +34,17 @@ const LOCALISATIONS = [
   { key: 'periurbaine', label: 'Périphérie' },
 ]
 
-const PENTES = [
-  { key: '0_5', label: '0 – 5 %' },
-  { key: '5_10', label: '5 – 10 %' },
-  { key: '10_15', label: '10 – 15 %' },
-  { key: 'gt15', label: '> 15 %' },
+const ALTITUDES = [
+  { key: 'lt100', label: '< 100 m' },
+  { key: '100_300', label: '100 – 300 m' },
+  { key: 'gt300', label: '> 300 m' },
 ]
 
 const DEFAULTS: SelectionsInitiales = {
   accessibilite: [],
   route_type: 'peu_importe',
   localisation: '',
-  pente: [],
+  altitude: [],
 }
 
 export function CritereSelectionStep({ initial, onComplete }: CritereSelectionStepProps): React.JSX.Element {
@@ -60,16 +59,15 @@ export function CritereSelectionStep({ initial, onComplete }: CritereSelectionSt
     })
   }
 
-  const togglePente = (key: string): void => {
-    setSelections((prev) => {
-      const list = prev.pente.includes(key)
-        ? prev.pente.filter((k) => k !== key)
-        : [...prev.pente, key]
-      return { ...prev, pente: list }
-    })
+  // Sélection unique (radio) : une seule plage d'altitude à la fois.
+  const toggleAltitude = (key: string): void => {
+    setSelections((prev) => ({
+      ...prev,
+      altitude: prev.altitude.includes(key) ? [] : [key],
+    }))
   }
 
-  const isValid = selections.localisation && selections.pente.length > 0
+  const isValid = selections.localisation && selections.altitude.length > 0
 
   return (
     <div className="critere-step">
@@ -127,17 +125,17 @@ export function CritereSelectionStep({ initial, onComplete }: CritereSelectionSt
         </div>
       </div>
 
-      {/* Topographie — Pente */}
+      {/* Topographie — Altitude */}
       <div className="critere-section">
-        <h4 className="critere-section-title">{t('ponderation.pente')}</h4>
-        <p className="critere-section-desc">{t('ponderation.pente_desc')}</p>
+        <h4 className="critere-section-title">{t('ponderation.altitude')}</h4>
+        <p className="critere-section-desc">{t('ponderation.altitude_desc')}</p>
         <div className="critere-chips">
-          {PENTES.map((p) => (
+          {ALTITUDES.map((p) => (
             <button
               key={p.key}
               type="button"
-              className={`critere-chip ${selections.pente.includes(p.key) ? 'critere-chip--active' : ''}`}
-              onClick={() => togglePente(p.key)}
+              className={`critere-chip ${selections.altitude.includes(p.key) ? 'critere-chip--active' : ''}`}
+              onClick={() => toggleAltitude(p.key)}
             >
               {p.label}
             </button>

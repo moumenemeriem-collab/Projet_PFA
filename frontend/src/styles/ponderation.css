@@ -52,6 +52,7 @@
 .ponderation-wizard {
   max-width: 880px;
   margin: 0 auto;
+  padding: 0 var(--wz-space-md);
 }
 
 .ponderation-header {
@@ -159,13 +160,14 @@
 /* ── Labels ── */
 
 .ponderation-stepper-label {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: #94a3b8;
   text-align: center;
   font-weight: 500;
   transition: color 0.3s ease, font-weight 0.2s ease;
   max-width: 80px;
   line-height: 1.3;
+  white-space: normal;
 }
 
 /* ── Connecteur entre étapes ── */
@@ -272,7 +274,7 @@
   font-size: var(--wz-font-step-title);
   font-weight: 700;
   color: var(--wz-text-heading);
-  margin: 0 0 0.4rem;
+  margin: 0 0 0.75rem;
   letter-spacing: -0.01em;
 }
 
@@ -890,7 +892,10 @@
 /* ── Resultats Step ── */
 
 .resultats-header-block {
+  margin-top: 0.75rem;
   margin-bottom: var(--wz-space-lg);
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--wz-border);
 }
 
 /* ── Insight Synthèse (dismissible) ── */
@@ -1022,7 +1027,7 @@
   font-size: var(--wz-font-small);
   background: var(--wz-primary-light);
   color: var(--wz-primary);
-  padding: 0.3rem 0.75rem;
+  padding: 0.4rem 0.85rem;
   border-radius: 20px;
   font-weight: 600;
   white-space: nowrap;
@@ -1331,7 +1336,7 @@
 .resultats-simple-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .resultats-empty {

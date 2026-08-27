@@ -19,8 +19,7 @@ const CRITERE_LABELS: Record<string, string> = {
   administration: 'Administration',
   routes: 'Routes',
   localisation: 'Localisation',
-  situation_administrative: 'Situation administrative',
-  pente: 'Pente',
+  altitude: 'Altitude',
 }
 
 function scoreColor(score: number): string {
@@ -159,7 +158,13 @@ export function ResultatsStep({
                   <span className="resultats-simple-meta">
                     {terrain.reference_cadastrale && <span>{terrain.reference_cadastrale}</span>}
                     <span>{Number(terrain.superficie).toLocaleString('fr-FR')} m²</span>
-                    <span>{terrain.zone_localisation === 'centre_ville' ? 'Centre-ville' : 'Périphérie'}</span>
+                    <span>
+                      {terrain.zone_localisation === 'centre_ville'
+                        ? 'Centre-ville'
+                        : terrain.zone_localisation === 'periurbaine'
+                          ? 'Périphérie'
+                          : 'Zone non déterminée'}
+                    </span>
                   </span>
                 </div>
                 <span className="resultats-simple-score" style={{ color }}>

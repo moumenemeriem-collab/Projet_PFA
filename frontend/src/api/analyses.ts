@@ -84,7 +84,7 @@ export interface PonderationRequest {
   ordres_roc: Record<string, string[]>
   selections_criteres: Record<string, string | string[]>
   preferences_localisation: Record<string, string>
-  preferences_pente: string[]
+  preferences_altitude: string[]
   seuil: number
 }
 
@@ -109,7 +109,6 @@ export interface TerrainPondere {
   contributions: Contribution[]
   distances: Record<string, number | null>
   zone_localisation: string
-  pente: number | null
   altitude: number | null
 }
 
@@ -130,7 +129,7 @@ export interface PonderationPreference {
   ordres_roc: Record<string, string[]>
   selections_criteres: Record<string, string[]>
   preferences_localisation: Record<string, string>
-  preferences_pente: string[]
+  preferences_altitude: string[]
   seuil: number
   date_creation: string
   date_mise_a_jour: string

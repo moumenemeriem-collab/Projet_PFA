@@ -19,7 +19,7 @@ interface SelectionsInitiales {
   accessibilite: string[]
   route_type: string
   localisation: string
-  pente: string[]
+  altitude: string[]
 }
 
 type Step = 'selection' | 'ahp' | 'roc' | 'resultats'
@@ -30,7 +30,7 @@ export const CRITERE_LABELS: Record<string, string> = {
   administration: 'Administration',
   routes: 'Routes',
   localisation: 'Localisation',
-  pente: 'Pente',
+  altitude: 'Altitude',
 }
 
 const CATEGORIE_LABELS: Record<string, string> = {
@@ -61,7 +61,7 @@ export function PonderationWizard({ projetId }: PonderationWizardProps): React.J
         accessibilite: Array.isArray(sel.accessibilite) ? sel.accessibilite as string[] : [],
         route_type: typeof sel.route_type === 'string' ? sel.route_type : 'peu_importe',
         localisation: prefs.preferences_localisation?.localisation ?? '',
-        pente: prefs.preferences_pente ?? [],
+        altitude: prefs.preferences_altitude ?? [],
       })
       const rawMatrix = prefs.matrice_ahp
       if (Array.isArray(rawMatrix) && rawMatrix.length >= 2) {
@@ -100,8 +100,8 @@ export function PonderationWizard({ projetId }: PonderationWizardProps): React.J
 
     newOrdres.positionnement = ['localisation']
 
-    if (selections!.pente.length > 0) {
-      newOrdres.topographie = ['pente']
+    if (selections!.altitude.length > 0) {
+      newOrdres.topographie = ['altitude']
     }
 
     setOrdresRoc(newOrdres)
@@ -148,9 +148,8 @@ export function PonderationWizard({ projetId }: PonderationWizardProps): React.J
           },
           preferences_localisation: {
             localisation: selections?.localisation ?? '',
-            situation_administrative: 'intra_perimetre',
           },
-          preferences_pente: Array.isArray(selections?.pente) ? selections!.pente : [],
+          preferences_altitude: Array.isArray(selections?.altitude) ? selections!.altitude : [],
           seuil: 0,
         })
         setResultats(response)

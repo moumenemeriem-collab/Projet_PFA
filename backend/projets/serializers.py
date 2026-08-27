@@ -448,7 +448,7 @@ class PonderationPreferenceSerializer(serializers.ModelSerializer):
         model = PonderationPreference
         fields = [
             'id', 'projet', 'matrice_ahp', 'ordre_categories', 'ordres_roc', 'selections_criteres',
-            'preferences_localisation', 'preferences_pente', 'seuil',
+            'preferences_localisation', 'preferences_altitude', 'seuil',
             'date_creation', 'date_mise_a_jour',
         ]
         read_only_fields = ['id', 'date_creation', 'date_mise_a_jour']
@@ -478,7 +478,7 @@ class AnalysePondereeSerializer(serializers.Serializer):
     preferences_localisation = serializers.DictField(
         required=False, default=dict,
     )
-    preferences_pente = serializers.ListField(
+    preferences_altitude = serializers.ListField(
         child=serializers.CharField(),
         required=False, default=list,
     )
