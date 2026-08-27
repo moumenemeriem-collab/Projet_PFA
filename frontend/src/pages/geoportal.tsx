@@ -4014,19 +4014,7 @@ const bindPopupActionButtons = (popup: any): void => {
                   </div>
                   {rentaDetailOpen ? (
                     <div className="renta-detail-panel">
-                      <div className="renta-detail-panel-header">
-                        <h4 className="renta-detail-title">{t('projects.detail_calc_title')}</h4>
-                        <button
-                          type="button"
-                          className="renta-pdf-download-btn"
-                          onClick={handleDownloadRentaReport}
-                          disabled={rentaGeneratingPdf}
-                          title="Télécharger le rapport PDF complet de rentabilité"
-                        >
-                          {rentaGeneratingPdf && <div className="renta-pdf-spinner" aria-hidden="true" />}
-                          <span>{rentaGeneratingPdf ? 'Génération...' : 'Télécharger le rapport (PDF)'}</span>
-                        </button>
-                      </div>
+                      <h4 className="renta-detail-title">{t('projects.detail_calc_title')}</h4>
 
                       <section className="renta-detail-sec">
                         <h5>{t('projects.detail_parametres')}</h5>
