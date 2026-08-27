@@ -1,5 +1,6 @@
 import json
 import os
+import re
 
 from django.conf import settings
 from django.core.files.base import ContentFile
@@ -172,28 +173,37 @@ class ProjetRentabilitePreviewView(APIView):
 
         projet = SimpleNamespace(
             surface_souhaitee=_g('surface_souhaitee', 0),
+            surface_totale=_g('surface_totale'),
             prix_foncier_m2=_g('prix_foncier_m2'),
             frais_acquisition=_g('frais_acquisition', 7),
             taux_chute=_g('taux_chute', 30),
             cos=_g('cos'),
             cus=_g('cus'),
+            surface_constructible=_g('surface_constructible'),
+            surface_voie=_g('surface_voie'),
+            surface_espace_vert=_g('surface_espace_vert'),
             has_appartement=_g('has_appartement', True),
             has_commerce=_g('has_commerce', False),
             has_bureau=_g('has_bureau', False),
             has_equipement=_g('has_equipement', False),
+            has_equipement_prive=_g('has_equipement_prive', False),
             quote_part_appartement=_g('quote_part_appartement', 100),
             quote_part_commerce=_g('quote_part_commerce', 0),
             quote_part_bureau=_g('quote_part_bureau', 0),
             quote_part_equipement=_g('quote_part_equipement', 0),
+            quote_part_equipement_prive=_g('quote_part_equipement_prive', 0),
             prix_vente_appartement=_g('prix_vente_appartement'),
             prix_vente_commerce=_g('prix_vente_commerce'),
             prix_vente_bureau=_g('prix_vente_bureau'),
             surface_equipement=_g('surface_equipement'),
             prix_vente_equipement=_g('prix_vente_equipement'),
+            surface_equipement_prive=_g('surface_equipement_prive'),
+            prix_vente_equipement_prive=_g('prix_vente_equipement_prive'),
             cout_construction_appartement=_g('cout_construction_appartement'),
             cout_construction_commerce=_g('cout_construction_commerce'),
             cout_construction_bureau=_g('cout_construction_bureau'),
             cout_construction_equipement=_g('cout_construction_equipement'),
+            cout_construction_equipement_prive=_g('cout_construction_equipement_prive'),
             taux_etudes_honoraires=_g('taux_etudes_honoraires', 10),
             taux_imprevus=_g('taux_imprevus', 5),
             taux_commercialisation=_g('taux_commercialisation', 3),
@@ -740,6 +750,35 @@ IGNORABLE_DESIGNATIONS = {
     'affectation non definie', 'non défini', 'non defini', 'inconnu'
 }
 
+# Préfixes désignations considérées « Non définie » dans le PA de Témara
+# (aucune règle de constructibilité ni surfaces à retrancher) : on leur
+# applique exactement le même traitement que la désignation NULL.
+NON_DEFINIE_DESIGNATIONS = {'AA', 'AAT', 'HA', 'MK', 'TA', 'SK', 'ME'}
+
+# Fallback CUS (coefficient d'emprise au sol) par désignation constructible,
+# utilisé uniquement quand l'attribut 'cus' du PA est NULL/vide pour cette
+# entité. COS reste « libre »/non fixé et donc éditable par l'utilisateur.
+CUS_FALLBACK = {
+    'B3': 0.75,
+    'C2': 0.40,
+    'C4': 0.35,
+    'D1': 0.30,
+    'D5': 0.20,
+}
+
+
+def _cus_fallback(designation: str, type_construction: str | None):
+    """CUS de secours selon la désignation (et le type de lot pour DS1)."""
+    d = (designation or '').strip().upper()
+    if d == 'DS1':
+        tc = (type_construction or '').lower()
+        if 'bande' in tc:
+            return 0.50
+        if 'jumel' in tc:
+            return 0.40
+        return 0.30
+    return CUS_FALLBACK.get(d)
+
 
 def _is_constructible_designation(designation: str) -> bool:
     d = (designation or '').strip().upper()
@@ -749,6 +788,35 @@ def _is_constructible_designation(designation: str) -> bool:
 def _is_ignorable_designation(designation: str) -> bool:
     d = (designation or '').strip().lower()
     return not d or d.startswith('ta') or d in IGNORABLE_DESIGNATIONS
+
+
+def _is_non_definie_designation(designation: str) -> bool:
+    """Vrai si la désignation est « Non définie » (à exclure comme le NULL).
+
+    Retourne True pour les désignations NULL/vides, les préfixes explicitement
+    « Non définie » (AA, AAT, HA, MK, TA, SK, ME) et tout code qui ne
+    correspond à aucune catégorie connue du PA.
+    """
+    raw = (designation or '').strip()
+    if not raw:
+        return True
+    d = raw.upper()
+    if d in NON_DEFINIE_DESIGNATIONS:
+        return True
+    if d in ALLOWED_DESIGNATIONS:
+        return False
+    # Équipement public/privé
+    if re.match(r'^(A|P|E|S|SP|M|C|G)\d{2,}$', d):
+        return False
+    # Voie / espace vert / non constructible
+    if re.match(r'^(TE|CP|PS|PL|RP|RN|RR)\d*$', d):
+        return False
+    if re.match(r'^V\d*$', d):
+        return False
+    if d in ('RB', 'RS'):
+        return False
+    # Autre voie identifiée par son type de construction ou code inconnu
+    return True
 
 
 class SurfaceConstructibleView(APIView):
@@ -828,7 +896,9 @@ class SurfaceConstructibleView(APIView):
             raw_tc = (type_construction or '').strip() or None
             cos_num = None if cos_val is None else float(cos_val)
             cus_num = None if cus_val is None else float(cus_val)
-            if _is_ignorable_designation(raw_d):
+            if cus_num is None and _is_constructible_designation(raw_d):
+                cus_num = _cus_fallback(raw_d, raw_tc)
+            if _is_non_definie_designation(raw_d):
                 continue
 
             if _is_constructible_designation(raw_d):
@@ -844,7 +914,12 @@ class SurfaceConstructibleView(APIView):
         if affectations:
             constr_affectations = [a for a in affectations if a['type'] == 'constructible']
             if constr_affectations:
-                dominant = max(constr_affectations, key=lambda a: a['surface_m2'])
+                def _dominant_key(a):
+                    # Trier par surface décroissante, puis par spécificité de la désignation :
+                    # une désignation plus longue (ex: B2) est considérée plus spécifique
+                    # qu'une désignation plus courte (ex: B), donc优先 en cas d'égalité.
+                    return (a['surface_m2'], len(a['designation']))
+                dominant = max(constr_affectations, key=_dominant_key)
 
         return Response({
             'surface_constructible': round(surface_constructible, 2),
@@ -859,17 +934,22 @@ class SurfaceConstructibleView(APIView):
 
     @staticmethod
     def _compute_equipement(terrain_wkt: str, terrain_superficie: float = 0.0) -> dict:
-        """Calcule la surface des zones d'équipement intersectant le terrain.
+        """Calcule les surfaces d'équipement, de voirie et d'espaces verts.
 
         Recherche l'intersection avec :
-          - couche_plan_amenagement : zones PA à vocation équipement
-            (Administrations A01-A68, Services publics P01-P97, Enseignement E01-E110,
-             Santé S01-S33, Sport SP01-SP41, Mosquées M01-M61, Cimetières C01-C07,
-             Équipements privés G01-G166)
+          - couche_plan_amenagement : zones PA à vocation équipement / voirie / espace vert
+            * Équipement public : Administrations A, Services publics P, Enseignement E,
+              Santé S, Sport SP, Mosquées M, Cimetières C  (PS = parc de stationnement est
+              désormais classé en voirie, retiré des équipements)
+            * Équipement privé : G
+            * Voirie : TE, CP (chemin piéton), PS (parc de stationnement), PL (place),
+              RP (rond-point), RN, RR  (désignation et/ou type_construction)
+            * Espaces verts : V (et type_construction « espace vert »…)
           - couche_equipements_publics : équipements publics réels (école, hôpital, …)
-        Retourne un dict {surface_equipement, taux_equipement}.
+        Retourne un dict avec surface_equipement, surface_equipement_prive,
+        surface_voie, surface_espace_vert et leurs taux.
         """
-        sql_pa = """
+        sql_pa_publique = """
             SELECT
                 ST_Area(
                     ST_Intersection(
@@ -879,7 +959,63 @@ class SurfaceConstructibleView(APIView):
                 ) as intersection_area_m2
             FROM couche_plan_amenagement pa
             WHERE pa.designation IS NOT NULL
-            AND UPPER(TRIM(pa.designation)) ~ '^(A|P|E|S|SP|M|C|G)[0-9]{2,}'
+            AND UPPER(TRIM(pa.designation)) ~ '^(A|E|M|C|SP|S|P)[0-9]{2,}'
+            AND ST_Intersects(
+                ST_SetSRID(ST_GeomFromText(%s), 4326),
+                ST_SetSRID(ST_GeomFromGeoJSON(pa.geometry::text), 4326)
+            )
+        """
+        sql_pa_prive = """
+            SELECT
+                ST_Area(
+                    ST_Intersection(
+                        ST_SetSRID(ST_GeomFromText(%s), 4326),
+                        ST_SetSRID(ST_GeomFromGeoJSON(pa.geometry::text), 4326)
+                    )::geography
+                ) as intersection_area_m2
+            FROM couche_plan_amenagement pa
+            WHERE pa.designation IS NOT NULL
+            AND UPPER(TRIM(pa.designation)) ~ '^G[0-9]{2,}'
+            AND ST_Intersects(
+                ST_SetSRID(ST_GeomFromText(%s), 4326),
+                ST_SetSRID(ST_GeomFromGeoJSON(pa.geometry::text), 4326)
+            )
+        """
+        sql_voie = """
+            SELECT
+                ST_Area(
+                    ST_Intersection(
+                        ST_SetSRID(ST_GeomFromText(%s), 4326),
+                        ST_SetSRID(ST_GeomFromGeoJSON(pa.geometry::text), 4326)
+                    )::geography
+                ) as intersection_area_m2
+            FROM couche_plan_amenagement pa
+            WHERE pa.designation IS NOT NULL
+            AND (
+                UPPER(TRIM(pa.designation)) ~ '^(TE|CP|PS|PL|RP|RN|RR)[0-9 -]*'
+                OR LOWER(COALESCE(pa.type_construction, ''))
+                   ~ '(chemin|place publique|place|parking|stationnement|voie|rue|rond|pi[ée]ton|autoroute)'
+            )
+            AND ST_Intersects(
+                ST_SetSRID(ST_GeomFromText(%s), 4326),
+                ST_SetSRID(ST_GeomFromGeoJSON(pa.geometry::text), 4326)
+            )
+        """
+        sql_espace_vert = """
+            SELECT
+                ST_Area(
+                    ST_Intersection(
+                        ST_SetSRID(ST_GeomFromText(%s), 4326),
+                        ST_SetSRID(ST_GeomFromGeoJSON(pa.geometry::text), 4326)
+                    )::geography
+                ) as intersection_area_m2
+            FROM couche_plan_amenagement pa
+            WHERE pa.designation IS NOT NULL
+            AND (
+                UPPER(TRIM(pa.designation)) ~ '^V[0-9 -]*'
+                OR LOWER(COALESCE(pa.type_construction, ''))
+                   ~ '(espace vert|mail plant[ée]|square|jardin|parc paysager|plante|aedificandi)'
+            )
             AND ST_Intersects(
                 ST_SetSRID(ST_GeomFromText(%s), 4326),
                 ST_SetSRID(ST_GeomFromGeoJSON(pa.geometry::text), 4326)
@@ -900,25 +1036,56 @@ class SurfaceConstructibleView(APIView):
                 ST_SetSRID(ST_GeomFromGeoJSON(ep.geometry::text), 4326)
             )
         """
-        total = 0.0
+        total_pub = 0.0
+        total_prive = 0.0
+        total_voie = 0.0
+        total_espace_vert = 0.0
         try:
             with connection.cursor() as cur:
-                cur.execute(sql_pa, [terrain_wkt, terrain_wkt])
+                cur.execute(sql_pa_publique, [terrain_wkt, terrain_wkt])
                 for (area,) in cur.fetchall():
                     v = float(area)
                     if v > 0:
-                        total += v
+                        total_pub += v
+                cur.execute(sql_pa_prive, [terrain_wkt, terrain_wkt])
+                for (area,) in cur.fetchall():
+                    v = float(area)
+                    if v > 0:
+                        total_prive += v
+                cur.execute(sql_voie, [terrain_wkt, terrain_wkt])
+                for (area,) in cur.fetchall():
+                    v = float(area)
+                    if v > 0:
+                        total_voie += v
+                cur.execute(sql_espace_vert, [terrain_wkt, terrain_wkt])
+                for (area,) in cur.fetchall():
+                    v = float(area)
+                    if v > 0:
+                        total_espace_vert += v
                 cur.execute(sql_eq, [terrain_wkt, terrain_wkt])
                 for (area,) in cur.fetchall():
                     v = float(area)
                     if v > 0:
-                        total += v
+                        total_pub += v
         except Exception:
             pass
 
-        surface = round(total, 2)
-        taux = round(surface / terrain_superficie * 100, 2) if terrain_superficie > 0 else 0.0
-        return {'surface_equipement': surface, 'taux_equipement': taux}
+        surface_pub = round(total_pub, 2)
+        taux_pub = round(surface_pub / terrain_superficie * 100, 2) if terrain_superficie > 0 else 0.0
+        surface_prive = round(total_prive, 2)
+        taux_prive = round(surface_prive / terrain_superficie * 100, 2) if terrain_superficie > 0 else 0.0
+        surface_voie = round(total_voie, 2)
+        taux_voie = round(surface_voie / terrain_superficie * 100, 2) if terrain_superficie > 0 else 0.0
+        surface_espace_vert = round(total_espace_vert, 2)
+        taux_espace_vert = round(surface_espace_vert / terrain_superficie * 100, 2) if terrain_superficie > 0 else 0.0
+        return {
+            'surface_equipement': surface_pub,
+            'taux_equipement': taux_pub,
+            'surface_equipement_prive': surface_prive,
+            'taux_equipement_prive': taux_prive,
+            'surface_voie': surface_voie,
+            'surface_espace_vert': surface_espace_vert,
+        }
 
 
 class SurfaceEquipementView(APIView):
@@ -932,7 +1099,7 @@ class SurfaceEquipementView(APIView):
         except Terrain.DoesNotExist:
             return Response({'detail': 'Terrain introuvable.'}, status=status.HTTP_404_NOT_FOUND)
         if not terrain.geometry:
-            return Response({'surface_equipement': 0, 'taux_equipement': 0})
+            return Response({'surface_equipement': 0, 'taux_equipement': 0, 'surface_equipement_prive': 0, 'taux_equipement_prive': 0, 'surface_voie': 0, 'surface_espace_vert': 0})
         superficie = float(terrain.superficie) if terrain.superficie else 0.0
         result = SurfaceConstructibleView._compute_equipement(terrain.geometry.wkt, superficie)
         return Response(result)

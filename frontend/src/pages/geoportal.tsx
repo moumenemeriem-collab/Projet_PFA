@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, type ReactElement } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { icons, Icon } from '../components/icons'
@@ -6,7 +6,7 @@ import { DashboardLayout } from '../components/DashboardLayout'
 import { TerrainGeometryEditor, emptyGeom, type TerrainGeom } from '../components/TerrainGeometryEditor'
 import { formatApiErrors } from '../api/auth'
 import { fetchProjet, previewRentabilite, type Projet, type ProjetPayload, type Rentabilite } from '../api/projets'
-import { createTerrain, computeSurfaceConstructible, computeSurfaceEquipement, fetchSurfaceConstructible, fetchSurfaceEquipement, fetchTerrains, saveTerrainRentabilite, type AnalyseFiltres, type AnalyseResultat, type SurfaceConstructibleResponse, type SurfaceEquipementResponse, type Terrain } from '../api/terrains'
+import { createTerrain, computeSurfaceConstructible, computeSurfaceEquipement, deleteTerrain, fetchSurfaceConstructible, fetchSurfaceEquipement, fetchTerrains, saveTerrainRentabilite, type AnalyseFiltres, type AnalyseResultat, type SurfaceConstructibleResponse, type SurfaceEquipementResponse, type Terrain } from '../api/terrains'
 import { createAnalyse, fetchAnalyseDetail, type AnalyseDetail, type ResultatAnalyse } from '../api/analyses'
 import { createAnalysePondere, type PonderationResponse, type TerrainPondere } from '../api/analyses'
 import { fetchCouches, fetchCoucheGeoJSON, type Couche, type CoucheFeature, type CoucheFeatureCollection } from '../api/couches'
@@ -38,6 +38,66 @@ import {
 import osmImg from '../assets/features/OSM.png'
 import satImg from '../assets/features/osm_sat.jpg'
 import topoImg from '../assets/features/osm_topo.jpeg'
+
+interface RentaForm {
+  prixFoncierM2: string
+  fraisAcquisition: string
+  tauxChute: string
+  cos: string
+  cus: string
+  hasAppartement: boolean
+  hasCommerce: boolean
+  hasBureau: boolean
+  hasEquipement: boolean
+  hasEquipementPrive: boolean
+  quotePartApp: string
+  quotePartCommerce: string
+  quotePartBureau: string
+  prixVenteApp: string
+  prixVenteCommerce: string
+  prixVenteBureau: string
+  prixVenteEquipement: string
+  prixVenteEquipementPrive: string
+  coutConstrApp: string
+  coutConstrCommerce: string
+  coutConstrBureau: string
+  tauxEtudes: string
+  tauxImprevus: string
+  tauxCommercialisation: string
+  dureeConstruction: string
+  dureeCommercialisation: string
+  tauxActualisation: string
+}
+
+interface RentaSavedInputs {
+  form: RentaForm
+  surface_constructible: number
+  surface_voie: number
+  surface_espace_vert: number
+  surface_equipement: number
+  surface_equipement_prive: number
+  // Cache des résultats d'intersection terrain × PA (déterministe) :
+  // permet de réafficher sans refaire le calcul GIS pour un terrain enregistré.
+  surface_constructible_data?: SurfaceConstructibleResponse | null
+  surface_equipement_data?: SurfaceEquipementResponse | null
+}
+
+const rentaFormDests = (f: RentaForm): Array<{ key: string; label: string; active: boolean }> => [
+  { key: 'app', label: t('projects.dest_appartement'), active: f.hasAppartement },
+  { key: 'com', label: t('projects.dest_commerce'), active: f.hasCommerce },
+  { key: 'bur', label: t('projects.dest_bureau'), active: f.hasBureau },
+  { key: 'eq', label: t('projects.dest_equipement'), active: f.hasEquipement },
+  { key: 'eqp', label: t('projects.dest_equipement_prive'), active: f.hasEquipementPrive },
+]
+
+const RentaViewRow = ({ label, value, unit }: { label: string; value: string; unit?: string }): ReactElement => (
+  <div className="renta-view-row">
+    <span className="renta-view-row-label">{label}</span>
+    <span className="renta-view-row-value">
+      {value || '—'}{unit ? <small>{unit}</small> : null}
+    </span>
+  </div>
+)
 
 // Aperçu SVG embarqué (data URI) pour les fonds de carte sans vignette PNG locale.
 // Ratio 4:3 identique aux vignettes PNG (aspect-ratio de .geo-popup-basemap-img).
@@ -552,6 +612,26 @@ function renderScoreSummary(tr: AnalyseResultat): React.JSX.Element {
 
 
 
+function CalcRow({ label, value, unit, note }: { label: string; value: number | undefined; unit?: string; note?: string }): React.JSX.Element {
+  const fmt = (v: number | undefined): string => {
+    if (v == null) return '—'
+    return Number(v).toLocaleString('fr-FR')
+  }
+  return (
+    <div className="renta-detail-row">
+      <span className="renta-detail-row-label">{label}</span>
+      {value != null ? (
+        <strong className="renta-detail-row-value">{fmt(value)}{unit ? ` ${unit}` : ''}</strong>
+      ) : note ? (
+        <span className="renta-detail-row-note">{note}</span>
+      ) : (
+        <strong className="renta-detail-row-value">—</strong>
+      )}
+      {note && value != null ? <span className="renta-detail-row-note">{note}</span> : null}
+    </div>
+  )
+}
+
 export function GeoportalPage(): React.JSX.Element {
   const navigate = useNavigate()
   const { id } = useParams()
@@ -851,23 +931,36 @@ export function GeoportalPage(): React.JSX.Element {
     setRentaResult(null)
     setRentaError(null)
     setRentaNote(null)
+    setRentaInputsSaved(null)
+    setRentaUsingCachedSurface(false)
+    setRentaViewMode(false)
+    setRentaSidebarOpen(true)
     setRentaModalOpen(true)
+    setRentaForm((f) => ({
+      ...f,
+      cos: '', cus: '',
+      prixVenteApp: '', prixVenteCommerce: '', prixVenteBureau: '',
+      prixVenteEquipement: '', prixVenteEquipementPrive: '',
+      coutConstrApp: '', coutConstrCommerce: '', coutConstrBureau: '',
+    }))
   }, [])
 
   const [rentaTerrainId, setRentaTerrainId] = useState<number | null>(null)
   const [rentaTerrainNom, setRentaTerrainNom] = useState('')
   const [rentaParcelInfo, setRentaParcelInfo] = useState<{ nom: string; superficie: number; lat: number; lng: number; ref?: string } | null>(null)
-  const [rentaForm, setRentaForm] = useState({
+  const [rentaForm, setRentaForm] = useState<RentaForm>({
     prixFoncierM2: '', fraisAcquisition: '7', tauxChute: '30',
     cos: '', cus: '',
-    hasAppartement: true, hasCommerce: false, hasBureau: false, hasEquipement: false,
+    hasAppartement: true, hasCommerce: false, hasBureau: false, hasEquipement: false, hasEquipementPrive: false,
     quotePartApp: '100', quotePartCommerce: '0', quotePartBureau: '0',
     prixVenteApp: '', prixVenteCommerce: '', prixVenteBureau: '',
-    prixVenteEquipement: '',
+    prixVenteEquipement: '', prixVenteEquipementPrive: '',
     coutConstrApp: '', coutConstrCommerce: '', coutConstrBureau: '',
     tauxEtudes: '10', tauxImprevus: '5', tauxCommercialisation: '3',
     dureeConstruction: '2', dureeCommercialisation: '3', tauxActualisation: '8',
   })
+  const [rentaViewMode, setRentaViewMode] = useState(false)
+  const [rentaInputsSaved, setRentaInputsSaved] = useState<RentaSavedInputs | null>(null)
   const [rentaResult, setRentaResult] = useState<Rentabilite | null>(null)
   const [rentaCalculating, setRentaCalculating] = useState(false)
   const [rentaSaving, setRentaSaving] = useState(false)
@@ -877,21 +970,46 @@ export function GeoportalPage(): React.JSX.Element {
   const [rentaTerrains, setRentaTerrains] = useState<Terrain[]>([])
   const [rentaSurfaceConstructible, setRentaSurfaceConstructible] = useState<SurfaceConstructibleResponse | null>(null)
   const [rentaSurfaceEquipement, setRentaSurfaceEquipement] = useState<SurfaceEquipementResponse | null>(null)
+  const [rentaUsingCachedSurface, setRentaUsingCachedSurface] = useState(false)
   const [rentaRing, setRentaRing] = useState<number[][]>([])
   const [rentaAffectationsOpen, setRentaAffectationsOpen] = useState(false)
   const [rentaSurfaceLoading, setRentaSurfaceLoading] = useState(false)
+  const [rentaSidebarOpen, setRentaSidebarOpen] = useState(true)
+  const [rentaDetailOpen, setRentaDetailOpen] = useState(false)
 
-  useEffect(() => {
-    if (!rentaSurfaceConstructible) return
-    const cosVal = rentaSurfaceConstructible.cos
-    const cusVal = rentaSurfaceConstructible.cus
-    if (cosVal != null && rentaForm.cos === '') {
-      setRentaForm((f) => ({ ...f, cos: String(cosVal) }))
+  // Reconstruit le résultat d'intersection terrain×PA depuis le cache stocké
+  // dans `inputs`. Les terrains créés depuis le popup n'ont pas de géométrie en
+  // BDD : un re-fetch renverrait 0, le cache est donc la seule source fiable.
+  const surfaceConstructibleFromCache = (inputs: RentaSavedInputs | null, superficie: number): SurfaceConstructibleResponse | null => {
+    if (!inputs) return null
+    if (inputs.surface_constructible_data) return inputs.surface_constructible_data
+    const sc = inputs.surface_constructible || 0
+    const sup = superficie > 0 ? superficie : sc
+    return {
+      surface_constructible: sc,
+      superficie: sup,
+      taux: sup > 0 ? Math.round(sc / sup * 1000) / 10 : 0,
+      non_construable: Math.max(0, sup - sc),
+      affectations: [],
+      designation_dominante: null,
+      cos: null,
+      cus: null,
     }
-    if (cusVal != null && rentaForm.cus === '') {
-      setRentaForm((f) => ({ ...f, cus: String(cusVal) }))
+  }
+
+  const surfaceEquipementFromCache = (inputs: RentaSavedInputs | null, superficie: number): SurfaceEquipementResponse | null => {
+    if (!inputs) return null
+    if (inputs.surface_equipement_data) return inputs.surface_equipement_data
+    const t = (v: number): number => superficie > 0 ? Math.round(v / superficie * 10000) / 100 : 0
+    return {
+      surface_equipement: inputs.surface_equipement,
+      taux_equipement: t(inputs.surface_equipement),
+      surface_equipement_prive: inputs.surface_equipement_prive,
+      taux_equipement_prive: t(inputs.surface_equipement_prive),
+      surface_voie: inputs.surface_voie,
+      surface_espace_vert: inputs.surface_espace_vert,
     }
-  }, [rentaSurfaceConstructible])
+  }
 
   useEffect(() => {
     if (!rentaModalOpen || !projetId) return
@@ -908,6 +1026,12 @@ export function GeoportalPage(): React.JSX.Element {
     setRentaAffectationsOpen(false)
     setRentaSurfaceLoading(true)
     if (rentaTerrainId) {
+      if (rentaUsingCachedSurface && rentaInputsSaved) {
+        const cached = surfaceConstructibleFromCache(rentaInputsSaved, rentaParcelInfo?.superficie || 0)
+        setRentaSurfaceConstructible(cached)
+        setRentaSurfaceLoading(false)
+        return
+      }
       let cancelled = false
       void fetchSurfaceConstructible(projetId, rentaTerrainId)
         .then((data) => { if (!cancelled) { setRentaSurfaceConstructible(data); setRentaSurfaceLoading(false) } })
@@ -928,11 +1052,15 @@ export function GeoportalPage(): React.JSX.Element {
     }
     setRentaSurfaceConstructible(null)
     setRentaSurfaceLoading(false)
-  }, [rentaTerrainId, projetId, rentaRing, rentaParcelInfo])
+  }, [rentaTerrainId, projetId, rentaRing, rentaParcelInfo, rentaUsingCachedSurface, rentaInputsSaved])
 
   useEffect(() => {
     if (!projetId) { setRentaSurfaceEquipement(null); return }
     if (rentaTerrainId) {
+      if (rentaUsingCachedSurface && rentaInputsSaved) {
+        setRentaSurfaceEquipement(surfaceEquipementFromCache(rentaInputsSaved, rentaParcelInfo?.superficie || 0))
+        return
+      }
       let cancelled = false
       void fetchSurfaceEquipement(projetId, rentaTerrainId)
         .then((data) => { if (!cancelled) setRentaSurfaceEquipement(data) })
@@ -952,12 +1080,16 @@ export function GeoportalPage(): React.JSX.Element {
       return () => { cancelled = true }
     }
     setRentaSurfaceEquipement(null)
-  }, [rentaTerrainId, projetId, rentaRing, rentaParcelInfo])
+  }, [rentaTerrainId, projetId, rentaRing, rentaParcelInfo, rentaUsingCachedSurface, rentaInputsSaved])
 
   // Uncheck hasEquipement automatically if the terrain has no equipment intersection
   useEffect(() => {
-    if (!rentaSurfaceEquipement || rentaSurfaceEquipement.surface_equipement === 0) {
+    if (!rentaSurfaceEquipement) return
+    if (rentaSurfaceEquipement.surface_equipement === 0) {
       setRentaForm((f) => ({ ...f, hasEquipement: false }))
+    }
+    if (rentaSurfaceEquipement.surface_equipement_prive === 0) {
+      setRentaForm((f) => ({ ...f, hasEquipementPrive: false }))
     }
   }, [rentaSurfaceEquipement])
 
@@ -1016,7 +1148,18 @@ export function GeoportalPage(): React.JSX.Element {
       setRentaAffectationsOpen(false)
       setRentaSurfaceLoading(true)
       setRentaNote(null)
+      setRentaInputsSaved(null)
+      setRentaUsingCachedSurface(false)
+      setRentaViewMode(false)
+      setRentaSidebarOpen(true)
       setRentaModalOpen(true)
+      setRentaForm((f) => ({
+        ...f,
+        cos: '', cus: '',
+        prixVenteApp: '', prixVenteCommerce: '', prixVenteBureau: '',
+        prixVenteEquipement: '', prixVenteEquipementPrive: '',
+        coutConstrApp: '', coutConstrCommerce: '', coutConstrBureau: '',
+      }))
     }
   }
 
@@ -1198,38 +1341,53 @@ export function GeoportalPage(): React.JSX.Element {
 
   const numRenta = (v: string): number | undefined => v ? Number(v) : undefined
 
-  const handleCalculateRentabilite = async (): Promise<void> => {
-    if (!projet) return
-    const payload: ProjetPayload = {
+  const buildRentaPayload = (): ProjetPayload | null => {
+    if (!projet) return null
+    const baseSurf = rentaParcelInfo?.superficie && rentaParcelInfo.superficie > 0
+      ? rentaParcelInfo.superficie
+      : Number(projet.surface_souhaitee)
+    return {
       nom: rentaTerrainNom,
       description: '',
       id_type: 1,
       surface_souhaitee: Number(projet.surface_souhaitee),
+      surface_totale: baseSurf,
       budget_total: 0,
       prix_foncier_m2: numRenta(rentaForm.prixFoncierM2),
       frais_acquisition: numRenta(rentaForm.fraisAcquisition),
       taux_chute: numRenta(rentaForm.tauxChute),
       cos: numRenta(rentaForm.cos),
       cus: numRenta(rentaForm.cus),
+      surface_constructible: rentaSurfaceConstructible?.surface_constructible ?? 0,
+      surface_voie: rentaSurfaceEquipement?.surface_voie ?? 0,
+      surface_espace_vert: rentaSurfaceEquipement?.surface_espace_vert ?? 0,
       has_appartement: rentaForm.hasAppartement,
       has_commerce: rentaForm.hasCommerce,
       has_bureau: rentaForm.hasBureau,
       has_equipement: rentaForm.hasEquipement,
+      has_equipement_prive: rentaForm.hasEquipementPrive,
       quote_part_appartement: numRenta(rentaForm.quotePartApp),
       quote_part_commerce: numRenta(rentaForm.quotePartCommerce),
       quote_part_bureau: numRenta(rentaForm.quotePartBureau),
       quote_part_equipement: rentaForm.hasEquipement ? (() => {
-        const surfBrute = Number(projet.surface_souhaitee ?? 0)
         const cosVal = numRenta(rentaForm.cos) ?? 0
-        const surfaceVendable = surfBrute * cosVal * 0.9
+        const surfaceVendable = baseSurf * cosVal * 0.9
         const surfEq = rentaSurfaceEquipement?.surface_equipement ?? 0
         return surfaceVendable > 0 && surfEq > 0 ? Math.round(surfEq / surfaceVendable * 10000) / 100 : 0
+      })() : 0,
+      quote_part_equipement_prive: rentaForm.hasEquipementPrive ? (() => {
+        const cosVal = numRenta(rentaForm.cos) ?? 0
+        const surfaceVendable = baseSurf * cosVal * 0.9
+        const surfEqPrive = rentaSurfaceEquipement?.surface_equipement_prive ?? 0
+        return surfaceVendable > 0 && surfEqPrive > 0 ? Math.round(surfEqPrive / surfaceVendable * 10000) / 100 : 0
       })() : 0,
       prix_vente_appartement: numRenta(rentaForm.prixVenteApp),
       prix_vente_commerce: numRenta(rentaForm.prixVenteCommerce),
       prix_vente_bureau: numRenta(rentaForm.prixVenteBureau),
       prix_vente_equipement: numRenta(rentaForm.prixVenteEquipement),
       surface_equipement: rentaForm.hasEquipement ? (rentaSurfaceEquipement?.surface_equipement ?? 0) : 0,
+      surface_equipement_prive: rentaForm.hasEquipementPrive ? (rentaSurfaceEquipement?.surface_equipement_prive ?? 0) : 0,
+      prix_vente_equipement_prive: numRenta(rentaForm.prixVenteEquipementPrive),
       cout_construction_appartement: numRenta(rentaForm.coutConstrApp),
       cout_construction_commerce: numRenta(rentaForm.coutConstrCommerce),
       cout_construction_bureau: numRenta(rentaForm.coutConstrBureau),
@@ -1240,6 +1398,12 @@ export function GeoportalPage(): React.JSX.Element {
       duree_commercialisation: numRenta(rentaForm.dureeCommercialisation),
       taux_actualisation: numRenta(rentaForm.tauxActualisation),
     }
+  }
+
+  const handleCalculateRentabilite = async (): Promise<void> => {
+    if (!projet) return
+    const payload = buildRentaPayload()
+    if (!payload) return
     setRentaError(null)
     setRentaResult(null)
     setRentaCalculating(true)
@@ -1252,6 +1416,23 @@ export function GeoportalPage(): React.JSX.Element {
     } finally {
       setRentaCalculating(false)
     }
+  }
+
+  const buildRentaSavedInputs = (): RentaSavedInputs => ({
+    form: { ...rentaForm },
+    surface_constructible: rentaSurfaceConstructible?.surface_constructible ?? 0,
+    surface_voie: rentaSurfaceEquipement?.surface_voie ?? 0,
+    surface_espace_vert: rentaSurfaceEquipement?.surface_espace_vert ?? 0,
+    surface_equipement: rentaSurfaceEquipement?.surface_equipement ?? 0,
+    surface_equipement_prive: rentaSurfaceEquipement?.surface_equipement_prive ?? 0,
+    surface_constructible_data: rentaSurfaceConstructible,
+    surface_equipement_data: rentaSurfaceEquipement,
+  })
+
+  const refreshRentaTerrains = (): void => {
+    void fetchTerrains(projetId, { page_size: 100 })
+      .then((data) => setRentaTerrains(data.results))
+      .catch(() => { /* ignore */ })
   }
 
   const handleSaveRentabiliteTerrain = async (): Promise<void> => {
@@ -1283,17 +1464,93 @@ export function GeoportalPage(): React.JSX.Element {
         })
         terrainId = terrain.id
       }
-      await saveTerrainRentabilite(projetId, terrainId, rentaResult as unknown as Record<string, unknown>)
+      const savedInputs = buildRentaSavedInputs()
+      await saveTerrainRentabilite(projetId, terrainId, {
+        ...(rentaResult as unknown as Record<string, unknown>),
+        inputs: savedInputs,
+      })
+      setRentaTerrainId(terrainId)
+      setRentaInputsSaved(savedInputs)
+      setRentaUsingCachedSurface(true)
       setRentaNote('Terrain enregistré avec succès !')
       localStorage.setItem(`terrain_created_${projetId}`, String(Date.now()))
-      void fetchTerrains(projetId, { page_size: 100 })
-        .then((data) => setRentaTerrains(data.results))
-        .catch(() => { /* ignore */ })
+      refreshRentaTerrains()
       setTimeout(() => setRentaModalOpen(false), 1200)
     } catch (err) {
       setRentaError(formatApiErrors(err))
     } finally {
       setRentaSaving(false)
+    }
+  }
+
+  const handleRentaEdit = (): void => {
+    setRentaNote(null)
+    setRentaError(null)
+    setRentaViewMode(false)
+  }
+
+  const handleRentaReset = (): void => {
+    if (rentaInputsSaved) {
+      setRentaForm({ ...rentaInputsSaved.form })
+    }
+    setRentaNote(null)
+    setRentaError(null)
+  }
+
+  const handleRentaCancel = (): void => {
+    if (rentaInputsSaved) {
+      setRentaForm({ ...rentaInputsSaved.form })
+    }
+    setRentaNote(null)
+    setRentaError(null)
+    setRentaViewMode(true)
+  }
+
+  const handleSelectRentaTerrain = (tr: Terrain): void => {
+    setRentaTerrainId(tr.id)
+    setRentaTerrainNom(tr.nom)
+    setRentaParcelInfo({ nom: tr.nom, superficie: Number(tr.superficie) || 0, lat: Number(tr.lat) || 0, lng: Number(tr.lng) || 0, ref: tr.num_titre_foncier || tr.num_parcelle || '' })
+    const rj = tr.rentabilite_json as (Record<string, unknown> | null)
+    const stored = (rj && (rj.inputs as RentaSavedInputs | undefined)) || null
+    setRentaResult(rj as Rentabilite | null)
+    setRentaError(null)
+    setRentaNote(null)
+    setRentaAffectationsOpen(false)
+    if (stored) {
+      const sup = Number(tr.superficie) || stored.surface_constructible || 0
+      setRentaSurfaceConstructible(surfaceConstructibleFromCache(stored, sup))
+      setRentaSurfaceEquipement(surfaceEquipementFromCache(stored, sup))
+      setRentaSurfaceLoading(false)
+    } else {
+      setRentaSurfaceConstructible(null)
+      setRentaSurfaceEquipement(null)
+      setRentaSurfaceLoading(true)
+    }
+    setRentaInputsSaved(stored)
+    setRentaUsingCachedSurface(!!stored)
+    if (stored) {
+      setRentaForm({ ...stored.form })
+    }
+    setRentaViewMode(!!rj && (rj as Record<string, unknown>).ok === true)
+  }
+
+  const handleDeleteRentaTerrain = async (terrainId: number): Promise<void> => {
+    if (!projetId) return
+    if (!window.confirm('Supprimer ce terrain enregistré ?')) return
+    try {
+      await deleteTerrain(projetId, terrainId)
+      if (rentaTerrainId === terrainId) {
+        setRentaTerrainId(null)
+        setRentaResult(null)
+        setRentaInputsSaved(null)
+        setRentaUsingCachedSurface(false)
+        setRentaViewMode(false)
+        setRentaNote(null)
+        setRentaError(null)
+      }
+      refreshRentaTerrains()
+    } catch (err) {
+      setRentaError(formatApiErrors(err))
     }
   }
 
@@ -3068,6 +3325,11 @@ const bindPopupActionButtons = (popup: any): void => {
               <span style={{ fontSize: '0.7rem', opacity: 0.8, fontWeight: 400 }}>{rentaParcelInfo?.ref || rentaTerrainNom || rentaParcelInfo?.nom || ''}</span>
             </div>
             <div className="geo-dims-header-actions">
+              {!rentaSidebarOpen && (
+                <button type="button" className="renta-sidebar-reopen" title="Afficher la liste des terrains" onClick={() => setRentaSidebarOpen(true)}>
+                  {icons.building} <span style={{ fontSize: '0.78rem' }}>Terrains</span>
+                </button>
+              )}
               <button type="button" className="geo-dims-close" data-dims-close aria-label="Fermer" onClick={() => setRentaModalOpen(false)}>&times;</button>
             </div>
           </div>
@@ -3081,7 +3343,7 @@ const bindPopupActionButtons = (popup: any): void => {
                 <div className="form-alert form-alert--error">{rentaError}</div>
               ) : null}
 
-              {rentaParcelInfo && (
+              {!rentaViewMode && rentaParcelInfo && (
                 <div className="geo-card-form-section">
                   <span className="geo-layers-popup-label">{t('ranking.terrain_info')}</span>
                   <div className="renta-results-grid">
@@ -3115,24 +3377,6 @@ const bindPopupActionButtons = (popup: any): void => {
                         </strong>
                       </div>
                     ) : null}
-                    {rentaSurfaceConstructible && rentaSurfaceConstructible.designation_dominante && (
-                      <div className="geo-terrain-calc-row">
-                        <span>Désignation dominante</span>
-                        <strong>{rentaSurfaceConstructible.designation_dominante}</strong>
-                      </div>
-                    )}
-                    {rentaSurfaceConstructible && (
-                      <>
-                        <div className="geo-terrain-calc-row">
-                          <span>COS</span>
-                          <strong>{rentaSurfaceConstructible.cos != null ? rentaSurfaceConstructible.cos : 'Non fixé'}</strong>
-                        </div>
-                        <div className="geo-terrain-calc-row">
-                          <span>CUS</span>
-                          <strong>{rentaSurfaceConstructible.cus != null ? rentaSurfaceConstructible.cus : 'Non fixé'}</strong>
-                        </div>
-                      </>
-                    )}
                     {rentaSurfaceConstructible && rentaSurfaceConstructible.affectations.length > 0 && (
                       <div style={{ gridColumn: '1 / -1', marginTop: 4 }}>
                         <button
@@ -3210,6 +3454,108 @@ const bindPopupActionButtons = (popup: any): void => {
                 </div>
               )}
 
+              {rentaViewMode ? (
+                <div className="renta-view-actions">
+                  <button type="button" className="geo-dims-btn geo-dims-btn--primary" onClick={() => handleRentaEdit()}>
+                    Modifier
+                  </button>
+                  <button type="button" className="geo-dims-btn geo-dims-btn--ghost" onClick={() => handleRentaReset()}>
+                    Réinitialisation
+                  </button>
+                  <button type="button" className="geo-dims-btn geo-dims-btn--ghost" onClick={() => handleRentaCancel()}>
+                    Annuler
+                  </button>
+                  {rentaNote ? <span className="renta-view-note">{rentaNote}</span> : null}
+                  {rentaError ? <span className="renta-view-note renta-view-note--error">{rentaError}</span> : null}
+                </div>
+              ) : null}
+
+              {rentaViewMode ? (
+                <div className="renta-view-block">
+                  <div className="renta-view-head">
+                    <strong>{rentaTerrainNom || rentaParcelInfo?.ref || `Terrain #${rentaTerrainId}`}</strong>
+                    <span>{rentaParcelInfo?.superficie ? `${Number(rentaParcelInfo.superficie).toLocaleString('fr-FR')} m²` : ''}</span>
+                  </div>
+
+                  {rentaResult && rentaResult.ok ? (
+                    <div className="renta-view-sec">
+                      <span className="geo-layers-popup-label">{t('projects.section_results')}</span>
+                      <div className="renta-view-grid">
+                        <RentaViewRow label={t('projects.res_surface')} value={rentaResult.surfaces?.surface_vendable != null ? rentaResult.surfaces.surface_vendable.toLocaleString('fr-FR') : '—'} unit="m²" />
+                        <RentaViewRow label={t('projects.res_ca')} value={rentaResult.ca?.ca_total != null ? rentaResult.ca.ca_total.toLocaleString('fr-FR') : '—'} unit="DH" />
+                        <RentaViewRow label={t('projects.res_cout_total')} value={rentaResult.cout_total_projet != null ? rentaResult.cout_total_projet.toLocaleString('fr-FR') : '—'} unit="DH" />
+                        <RentaViewRow label={t('projects.res_tri')} value={rentaResult.tri != null ? `${String(rentaResult.tri).replace('.', ',')}%` : '—'} unit="" />
+                        <RentaViewRow label={t('projects.res_benefice')} value={rentaResult.benefice_net != null ? rentaResult.benefice_net.toLocaleString('fr-FR') : '—'} unit="DH" />
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {rentaInputsSaved ? (
+                  <>
+                  <div className="renta-view-sec">
+                    <span className="geo-layers-popup-label">{t('projects.section_land_data')}</span>
+                    <div className="renta-view-grid">
+                      <RentaViewRow label={t('projects.field_prix_foncier_m2')} value={rentaInputsSaved.form.prixFoncierM2} unit="DH/m²" />
+                      <RentaViewRow label={t('projects.field_frais_acquisition')} value={rentaInputsSaved.form.fraisAcquisition} unit="%" />
+                      <RentaViewRow label={t('projects.field_taux_chute')} value={rentaInputsSaved.form.tauxChute} unit="%" />
+                      <RentaViewRow label={t('projects.field_cos')} value={rentaInputsSaved.form.cos} unit="" />
+                      <RentaViewRow label={t('projects.field_cus')} value={rentaInputsSaved.form.cus} unit="" />
+                    </div>
+                  </div>
+
+                  <div className="renta-view-sec">
+                    <span className="geo-layers-popup-label">{t('projects.section_destinations')}</span>
+                    <div className="renta-view-tags">
+                      {rentaFormDests(rentaInputsSaved.form).map((d) => (
+                        <span key={d.key} className={`renta-view-tag${d.active ? '' : ' renta-view-tag--off'}`}>{d.label}</span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="renta-view-sec">
+                    <span className="geo-layers-popup-label">{t('projects.section_dest_prices')}</span>
+                    <div className="renta-view-grid">
+                      {rentaInputsSaved.form.hasAppartement ? <RentaViewRow label={t('projects.field_prix_vente_app')} value={rentaInputsSaved.form.prixVenteApp} unit="DH/m²" /> : null}
+                      {rentaInputsSaved.form.hasCommerce ? <RentaViewRow label={t('projects.field_prix_vente_commerce')} value={rentaInputsSaved.form.prixVenteCommerce} unit="DH/m²" /> : null}
+                      {rentaInputsSaved.form.hasBureau ? <RentaViewRow label={t('projects.field_prix_vente_bureau')} value={rentaInputsSaved.form.prixVenteBureau} unit="DH/m²" /> : null}
+                      {rentaInputsSaved.form.hasEquipement ? <RentaViewRow label={t('projects.field_prix_vente_equipement')} value={rentaInputsSaved.form.prixVenteEquipement} unit="DH/m²" /> : null}
+                      {rentaInputsSaved.form.hasEquipementPrive ? <RentaViewRow label={t('projects.field_prix_vente_equipement_prive')} value={rentaInputsSaved.form.prixVenteEquipementPrive} unit="DH/m²" /> : null}
+                    </div>
+                  </div>
+
+                  <div className="renta-view-sec">
+                    <span className="geo-layers-popup-label">{t('projects.section_dest_costs')}</span>
+                    <div className="renta-view-grid">
+                      {rentaInputsSaved.form.hasAppartement ? <RentaViewRow label={t('projects.field_cout_constr_app')} value={rentaInputsSaved.form.coutConstrApp} unit="DH/m²" /> : null}
+                      {rentaInputsSaved.form.hasCommerce ? <RentaViewRow label={t('projects.field_cout_constr_commerce')} value={rentaInputsSaved.form.coutConstrCommerce} unit="DH/m²" /> : null}
+                      {rentaInputsSaved.form.hasBureau ? <RentaViewRow label={t('projects.field_cout_constr_bureau')} value={rentaInputsSaved.form.coutConstrBureau} unit="DH/m²" /> : null}
+                    </div>
+                  </div>
+
+                  <div className="renta-view-sec">
+                    <span className="geo-layers-popup-label">{t('projects.section_charges')}</span>
+                    <div className="renta-view-grid">
+                      <RentaViewRow label={t('projects.field_taux_etudes')} value={rentaInputsSaved.form.tauxEtudes} unit="%" />
+                      <RentaViewRow label={t('projects.field_taux_imprevus')} value={rentaInputsSaved.form.tauxImprevus} unit="%" />
+                      <RentaViewRow label={t('projects.field_taux_commercialisation')} value={rentaInputsSaved.form.tauxCommercialisation} unit="%" />
+                    </div>
+                  </div>
+
+                  <div className="renta-view-sec">
+                    <span className="geo-layers-popup-label">{t('projects.section_scheduling')}</span>
+                    <div className="renta-view-grid">
+                      <RentaViewRow label={t('projects.field_duree_construction')} value={rentaInputsSaved.form.dureeConstruction} unit="ans" />
+                      <RentaViewRow label={t('projects.field_duree_commercialisation')} value={rentaInputsSaved.form.dureeCommercialisation} unit="ans" />
+                      <RentaViewRow label={t('projects.field_taux_actualisation')} value={rentaInputsSaved.form.tauxActualisation} unit="%" />
+                    </div>
+                  </div>
+                  </>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {!rentaViewMode ? (
+              <>
               <div className="geo-card-form-section">
                 <span className="geo-layers-popup-label">{t('projects.section_land_data')}</span>
                 <div className="form-row">
@@ -3229,12 +3575,18 @@ const bindPopupActionButtons = (popup: any): void => {
                   </div>
                   <div className="form-field form-field--half">
                     <label className="form-label">{t('projects.field_cos')}</label>
-                    <input type="number" step="0.01" className="modal-input" value={rentaForm.cos} onChange={(e) => setRentaForm((f) => ({ ...f, cos: e.target.value }))} />
+                    <input type="number" step="0.01" className="modal-input"
+                      placeholder={rentaSurfaceConstructible?.cos != null ? String(rentaSurfaceConstructible.cos) : rentaSurfaceConstructible ? 'Libre' : ''}
+                      value={rentaForm.cos}
+                      onChange={(e) => setRentaForm((f) => ({ ...f, cos: e.target.value }))} />
                   </div>
                 </div>
                 <div className="form-field" style={{ maxWidth: '50%' }}>
                   <label className="form-label">{t('projects.field_cus')}</label>
-                  <input type="number" step="0.01" className="modal-input" value={rentaForm.cus} onChange={(e) => setRentaForm((f) => ({ ...f, cus: e.target.value }))} />
+                  <input type="number" step="0.01" className="modal-input"
+                    placeholder={rentaSurfaceConstructible?.cus != null ? String(rentaSurfaceConstructible.cus) : rentaSurfaceConstructible ? 'Libre' : ''}
+                    value={rentaForm.cus}
+                    onChange={(e) => setRentaForm((f) => ({ ...f, cus: e.target.value }))} />
                 </div>
               </div>
 
@@ -3274,10 +3626,31 @@ const bindPopupActionButtons = (popup: any): void => {
                     />
                     {t('projects.dest_equipement')}
                   </label>
+                  {/* Équipement privé toggle — désactivé si aucune intersection */}
+                  <label
+                    className={`cp-dest-toggle${rentaForm.hasEquipementPrive ? ' active' : ''}${
+                      (!rentaSurfaceEquipement || rentaSurfaceEquipement.surface_equipement_prive === 0) ? ' cp-dest-toggle--disabled' : ''
+                    }`}
+                    style={{ fontSize: '0.85rem' }}
+                    title={(!rentaSurfaceEquipement || rentaSurfaceEquipement.surface_equipement_prive === 0)
+                      ? 'Ce terrain ne couvre aucune zone d\'équipement privé'
+                      : undefined}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={rentaForm.hasEquipementPrive}
+                      disabled={!rentaSurfaceEquipement || rentaSurfaceEquipement.surface_equipement_prive === 0}
+                      onChange={(e) => {
+                        if (!rentaSurfaceEquipement || rentaSurfaceEquipement.surface_equipement_prive === 0) return
+                        setRentaForm((f) => ({ ...f, hasEquipementPrive: e.target.checked }))
+                      }}
+                    />
+                    {t('projects.dest_equipement_prive')}
+                  </label>
                 </div>
               </div>
 
-              {rentaForm.hasEquipement ? (
+              {(rentaForm.hasEquipement || rentaForm.hasEquipementPrive) ? (
                 <div className="renta-row-split">
                   <div className="geo-card-form-section">
                     <span className="geo-layers-popup-label">{t('projects.section_quote_parts')}</span>
@@ -3305,13 +3678,27 @@ const bindPopupActionButtons = (popup: any): void => {
 
                   <div className="geo-card-form-section">
                     <span className="geo-layers-popup-label">{t('projects.field_quote_part_equipement')}</span>
-                    <div className="form-field">
-                      <label className="form-label">Taux des équipements</label>
-                      <div className="modal-input" style={{ background: '#f3f4f6', cursor: 'default' }}>
-                        {rentaSurfaceEquipement
-                          ? `${Number(rentaSurfaceEquipement.taux_equipement).toLocaleString('fr-FR', { maximumFractionDigits: 2 })}%`
-                          : '0%'}
-                      </div>
+                    <div className="form-row">
+                      {rentaForm.hasEquipement && (
+                        <div className="form-field form-field--half">
+                          <label className="form-label">Taux des équipements (public)</label>
+                          <div className="modal-input" style={{ background: '#f3f4f6', cursor: 'default' }}>
+                            {rentaSurfaceEquipement
+                              ? `${Number(rentaSurfaceEquipement.taux_equipement).toLocaleString('fr-FR', { maximumFractionDigits: 2 })}%`
+                              : '0%'}
+                          </div>
+                        </div>
+                      )}
+                      {rentaForm.hasEquipementPrive && (
+                        <div className="form-field form-field--half">
+                          <label className="form-label">Taux des équipements (privé)</label>
+                          <div className="modal-input" style={{ background: '#f3f4f6', cursor: 'default' }}>
+                            {rentaSurfaceEquipement
+                              ? `${Number(rentaSurfaceEquipement.taux_equipement_prive).toLocaleString('fr-FR', { maximumFractionDigits: 2 })}%`
+                              : '0%'}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -3341,7 +3728,7 @@ const bindPopupActionButtons = (popup: any): void => {
                 </div>
               )}
 
-              {rentaForm.hasEquipement ? (
+              {(rentaForm.hasEquipement || rentaForm.hasEquipementPrive) ? (
                 <div className="renta-row-split">
                   <div className="geo-card-form-section">
                     <span className="geo-layers-popup-label">{t('projects.section_dest_prices')}</span>
@@ -3369,13 +3756,27 @@ const bindPopupActionButtons = (popup: any): void => {
 
                   <div className="geo-card-form-section">
                     <span className="geo-layers-popup-label">{t('projects.field_surface_equipement')}</span>
-                    <div className="form-field">
-                      <label className="form-label">Surface des équipements</label>
-                      <div className="modal-input" style={{ background: '#f3f4f6', cursor: 'default' }}>
-                        {rentaSurfaceEquipement?.surface_equipement != null
-                          ? `${Number(rentaSurfaceEquipement.surface_equipement).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m²`
-                          : '—'}
-                      </div>
+                    <div className="form-row">
+                      {rentaForm.hasEquipement && (
+                        <div className="form-field form-field--half">
+                          <label className="form-label">Surface des équipements (public)</label>
+                          <div className="modal-input" style={{ background: '#f3f4f6', cursor: 'default' }}>
+                            {rentaSurfaceEquipement?.surface_equipement != null
+                              ? `${Number(rentaSurfaceEquipement.surface_equipement).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m²`
+                              : '—'}
+                          </div>
+                        </div>
+                      )}
+                      {rentaForm.hasEquipementPrive && (
+                        <div className="form-field form-field--half">
+                          <label className="form-label">Surface des équipements (privé)</label>
+                          <div className="modal-input" style={{ background: '#f3f4f6', cursor: 'default' }}>
+                            {rentaSurfaceEquipement?.surface_equipement_prive != null
+                              ? `${Number(rentaSurfaceEquipement.surface_equipement_prive).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m²`
+                              : '—'}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -3405,7 +3806,7 @@ const bindPopupActionButtons = (popup: any): void => {
                 </div>
               )}
 
-              {rentaForm.hasEquipement ? (
+              {(rentaForm.hasEquipement || rentaForm.hasEquipementPrive) ? (
                 <div className="renta-row-split">
                   <div className="geo-card-form-section">
                     <span className="geo-layers-popup-label">{t('projects.section_dest_costs')}</span>
@@ -3433,9 +3834,19 @@ const bindPopupActionButtons = (popup: any): void => {
 
                   <div className="geo-card-form-section">
                     <span className="geo-layers-popup-label">{t('projects.field_prix_vente_equipement')}</span>
-                    <div className="form-field">
-                      <label className="form-label">Prix unitaire (DH/m²)</label>
-                      <input type="number" step="0.01" className="modal-input" placeholder="Prix unitaire (DH/m²)" value={rentaForm.prixVenteEquipement} onChange={(e) => setRentaForm((f) => ({ ...f, prixVenteEquipement: e.target.value }))} />
+                    <div className="form-row">
+                      {rentaForm.hasEquipement && (
+                        <div className="form-field form-field--half">
+                          <label className="form-label">Prix unitaire équipements public (DH/m²)</label>
+                          <input type="number" step="0.01" className="modal-input" placeholder="Prix unitaire (DH/m²)" value={rentaForm.prixVenteEquipement} onChange={(e) => setRentaForm((f) => ({ ...f, prixVenteEquipement: e.target.value }))} />
+                        </div>
+                      )}
+                      {rentaForm.hasEquipementPrive && (
+                        <div className="form-field form-field--half">
+                          <label className="form-label">Prix unitaire équipements privé (DH/m²)</label>
+                          <input type="number" step="0.01" className="modal-input" placeholder="Prix unitaire (DH/m²)" value={rentaForm.prixVenteEquipementPrive} onChange={(e) => setRentaForm((f) => ({ ...f, prixVenteEquipementPrive: e.target.value }))} />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -3500,6 +3911,8 @@ const bindPopupActionButtons = (popup: any): void => {
                   <input type="number" step="0.01" className="modal-input" value={rentaForm.tauxActualisation} onChange={(e) => setRentaForm((f) => ({ ...f, tauxActualisation: e.target.value }))} />
                 </div>
               </div>
+              </>
+              ) : null}
 
               {rentaResult && rentaResult.ok ? (
                 <div className="geo-card-form-section geo-card-renta-results">
@@ -3528,6 +3941,118 @@ const bindPopupActionButtons = (popup: any): void => {
                       </strong>
                     </div>
                   </div>
+                  <button type="button" className="geo-dims-btn geo-dims-btn--ghost renta-detail-toggle" onClick={() => setRentaDetailOpen((v) => !v)}>
+                    {t('projects.detail_calc_btn')} {rentaDetailOpen ? '▲' : '▼'}
+                  </button>
+                  {rentaDetailOpen ? (
+                    <div className="renta-detail-panel">
+                      <h4 className="renta-detail-title">{t('projects.detail_calc_title')}</h4>
+
+                      <section className="renta-detail-sec">
+                        <h5>{t('projects.detail_surfaces')}</h5>
+                        <CalcRow label="Surface brute (m²)" value={rentaResult.surfaces?.surface_brute} unit="m²" />
+                        <CalcRow label="SHON (m²)" value={rentaResult.surfaces?.shon} unit="m²" />
+                        <CalcRow label="SHOB (m²)" value={rentaResult.surfaces?.shob} unit="m²" />
+                        <CalcRow label="Surface vendable (m²)" value={rentaResult.surfaces?.surface_vendable} unit="m²" />
+                        <CalcRow label="Appartements (m²)" value={rentaResult.surfaces?.surface_appartements} unit="m²" />
+                        <CalcRow label="Commerces (m²)" value={rentaResult.surfaces?.surface_commerces} unit="m²" />
+                        <CalcRow label="Bureaux (m²)" value={rentaResult.surfaces?.surface_bureaux} unit="m²" />
+                        <CalcRow label="Équipements publics (m²)" value={rentaResult.surfaces?.surface_equipements} unit="m²" />
+                        <CalcRow label="Équipements privés (m²)" value={rentaResult.surfaces?.surface_equipements_prives} unit="m²" />
+                        <CalcRow label="Voie (m²)" value={rentaResult.surfaces?.surface_voie} unit="m²" />
+                        <CalcRow label="Espaces verts (m²)" value={rentaResult.surfaces?.surface_espace_vert} unit="m²" />
+                        <CalcRow label="Surface à aménager (m²)" value={rentaResult.surfaces?.surface_a_amenager} unit="m²" />
+                      </section>
+
+                      <section className="renta-detail-sec">
+                        <h5>{t('projects.detail_ca')}</h5>
+                        <CalcRow label="CA Appartements (DH)" value={rentaResult.ca?.ca_appartements} unit="DH" />
+                        <CalcRow label="CA Commerces (DH)" value={rentaResult.ca?.ca_commerces} unit="DH" />
+                        <CalcRow label="CA Bureaux (DH)" value={rentaResult.ca?.ca_bureaux} unit="DH" />
+                        <CalcRow label="CA Équipements publics (DH)" value={rentaResult.ca?.ca_equipements} unit="DH" />
+                        <CalcRow label="CA Équipements privés (DH)" value={rentaResult.ca?.ca_equipements_prives} unit="DH" />
+                        <CalcRow label="CA total (DH)" value={rentaResult.ca?.ca_total} unit="DH" />
+                      </section>
+
+                      <section className="renta-detail-sec">
+                        <h5>{t('projects.detail_cout_construction')}</h5>
+                        <CalcRow label="Construction Appartements (DH)" value={rentaResult.construction?.cout_appartements} unit="DH" />
+                        <CalcRow label="Construction Commerces (DH)" value={rentaResult.construction?.cout_commerces} unit="DH" />
+                        <CalcRow label="Construction Bureaux (DH)" value={rentaResult.construction?.cout_bureaux} unit="DH" />
+                        <CalcRow label="Construction Équipements publics (DH)" value={rentaResult.construction?.cout_equipements} unit="DH" />
+                        <CalcRow label="Construction Équipements privés (DH)" value={rentaResult.construction?.cout_equipements_prives} unit="DH" />
+                        <CalcRow label="Construction total (DH)" value={rentaResult.construction?.cout_total} unit="DH" />
+                      </section>
+
+                      <section className="renta-detail-sec">
+                        <h5>{t('projects.detail_charges')}</h5>
+                        <CalcRow label="Études & honoraires (DH)" value={rentaResult.charges?.frais_etudes} unit="DH" />
+                        <CalcRow label="Imprévus (DH)" value={rentaResult.charges?.imprevus} unit="DH" />
+                        <CalcRow label="Commercialisation (DH)" value={rentaResult.charges?.frais_commercialisation} unit="DH" />
+                        <CalcRow label="Aménagement (DH)" value={rentaResult.charges?.amenagement} unit="DH" />
+                      </section>
+
+                      <section className="renta-detail-sec">
+                        <h5>{t('projects.detail_acquisition')}</h5>
+                        <CalcRow label="Prix du foncier (DH)" value={rentaResult.acquisition?.prix_foncier} unit="DH" />
+                        <CalcRow label="Frais d'acquisition (DH)" value={rentaResult.acquisition?.frais_acquisition} unit="DH" />
+                        <CalcRow label="Coût acquisition (DH)" value={rentaResult.acquisition?.cout_total} unit="DH" />
+                      </section>
+
+                      <section className="renta-detail-sec">
+                        <h5>{t('projects.detail_resultats')}</h5>
+                        <CalcRow label="Coût total projet (DH)" value={rentaResult.cout_total_projet} unit="DH" />
+                        <CalcRow label="Bénéfice net (DH)" value={rentaResult.benefice_net} unit="DH" />
+                        <CalcRow label="TRI (%)" value={rentaResult.tri} unit="%" />
+                      </section>
+
+                      {rentaResult.flux && rentaResult.flux.length > 0 ? (
+                        <section className="renta-detail-sec">
+                          <h5>{t('projects.detail_flux_table')}</h5>
+                          <div className="renta-flux-table-wrap">
+                            <table className="renta-flux-table">
+                              <thead>
+                                <tr>
+                                  <th>{t('projects.mark_annee')}</th>
+                                  <th>CA</th>
+                                  <th>Acquisition</th>
+                                  <th>Construction</th>
+                                  <th>Études</th>
+                                  <th>Imprévus</th>
+                                  <th>Commerc.</th>
+                                  <th>Aménag.</th>
+                                  <th>Flux net</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {rentaResult.flux.map((f) => (
+                                  <tr key={f.annee}>
+                                    <td>{f.annee}</td>
+                                    <td>{f.ca.toLocaleString('fr-FR')}</td>
+                                    <td>{f.acquisition.toLocaleString('fr-FR')}</td>
+                                    <td>{f.construction.toLocaleString('fr-FR')}</td>
+                                    <td>{f.etudes_honoraires.toLocaleString('fr-FR')}</td>
+                                    <td>{f.imprevus.toLocaleString('fr-FR')}</td>
+                                    <td>{f.commercialisation.toLocaleString('fr-FR')}</td>
+                                    <td>{f.amenagement.toLocaleString('fr-FR')}</td>
+                                    <td className="renta-flux-net">{f.flux_net.toLocaleString('fr-FR')}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </section>
+                      ) : null}
+
+                      <section className="renta-detail-sec">
+                        <h5>{t('projects.detail_repartition')}</h5>
+                        <CalcRow label="Construction" value={undefined} unit="" note={`[${(rentaResult.repartition_construction ?? []).map((v) => `${v}%`).join(', ')}]`} />
+                        <CalcRow label="Commercialisation" value={undefined} unit="" note={`[${(rentaResult.repartition_ventes ?? []).map((v) => `${v}%`).join(', ')}]`} />
+                        <CalcRow label="Ventes équipement public" value={undefined} unit="" note={`[${(rentaResult.repartition_ventes_equipement ?? []).map((v) => `${v}%`).join(', ')}]`} />
+                        <CalcRow label="Ventes équipement privé" value={undefined} unit="" note={`[${(rentaResult.repartition_ventes_equipement_prive ?? []).map((v) => `${v}%`).join(', ')}]`} />
+                      </section>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -3542,10 +4067,13 @@ const bindPopupActionButtons = (popup: any): void => {
               </div>
             </div>
 
-              <div className="renta-modal-sidebar">
+              {rentaSidebarOpen && <div className="renta-modal-sidebar">
                 <div className="renta-sidebar-header">
-                  <h4>{icons.building} Terrains du projet</h4>
-                  <span>{rentaTerrains.length} terrain{rentaTerrains.length !== 1 ? 's' : ''} enregistré{rentaTerrains.length !== 1 ? 's' : ''}</span>
+                  <div>
+                    <h4>{icons.building} Terrains du projet</h4>
+                    <span>{rentaTerrains.length} terrain{rentaTerrains.length !== 1 ? 's' : ''} enregistré{rentaTerrains.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  <button type="button" className="renta-sidebar-close" aria-label="Fermer la liste" onClick={() => setRentaSidebarOpen(false)}>&times;</button>
                 </div>
               {rentaTerrains.length === 0 ? (
                 <div className="renta-sidebar-empty">
@@ -3569,16 +4097,7 @@ const bindPopupActionButtons = (popup: any): void => {
                         <div
                           key={tr.id}
                           className={`renta-terrain-card${rentaTerrainId === tr.id ? ' renta-terrain-card--active' : ''}`}
-                          onClick={() => {
-                            setRentaTerrainId(tr.id)
-                            setRentaTerrainNom(tr.nom)
-                            setRentaParcelInfo({ nom: tr.nom, superficie: Number(tr.superficie) || 0, lat: Number(tr.lat) || 0, lng: Number(tr.lng) || 0, ref: tr.num_titre_foncier || tr.num_parcelle || '' })
-                            setRentaResult(tr.rentabilite_json as Rentabilite | null)
-                            setRentaSurfaceConstructible(null)
-                            setRentaSurfaceEquipement(null)
-                            setRentaAffectationsOpen(false)
-                            setRentaSurfaceLoading(true)
-                          }}
+                          onClick={() => handleSelectRentaTerrain(tr)}
                         >
                           <div className="renta-terrain-card-top">
                             <span className="renta-terrain-card-rank">#{i + 1}</span>
@@ -3595,12 +4114,28 @@ const bindPopupActionButtons = (popup: any): void => {
                               <strong className={benefice != null ? (benefice >= 0 ? 'text-success' : 'text-error') : 'text-muted'}>{benefice != null ? `${benefice.toLocaleString('fr-FR')} DH` : '—'}</strong>
                             </div>
                           </div>
+                          <div className="renta-terrain-card-actions" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              className="renta-terrain-card-btn renta-terrain-card-btn--edit"
+                              onClick={() => { handleSelectRentaTerrain(tr); setRentaViewMode(false) }}
+                            >
+                              Modifier
+                            </button>
+                            <button
+                              type="button"
+                              className="renta-terrain-card-btn renta-terrain-card-btn--del"
+                              onClick={() => { void handleDeleteRentaTerrain(tr.id) }}
+                            >
+                              Supprimer
+                            </button>
+                          </div>
                         </div>
                       )
                     })}
                 </div>
               )}
-            </div>
+            </div>}
           </div>
         </div>
       </div>,

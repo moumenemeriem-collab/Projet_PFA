@@ -218,6 +218,10 @@ export async function computeSurfaceConstructible(projetId: number, geometry: Re
 export interface SurfaceEquipementResponse {
   surface_equipement: number
   taux_equipement: number
+  surface_equipement_prive: number
+  taux_equipement_prive: number
+  surface_voie: number
+  surface_espace_vert: number
 }
 
 export async function fetchSurfaceEquipement(projetId: number, terrainId: number): Promise<SurfaceEquipementResponse> {

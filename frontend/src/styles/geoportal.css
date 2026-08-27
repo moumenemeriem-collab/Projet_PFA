@@ -3537,7 +3537,7 @@
 
 .renta-row-split {
   display: grid;
-  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
   gap: 16px;
   align-items: stretch;
   margin-bottom: 18px;
@@ -3711,6 +3711,123 @@
   letter-spacing: -0.01em;
 }
 
+/* ── Détail de calcul ─────────────────────────────── */
+.renta-detail-toggle {
+  margin-top: 12px;
+  width: 100%;
+}
+
+.renta-detail-panel {
+  margin-top: 14px;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.renta-detail-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.renta-detail-sec {
+  margin-bottom: 18px;
+}
+
+.renta-detail-sec h5 {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #5e86a8;
+  margin: 0 0 10px;
+}
+
+.renta-detail-formula {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: #64748b;
+  background: #eef2ff;
+  border-left: 3px solid #5e86a8;
+  padding: 8px 10px;
+  border-radius: 6px;
+  margin: 0 0 10px;
+}
+
+.renta-detail-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 2px;
+  border-bottom: 1px dashed #e8ecf2;
+  font-size: 0.78rem;
+}
+
+.renta-detail-row:last-child {
+  border-bottom: none;
+}
+
+.renta-detail-row-label {
+  color: #475569;
+  flex: 0 0 auto;
+}
+
+.renta-detail-row-value {
+  color: #1e293b;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.renta-detail-row-note {
+  color: #94a3b8;
+  font-size: 0.7rem;
+  text-align: right;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.renta-flux-table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.renta-flux-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.renta-flux-table th,
+.renta-flux-table td {
+  padding: 6px 8px;
+  border: 1px solid #e2e8f0;
+  text-align: right;
+  color: #334155;
+}
+
+.renta-flux-table thead th {
+  background: #eef2f7;
+  color: #475569;
+  font-weight: 700;
+}
+
+.renta-flux-table tbody tr:nth-child(even) {
+  background: #f1f5f9;
+}
+
+.renta-flux-net {
+  font-weight: 800;
+  color: #1e293b;
+}
+
 /* ── Actions bar ─────────────────────────────────── */
 .renta-modal-form .geo-dims-actions {
   position: sticky;
@@ -3756,10 +3873,13 @@
   flex-shrink: 0;
   padding: 18px 20px 12px;
   background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .renta-sidebar-header h4 {
-  margin: 0 0 4px;
+  margin: 0;
   font-size: 1.1rem;
   font-weight: 800;
   color: #1e293b;
@@ -3779,6 +3899,61 @@
   font-size: 0.825rem;
   color: #64748b;
   font-weight: 500;
+}
+
+.renta-sidebar-header .geo-dims-close {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.renta-sidebar-close {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  margin-left: auto;
+}
+
+.renta-sidebar-close:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.renta-sidebar-reopen {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.renta-sidebar-reopen:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.renta-sidebar-reopen svg {
+  width: 16px;
+  height: 16px;
 }
 
 .renta-sidebar-list {
@@ -3897,6 +4072,45 @@
   font-size: 0.875rem;
   font-weight: 700;
   color: #1e293b;
+}
+
+.renta-terrain-card-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 10px;
+}
+
+.renta-terrain-card-btn {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.renta-terrain-card-btn--edit {
+  color: var(--primary, #3b6e94);
+  background: #eef4f9;
+  border-color: #cfddea;
+}
+
+.renta-terrain-card-btn--edit:hover {
+  background: #e1ecf5;
+  border-color: #a9c4da;
+}
+
+.renta-terrain-card-btn--del {
+  color: #dc2626;
+  background: #fef2f2;
+  border-color: #f6d2d2;
+}
+
+.renta-terrain-card-btn--del:hover {
+  background: #fde3e3;
+  border-color: #efb3b3;
 }
 
 .text-success { color: #16a34a !important; }
@@ -4989,4 +5203,131 @@
 .geo-sidebar-scroll--ponderation .ahp-substep-dot--done {
   background: linear-gradient(135deg, #34d399, #10b981);
   border-color: #10b981;
+}
+
+/* ── Mode lecture seule (terrain enregistré) ─────── */
+.renta-view-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 4px;
+  border-top: 1px dashed #e2e8f0;
+  margin-top: 2px;
+}
+
+.renta-view-note {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #0f9d58;
+  margin-left: auto;
+}
+
+.renta-view-note--error {
+  color: #dc2626;
+}
+
+.renta-view-block {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  animation: rentaViewIn 0.2s ease;
+}
+
+@keyframes rentaViewIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.renta-view-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.renta-view-head strong {
+  font-size: 1rem;
+  color: #1e293b;
+}
+
+.renta-view-head span {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.renta-view-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.renta-view-sec .geo-layers-popup-label {
+  border-bottom: none;
+  padding-bottom: 2px;
+}
+
+.renta-view-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.renta-view-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: #ffffff;
+  border: 1px solid #e8edf3;
+  border-radius: 8px;
+}
+
+.renta-view-row-label {
+  font-size: 0.68rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.renta-view-row-value {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.renta-view-row-value small {
+  font-weight: 600;
+  color: #94a3b8;
+  margin-left: 4px;
+  font-size: 0.7rem;
+}
+
+.renta-view-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.renta-view-tag {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid #bbf7d0;
+}
+
+.renta-view-tag--off {
+  background: #f1f5f9;
+  color: #94a3b8;
+  border-color: #e2e8f0;
+  text-decoration: line-through;
 }

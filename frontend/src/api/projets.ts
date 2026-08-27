@@ -22,12 +22,17 @@ export interface Rentabilite {
     surface_commerces: number
     surface_bureaux: number
     surface_equipements: number
+    surface_equipements_prives: number
+    surface_voie: number
+    surface_espace_vert: number
+    surface_a_amenager: number
   }
   ca?: {
     ca_appartements: number
     ca_commerces: number
     ca_bureaux: number
     ca_equipements: number
+    ca_equipements_prives: number
     ca_total: number
   }
   construction?: {
@@ -35,12 +40,14 @@ export interface Rentabilite {
     cout_commerces: number
     cout_bureaux: number
     cout_equipements: number
+    cout_equipements_prives: number
     cout_total: number
   }
   charges?: {
     frais_etudes: number
     imprevus: number
     frais_commercialisation: number
+    amenagement: number
   }
   acquisition?: {
     prix_foncier: number
@@ -60,10 +67,13 @@ export interface Rentabilite {
     etudes_honoraires: number
     imprevus: number
     commercialisation: number
+    amenagement: number
     flux_net: number
   }>
   repartition_construction?: number[]
   repartition_ventes?: number[]
+  repartition_ventes_equipement?: number[]
+  repartition_ventes_equipement_prive?: number[]
 }
 
 export interface Projet {
@@ -91,23 +101,31 @@ export interface Projet {
   taux_chute?: string
   cos?: string | null
   cus?: string | null
+  surface_constructible?: string | null
+  surface_voie?: string | null
+  surface_espace_vert?: string | null
   has_appartement?: boolean
   has_commerce?: boolean
   has_bureau?: boolean
   has_equipement?: boolean
+  has_equipement_prive?: boolean
   quote_part_appartement?: string
   quote_part_commerce?: string
   quote_part_bureau?: string
   quote_part_equipement?: string
+  quote_part_equipement_prive?: string
   prix_vente_appartement?: string | null
   prix_vente_commerce?: string | null
   prix_vente_bureau?: string | null
   surface_equipement?: string | null
   prix_vente_equipement?: string | null
+  surface_equipement_prive?: string | null
+  prix_vente_equipement_prive?: string | null
   cout_construction_appartement?: string | null
   cout_construction_commerce?: string | null
   cout_construction_bureau?: string | null
   cout_construction_equipement?: string | null
+  cout_construction_equipement_prive?: string | null
   taux_etudes_honoraires?: string
   taux_imprevus?: string
   taux_commercialisation?: string
@@ -128,6 +146,7 @@ export interface ProjetPayload {
   description?: string
   id_type: number
   surface_souhaitee: number
+  surface_totale?: number
   budget_total: number
   prix_terrain?: number
   nombre_unites?: number
@@ -142,23 +161,31 @@ export interface ProjetPayload {
   taux_chute?: number
   cos?: number
   cus?: number
+  surface_constructible?: number
+  surface_voie?: number
+  surface_espace_vert?: number
   has_appartement?: boolean
   has_commerce?: boolean
   has_bureau?: boolean
   has_equipement?: boolean
+  has_equipement_prive?: boolean
   quote_part_appartement?: number
   quote_part_commerce?: number
   quote_part_bureau?: number
   quote_part_equipement?: number
+  quote_part_equipement_prive?: number
   prix_vente_appartement?: number
   prix_vente_commerce?: number
   prix_vente_bureau?: number
   surface_equipement?: number
   prix_vente_equipement?: number
+  surface_equipement_prive?: number
+  prix_vente_equipement_prive?: number
   cout_construction_appartement?: number
   cout_construction_commerce?: number
   cout_construction_bureau?: number
   cout_construction_equipement?: number
+  cout_construction_equipement_prive?: number
   taux_etudes_honoraires?: number
   taux_imprevus?: number
   taux_commercialisation?: number

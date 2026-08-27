@@ -72,7 +72,10 @@ def calculer_rentabilite_projet(projet) -> dict:
     p = projet
 
     # ── 1. Données foncières ──
-    surface_brute = _d(p.surface_souhaitee)
+    # Surface brute = surface totale réelle du projet (parcelle/polygone).
+    # Si non fournie, repli sur la surface souhaitée.
+    surface_totale = _d(getattr(p, 'surface_totale', None))
+    surface_brute = surface_totale if surface_totale > 0 else _d(p.surface_souhaitee)
     prix_m2 = _d(p.prix_foncier_m2)
     frais_acq_pct = _d(p.frais_acquisition) / 100.0
     taux_chute_pct = _d(p.taux_chute) / 100.0
@@ -80,40 +83,50 @@ def calculer_rentabilite_projet(projet) -> dict:
     cus = _d(p.cus)
 
     # ── 2. Surfaces ──
+    # SHON/SHOB conservés à titre informatif
     shon = surface_brute * cos if cos > 0 else 0
     shob = shon * 1.2
-    surface_vendable = shon * 0.9
+    # Surface vendable : COS * surface constructible * (1 - taux de chute) * 0.9
+    surface_constructible = _d(getattr(p, 'surface_constructible', None))
+    if surface_constructible <= 0:
+        surface_constructible = surface_brute
+    surface_vendable = cos * surface_constructible * (1 - taux_chute_pct) * 0.9
 
     # ── 3. Répartition par destination ──
     qp_apt = _d(p.quote_part_appartement) / 100.0
     qp_com = _d(p.quote_part_commerce) / 100.0
     qp_bur = _d(p.quote_part_bureau) / 100.0
     qp_eq = _d(getattr(p, 'quote_part_equipement', None)) / 100.0
+    qp_eq_prive = _d(getattr(p, 'quote_part_equipement_prive', None)) / 100.0
 
     surf_apt = surface_vendable * qp_apt
     surf_com = surface_vendable * qp_com
     surf_bur = surface_vendable * qp_bur
     surf_eq = surface_vendable * qp_eq
+    surf_eq_prive = surface_vendable * qp_eq_prive
 
     # ── 4. Chiffre d'affaires ──
     px_vente_apt = _d(p.prix_vente_appartement)
     px_vente_com = _d(p.prix_vente_commerce)
     px_vente_bur = _d(p.prix_vente_bureau)
     px_vente_eq = _d(getattr(p, 'prix_vente_equipement', None))
+    px_vente_eq_prive = _d(getattr(p, 'prix_vente_equipement_prive', None))
 
     ca_apt = surf_apt * px_vente_apt
     ca_com = surf_com * px_vente_com
     ca_bur = surf_bur * px_vente_bur
     ca_eq = surf_eq * px_vente_eq
+    ca_eq_prive = surf_eq_prive * px_vente_eq_prive
     ca_hors_eq = ca_apt + ca_com + ca_bur  # CA suivant l'échéancier classique (30/30/40)
-    ca_total = ca_hors_eq + ca_eq
+    ca_total = ca_hors_eq + ca_eq + ca_eq_prive
 
     # ── 5. Coûts de construction ──
     cout_apt = surf_apt * _d(p.cout_construction_appartement)
     cout_com = surf_com * _d(p.cout_construction_commerce)
     cout_bur = surf_bur * _d(p.cout_construction_bureau)
     cout_eq = surf_eq * _d(getattr(p, 'cout_construction_equipement', None))
-    cout_construction_total = cout_apt + cout_com + cout_bur + cout_eq
+    cout_eq_prive = surf_eq_prive * _d(getattr(p, 'cout_construction_equipement_prive', None))
+    cout_construction_total = cout_apt + cout_com + cout_bur + cout_eq + cout_eq_prive
 
     # ── 6. Charges ──
     taux_etudes = _d(p.taux_etudes_honoraires) / 100.0
@@ -123,6 +136,13 @@ def calculer_rentabilite_projet(projet) -> dict:
     frais_etudes = cout_construction_total * taux_etudes
     imprevus = cout_construction_total * taux_imprevus
     frais_commercialisation = ca_total * taux_comm
+
+    # ── 6bis. Charge d'aménagement (échelonnement aménagement) ──
+    # surface_a_amenager = (surface_voie + surface_espace_vert) * (1 + taux_chute)
+    surface_voie = _d(getattr(p, 'surface_voie', None))
+    surface_espace_vert = _d(getattr(p, 'surface_espace_vert', None))
+    surface_a_amenager = (surface_voie + surface_espace_vert) * (1 + taux_chute_pct)
+    cout_amenagement = 600 * surface_a_amenager * 1.1
 
     # ── 7. Prix d'acquisition foncier ──
     # Prix / m² * surface brute du foncier * (1 + frais d'acquisition)
@@ -136,6 +156,7 @@ def calculer_rentabilite_projet(projet) -> dict:
         + cout_construction_total
         + frais_etudes
         + imprevus
+        + cout_amenagement
     )
 
     # ── 9. Paramètres temporels ──
@@ -182,6 +203,11 @@ def calculer_rentabilite_projet(projet) -> dict:
         rep_ventes_eq = [0.0] * duree_comm
         rep_ventes_eq[0] = 100.0
 
+    rep_ventes_eq_prive = getattr(p, 'repartition_ventes_equipement_prive', None)
+    if not rep_ventes_eq_prive or not isinstance(rep_ventes_eq_prive, list) or len(rep_ventes_eq_prive) != duree_comm:
+        rep_ventes_eq_prive = [0.0] * duree_comm
+        rep_ventes_eq_prive[0] = 100.0
+
     # ── 12. Tableau des flux ──
     flux = []
     for annee in range(nb_annees):
@@ -195,12 +221,17 @@ def calculer_rentabilite_projet(projet) -> dict:
         if 0 <= idx_comm < duree_comm:
             ca_hors_eq_annee = ca_hors_eq * rep_ventes[idx_comm] / 100.0
 
-        # CA équipement (échéancier propre)
+        # CA équipement public (échéancier propre)
         ca_eq_annee = 0.0
         if 0 <= idx_comm < duree_comm:
             ca_eq_annee = ca_eq * rep_ventes_eq[idx_comm] / 100.0
 
-        ca_annee = ca_hors_eq_annee + ca_eq_annee
+        # CA équipement privé (échéancier propre)
+        ca_eq_prive_annee = 0.0
+        if 0 <= idx_comm < duree_comm:
+            ca_eq_prive_annee = ca_eq_prive * rep_ventes_eq_prive[idx_comm] / 100.0
+
+        ca_annee = ca_hors_eq_annee + ca_eq_annee + ca_eq_prive_annee
 
         # Acquisition foncier (année 0 uniquement)
         acq_annee = cout_acquisition if annee == 0 else 0.0
@@ -219,7 +250,10 @@ def calculer_rentabilite_projet(projet) -> dict:
         # Commercialisation (même échelonnement que les ventes hors équipement)
         comm_annee = frais_commercialisation * rep_ventes[idx_comm] / 100.0 if 0 <= idx_comm < duree_comm else 0.0
 
-        flux_net = ca_annee - acq_annee - cons_annee - etudes_annee - imp_annee - comm_annee
+        # Aménagement (100% en année 0, même logique que l'acquisition foncier)
+        amenagement_annee = cout_amenagement if annee == 0 else 0.0
+
+        flux_net = ca_annee - acq_annee - cons_annee - etudes_annee - imp_annee - comm_annee - amenagement_annee
 
         flux.append({
             'annee': annee,
@@ -229,6 +263,7 @@ def calculer_rentabilite_projet(projet) -> dict:
             'etudes_honoraires': round(etudes_annee, 2),
             'imprevus': round(imp_annee, 2),
             'commercialisation': round(comm_annee, 2),
+            'amenagement': round(amenagement_annee, 2),
             'flux_net': round(flux_net, 2),
         })
 
@@ -252,12 +287,17 @@ def calculer_rentabilite_projet(projet) -> dict:
             'surface_commerces': round(surf_com, 2),
             'surface_bureaux': round(surf_bur, 2),
             'surface_equipements': round(surf_eq, 2),
+            'surface_equipements_prives': round(surf_eq_prive, 2),
+            'surface_voie': round(surface_voie, 2),
+            'surface_espace_vert': round(surface_espace_vert, 2),
+            'surface_a_amenager': round(surface_a_amenager, 2),
         },
         'ca': {
             'ca_appartements': round(ca_apt, 2),
             'ca_commerces': round(ca_com, 2),
             'ca_bureaux': round(ca_bur, 2),
             'ca_equipements': round(ca_eq, 2),
+            'ca_equipements_prives': round(ca_eq_prive, 2),
             'ca_total': round(ca_total, 2),
         },
         'construction': {
@@ -265,12 +305,14 @@ def calculer_rentabilite_projet(projet) -> dict:
             'cout_commerces': round(cout_com, 2),
             'cout_bureaux': round(cout_bur, 2),
             'cout_equipements': round(cout_eq, 2),
+            'cout_equipements_prives': round(cout_eq_prive, 2),
             'cout_total': round(cout_construction_total, 2),
         },
         'charges': {
             'frais_etudes': round(frais_etudes, 2),
             'imprevus': round(imprevus, 2),
             'frais_commercialisation': round(frais_commercialisation, 2),
+            'amenagement': round(cout_amenagement, 2),
         },
         'acquisition': {
             'prix_foncier': round(prix_foncier, 2),
@@ -286,4 +328,5 @@ def calculer_rentabilite_projet(projet) -> dict:
         'repartition_construction': rep_cons,
         'repartition_ventes': rep_ventes,
         'repartition_ventes_equipement': rep_ventes_eq,
+        'repartition_ventes_equipement_prive': rep_ventes_eq_prive,
     }
