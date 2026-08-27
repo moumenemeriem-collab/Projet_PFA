@@ -3934,6 +3934,21 @@ const bindPopupActionButtons = (popup: any): void => {
                       <h4 className="renta-detail-title">{t('projects.detail_calc_title')}</h4>
 
                       <section className="renta-detail-sec">
+                        <h5>{t('projects.detail_parametres')}</h5>
+                        <CalcRow label="Prix foncier (DH/m²)" value={rentaResult.parametres?.prix_foncier_m2 ?? (rentaInputsSaved?.form.prixFoncierM2 ? Number(rentaInputsSaved.form.prixFoncierM2) : (rentaForm.prixFoncierM2 ? Number(rentaForm.prixFoncierM2) : undefined))} unit="DH/m²" />
+                        <CalcRow label="Frais d'acquisition (%)" value={rentaResult.parametres?.frais_acquisition_pct ?? (rentaInputsSaved?.form.fraisAcquisition ? Number(rentaInputsSaved.form.fraisAcquisition) : (rentaForm.fraisAcquisition ? Number(rentaForm.fraisAcquisition) : undefined))} unit="%" />
+                        <CalcRow label="Taux de chute (%)" value={rentaResult.parametres?.taux_chute_pct ?? (rentaInputsSaved?.form.tauxChute ? Number(rentaInputsSaved.form.tauxChute) : (rentaForm.tauxChute ? Number(rentaForm.tauxChute) : undefined))} unit="%" />
+                        <CalcRow label="COS" value={rentaResult.parametres?.cos ?? (rentaInputsSaved?.form.cos ? Number(rentaInputsSaved.form.cos) : (rentaForm.cos ? Number(rentaForm.cos) : undefined))} unit="" />
+                        <CalcRow label="CUS" value={rentaResult.parametres?.cus ?? (rentaInputsSaved?.form.cus ? Number(rentaInputsSaved.form.cus) : (rentaForm.cus ? Number(rentaForm.cus) : undefined))} unit="" />
+                        <CalcRow label="Études & Honoraires (%)" value={rentaResult.parametres?.taux_etudes_pct ?? (rentaInputsSaved?.form.tauxEtudes ? Number(rentaInputsSaved.form.tauxEtudes) : (rentaForm.tauxEtudes ? Number(rentaForm.tauxEtudes) : undefined))} unit="%" />
+                        <CalcRow label="Imprévus (%)" value={rentaResult.parametres?.taux_imprevus_pct ?? (rentaInputsSaved?.form.tauxImprevus ? Number(rentaInputsSaved.form.tauxImprevus) : (rentaForm.tauxImprevus ? Number(rentaForm.tauxImprevus) : undefined))} unit="%" />
+                        <CalcRow label="Frais de commercialisation (%)" value={rentaResult.parametres?.taux_commercialisation_pct ?? (rentaInputsSaved?.form.tauxCommercialisation ? Number(rentaInputsSaved.form.tauxCommercialisation) : (rentaForm.tauxCommercialisation ? Number(rentaForm.tauxCommercialisation) : undefined))} unit="%" />
+                        <CalcRow label="Taux d'actualisation (%)" value={rentaResult.parametres?.taux_actualisation_pct ?? (rentaInputsSaved?.form.tauxActualisation ? Number(rentaInputsSaved.form.tauxActualisation) : (rentaForm.tauxActualisation ? Number(rentaForm.tauxActualisation) : undefined))} unit="%" />
+                        <CalcRow label="Durée de construction (ans)" value={rentaResult.parametres?.duree_construction ?? (rentaInputsSaved?.form.dureeConstruction ? Number(rentaInputsSaved.form.dureeConstruction) : (rentaForm.dureeConstruction ? Number(rentaForm.dureeConstruction) : undefined))} unit="ans" />
+                        <CalcRow label="Durée de commercialisation (ans)" value={rentaResult.parametres?.duree_commercialisation ?? (rentaInputsSaved?.form.dureeCommercialisation ? Number(rentaInputsSaved.form.dureeCommercialisation) : (rentaForm.dureeCommercialisation ? Number(rentaForm.dureeCommercialisation) : undefined))} unit="ans" />
+                      </section>
+
+                      <section className="renta-detail-sec">
                         <h5>{t('projects.detail_surfaces')}</h5>
                         <CalcRow label="Surface brute (m²)" value={rentaResult.surfaces?.surface_brute} unit="m²" />
                         <CalcRow label="SHON (m²)" value={rentaResult.surfaces?.shon} unit="m²" />
