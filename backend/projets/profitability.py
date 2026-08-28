@@ -298,6 +298,7 @@ def calculer_rentabilite_projet(projet) -> dict:
         'ok': True,
         'surfaces': {
             'surface_brute': round(surface_brute, 2),
+            'surface_constructible': round(surface_constructible, 2),
             'shon': round(shon, 2),
             'shob': round(shob, 2),
             'surface_vendable': round(surface_vendable, 2),

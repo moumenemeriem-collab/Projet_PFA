@@ -4009,6 +4009,7 @@ const bindPopupActionButtons = (popup: any): void => {
                       <section className="renta-detail-sec">
                         <h5>{t('projects.detail_surfaces')}</h5>
                         <CalcRow label="Surface brute (m²)" value={rentaResult.surfaces?.surface_brute} unit="m²" />
+                        <CalcRow label="Surface constructible (m²)" value={rentaResult.surfaces?.surface_constructible ?? rentaSurfaceConstructible?.surface_constructible ?? rentaResult.surfaces?.surface_brute} unit="m²" />
                         <CalcRow label="SHON (m²)" value={rentaResult.surfaces?.shon} unit="m²" />
                         <CalcRow label="SHOB (m²)" value={rentaResult.surfaces?.shob} unit="m²" />
                         <CalcRow label="Surface vendable (m²)" value={rentaResult.surfaces?.surface_vendable} unit="m²" />

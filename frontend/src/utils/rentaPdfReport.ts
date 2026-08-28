@@ -553,6 +553,7 @@ function buildRentaPage1(data: RentaReportData, dateStr: string, hasImage: boole
 
   const surfRows = [
     { label: 'Surface brute :', val: `${fmtVal(rentaResult.surfaces?.surface_brute)} m²` },
+    { label: 'Surface constructible :', val: `${fmtVal(rentaResult.surfaces?.surface_constructible ?? rentaResult.surfaces?.surface_brute)} m²` },
     { label: 'SHON / SHOB :', val: `${fmtVal(rentaResult.surfaces?.shon)} / ${fmtVal(rentaResult.surfaces?.shob)} m²` },
     { label: 'Surface vendable :', val: `${fmtVal(rentaResult.surfaces?.surface_vendable)} m²` },
     { label: 'Appartements :', val: `${fmtVal(rentaResult.surfaces?.surface_appartements)} m²` },

@@ -15,6 +15,7 @@ export interface Rentabilite {
   error?: string
   surfaces?: {
     surface_brute: number
+    surface_constructible?: number
     shon: number
     shob: number
     surface_vendable: number
