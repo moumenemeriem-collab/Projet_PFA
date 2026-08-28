@@ -227,13 +227,13 @@ function frNum(v: number, maxDec = 0): string {
 }
 
 function formatM(d: number): string {
-  if (!Number.isFinite(d)) return '—'
+  if (!Number.isFinite(d)) return '0 m'
   if (d >= 10000) return `${frNum(d / 1000, 1)} km`
   return `${frNum(d, d >= 100 ? 0 : 1)} m`
 }
 
 function formatA(m2: number): string {
-  if (!Number.isFinite(m2)) return '—'
+  if (!Number.isFinite(m2)) return '0 m²'
   return m2 >= 10000
     ? `${frNum(m2 / 10000, 2)} ha (${frNum(m2, 0)} m²)`
     : `${frNum(m2, 0)} m²`
@@ -321,7 +321,7 @@ function drawFooter(pageIdx: number, totalPages: number, dateStr: string, width 
   }
 
   out.push(`${LINE} RG 0.8 w 36 34 m ${(width - 36).toFixed(2)} 34 l S\n`)
-  txt(`WebSIG Foncier — Système d'Information Géographique (EPSG:26191 Merchich/Sahara) • Généré le ${dateStr}`, 36, 22, 6.8, 'F1', GRAY)
+  txt(`WebSIG Foncier • Système d'Information Géographique (EPSG:26191 Merchich/Sahara) • Généré le ${dateStr}`, 36, 22, 6.8, 'F1', GRAY)
 
   const rightText = `Page ${pageIdx} / ${totalPages}`
   const rw = textW(rightText, 6.8, true)
@@ -415,7 +415,7 @@ function buildPage1(d: PlanData, dateStr: string): string {
 
   const infoRows = [
     { label: 'Identifiant / Nom de la parcelle :', val: subj(d) },
-    { label: 'Système de coordonnées projetées :', val: 'EPSG:26191 — Merchich / Sahara (Lambert Conique Conforme)' },
+    { label: 'Système de coordonnées projetées :', val: 'EPSG:26191 (Merchich / Sahara - Lambert Conique Conforme)' },
     { label: 'Superficie cadastrale calculée :', val: formatA(d.area) },
     { label: 'Périmètre total du polygone :', val: formatM(d.perimeter) },
     { label: 'Date et heure du relevé :', val: dateStr },
@@ -467,7 +467,7 @@ function buildPage1(d: PlanData, dateStr: string): string {
     txt(`P${i + 1}`, tableX + 10, y - 10.5, 7.5, 'F2', BLUE_TEXT)
     txtR(frNum(p.x, 2), tableX + colW.p + colW.x - 10, y - 10.5, 7.5, 'F1', DARK)
     txtR(frNum(p.y, 2), tableX + colW.p + colW.x + colW.y - 10, y - 10.5, 7.5, 'F1', DARK)
-    txt(`P${i + 1} — P${nextIdx + 1}`, tableX + colW.p + colW.x + colW.y + 10, y - 10.5, 7.5, 'F1', GRAY)
+    txt(`P${i + 1} -> P${nextIdx + 1}`, tableX + colW.p + colW.x + colW.y + 10, y - 10.5, 7.5, 'F1', GRAY)
     txtR(frNum(sideLen, 2) + ' m', tableX + tableW - 12, y - 10.5, 7.5, 'F2', DARK)
     y -= 15
   }
@@ -502,7 +502,7 @@ function buildPage2(d: PlanData, dateStr: string, opts: Page2Opts = {}): string 
     txt(s, right - textW(s, size, font === 'F2'), y, size, font, color)
 
   // En-tête pleine largeur paysage
-  out.push(drawHeaderBanner(opts.titleText ?? 'PLAN TOPOGRAPHIQUE & GÉOMÉTRIQUE', opts.subtitleText ?? `${subj(d)} — EPSG:26191`, 'PLAN VECTEUR', AL, ALH))
+  out.push(drawHeaderBanner(opts.titleText ?? 'PLAN TOPOGRAPHIQUE & GÉOMÉTRIQUE', opts.subtitleText ?? `${subj(d)} • EPSG:26191`, 'PLAN VECTEUR', AL, ALH))
 
   const n = d.pts.length
   const allPts = opts.background && opts.background.length ? [...d.pts, ...opts.background] : d.pts
@@ -742,7 +742,7 @@ function buildAffSummaryPage(d: PlanData, pieces: AffectationPiece[], totalCount
       { label: 'SUPERFICIE DU TERRAIN', val: `${frNum(d.area, 0)} m²`, sub: d.area >= 10000 ? `${frNum(d.area / 10000, 2)} ha` : 'Superficie cadastrale', color: BG_BLUE, textColor: BLUE_TEXT },
       { label: 'PÉRIMÈTRE TOTAL', val: formatM(d.perimeter), sub: 'Périmètre extérieur', color: BG_CARD, textColor: NAVY },
       { label: "ZONES D'AFFECTATION", val: `${totalCount} affectation(s)`, sub: `${pieces.length} affichée(s) sur cette page`, color: BG_GREEN, textColor: GREEN_TEXT },
-      { label: 'AFFECTATION DOMINANTE', val: domPiece ? fitText(domPiece.label, 9, 140, true) : '—', sub: domPiece ? `${domPiece.percent.toFixed(1)} % (${frNum(domPiece.areaM2, 0)} m²)` : 'Aucune zone', color: BG_AMBER, textColor: AMBER_TEXT },
+      { label: 'AFFECTATION DOMINANTE', val: domPiece ? fitText(domPiece.label, 9, 140, true) : 'Aucune', sub: domPiece ? `${domPiece.percent.toFixed(1)} % (${frNum(domPiece.areaM2, 0)} m²)` : 'Aucune zone', color: BG_AMBER, textColor: AMBER_TEXT },
     ]
 
     const kpiW = (AL - 72 - 3 * 10) / 4
@@ -787,9 +787,9 @@ function buildAffSummaryPage(d: PlanData, pieces: AffectationPiece[], totalCount
     out.push(drawRoundedRect(chipX, chipY, 12, 10, 2, hexToRgb(pc.color), LINE, 0.6))
 
     txt(fitText(pc.label, 8, colW.label - 14, true), tableX + colW.color + 10, y - 12, 8, 'F2', DARK)
-    txt(fitText(pc.designation || '—', 7.5, colW.desig - 14), tableX + colW.color + colW.label + 10, y - 12, 7.5, 'F1', GRAY)
+    txt(fitText(pc.designation || 'Non spécifiée', 7.5, colW.desig - 14), tableX + colW.color + colW.label + 10, y - 12, 7.5, 'F1', GRAY)
     txtR(`${frNum(pc.areaM2, 0)} m²`, tableX + colW.color + colW.label + colW.desig + colW.m2 - 10, y - 12, 7.8, 'F2', DARK)
-    txtR(pc.areaM2 >= 10000 ? `${frNum(pc.areaM2 / 10000, 2)} ha` : '—', tableX + colW.color + colW.label + colW.desig + colW.m2 + colW.ha - 10, y - 12, 7.5, 'F1', GRAY)
+    txtR(pc.areaM2 >= 10000 ? `${frNum(pc.areaM2 / 10000, 2)} ha` : '< 1 ha', tableX + colW.color + colW.label + colW.desig + colW.m2 + colW.ha - 10, y - 12, 7.5, 'F1', GRAY)
     txtR(`${pc.percent.toFixed(1)} %`, tableX + tableW - 12, y - 12, 8, 'F2', BLUE_TEXT)
 
     y -= 18
@@ -976,8 +976,8 @@ export function buildAffectationsPdf(title: string, terrainRing: number[][], pie
       area: polygonArea(pts),
     }
     const subtitle = pc.designation
-      ? `Affectation « ${pc.designation} » — ${formatA(d.area)} — ${pc.percent.toFixed(1)} % du terrain — EPSG:26191 (Lambert Sahara)`
-      : `${formatA(d.area)} — ${pc.percent.toFixed(1)} % du terrain — EPSG:26191 (Lambert Sahara)`
+      ? `Affectation « ${pc.designation} » • ${formatA(d.area)} • ${pc.percent.toFixed(1)} % du terrain • EPSG:26191 (Lambert Sahara)`
+      : `${formatA(d.area)} • ${pc.percent.toFixed(1)} % du terrain • EPSG:26191 (Lambert Sahara)`
     pages.push({
       width: AL,
       height: ALH,
