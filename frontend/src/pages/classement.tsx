@@ -304,6 +304,8 @@ export function ClassementPage(): React.JSX.Element {
 
   const [savedTerrains, setSavedTerrains] = useState<Terrain[]>([])
   const [savedLoading, setSavedLoading] = useState(true)
+  const [savedSearchInput, setSavedSearchInput] = useState('')
+  const [amcSearchInput, setAmcSearchInput] = useState('')
 
   const [terrains, setTerrains] = useState<Terrain[]>([])
   const [cadastreAttrs, setCadastreAttrs] = useState<Record<string, Record<string, unknown>>>({})
@@ -502,17 +504,34 @@ export function ClassementPage(): React.JSX.Element {
   const start = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
   const end = Math.min(page * PAGE_SIZE, totalCount)
 
+  const filteredSavedTerrains = savedTerrains.filter((t_) => {
+    if (!savedSearchInput.trim()) return true
+    const q = savedSearchInput.toLowerCase().trim()
+    const title = formatParcelleTitle({ nom: t_.nom, num: t_.num_titre_foncier || t_.num_parcelle, indice: t_.indice }).toLowerCase()
+    const ref = formatParcelleRef(t_.num_titre_foncier || t_.num_parcelle || t_.nom, t_.indice).toLowerCase()
+    const rawNom = (t_.nom || '').toLowerCase()
+    const rawRef = (t_.num_titre_foncier || t_.num_parcelle || '').toLowerCase()
+    return title.includes(q) || ref.includes(q) || rawNom.includes(q) || rawRef.includes(q)
+  })
+  const savedTotal = filteredSavedTerrains.length
+  const savedTotalPages = Math.max(1, Math.ceil(savedTotal / PAGE_SIZE))
+  const savedStart = savedTotal === 0 ? 0 : (savedPage - 1) * PAGE_SIZE + 1
+  const savedEnd = Math.min(savedPage * PAGE_SIZE, savedTotal)
+  const savedPagines = filteredSavedTerrains.slice(savedStart - 1, savedEnd)
+
   const resultats = analyse?.resultats ?? []
-  const parcellesTotal = resultats.length
+  const filteredResultats = resultats.filter((r) => {
+    if (!amcSearchInput.trim()) return true
+    const q = amcSearchInput.toLowerCase().trim()
+    const nom = (r.nom || '').toLowerCase()
+    const ref = (r.reference_cadastrale || r.id_parcelle || '').toLowerCase()
+    return nom.includes(q) || ref.includes(q)
+  })
+  const parcellesTotal = filteredResultats.length
   const parcellesTotalPages = Math.max(1, Math.ceil(parcellesTotal / PAGE_SIZE))
   const parcellesStart = parcellesTotal === 0 ? 0 : (parcellesPage - 1) * PAGE_SIZE + 1
   const parcellesEnd = Math.min(parcellesPage * PAGE_SIZE, parcellesTotal)
-  const resultatsPagines = resultats.slice(parcellesStart - 1, parcellesEnd)
-
-  const savedTotalPages = Math.max(1, Math.ceil(savedTerrains.length / PAGE_SIZE))
-  const savedStart = savedTerrains.length === 0 ? 0 : (savedPage - 1) * PAGE_SIZE + 1
-  const savedEnd = Math.min(savedPage * PAGE_SIZE, savedTerrains.length)
-  const savedPagines = savedTerrains.slice(savedStart - 1, savedEnd)
+  const resultatsPagines = filteredResultats.slice(parcellesStart - 1, parcellesEnd)
 
   return (
     <DashboardLayout role="investisseur" activePage="ranking" projectContext={{ id: projet.id, name: projet.nom }}>
@@ -521,17 +540,6 @@ export function ClassementPage(): React.JSX.Element {
           <div>
             <h2 className="classement-title">{t('ranking.title')} : {projet.nom}</h2>
             <p className="classement-desc">{t('ranking.desc')}</p>
-          </div>
-          <div className="classement-actions">
-            <button type="button" className="btn btn-secondary btn-action" disabled={analyses.length === 0} onClick={() => setHistoryOpen(true)}>
-              {icons.database} {t('ranking.analysis_history')}
-            </button>
-            <Link to={`/projets/${projet.id}/ponderation`} className="btn btn-primary btn-action">
-              {icons.layers} {t('ranking.launch_ponderation')}
-            </Link>
-            <Link to={`/projets/${projet.id}/classement/ajouter`} className="btn btn-secondary btn-action">
-              {icons.plus} {t('ranking.new_analysis')}
-            </Link>
           </div>
         </div>
 
@@ -552,13 +560,22 @@ export function ClassementPage(): React.JSX.Element {
 
         {tab === 'parcelles' ? (
           <>
-            <div className="classement-summary-bar">
-              <span className="classement-summary-item">
-                Terrains enregistrés : <strong>{savedTerrains.length}</strong>
-              </span>
-              <span className="classement-summary-item">
-                Avec calcul de rentabilité : <strong>{savedTerrains.filter((t_) => !!t_.rentabilite_json).length}</strong>
-              </span>
+            <div className="classement-toolbar">
+              <div className="classement-search">
+                {icons.search}
+                <input
+                  type="search"
+                  id="classement-saved-search"
+                  className="classement-search-input"
+                  placeholder={t('ranking.search_placeholder')}
+                  value={savedSearchInput}
+                  onChange={(e) => {
+                    setSavedSearchInput(e.target.value)
+                    setSavedPage(1)
+                  }}
+                />
+              </div>
+              <span className="classement-count">{savedTotal} {t('ranking.total_terrains')}</span>
             </div>
 
             <div className="classement-table-wrapper">
@@ -648,7 +665,7 @@ export function ClassementPage(): React.JSX.Element {
             {savedTotalPages > 1 && (
               <div className="users-pagination">
                 <span className="pagination-info">
-                  {t('messages.pagination_showing')} {savedStart}-{savedEnd} {t('messages.pagination_on')} {savedTerrains.length}{' '}
+                  {t('messages.pagination_showing')} {savedStart}-{savedEnd} {t('messages.pagination_on')} {savedTotal}{' '}
                   {t('messages.pagination_results')}
                 </span>
                 <div className="users-pagination-controls">
@@ -740,8 +757,26 @@ export function ClassementPage(): React.JSX.Element {
             ) : null}
           </>
         ) : tab === 'rentabilite' ? (
-          analyse && analyse.resultats.length > 0 ? (
-            <>
+          <>
+            <div className="classement-toolbar">
+              <div className="classement-search">
+                {icons.search}
+                <input
+                  type="search"
+                  id="classement-amc-search"
+                  className="classement-search-input"
+                  placeholder={t('ranking.search_placeholder')}
+                  value={amcSearchInput}
+                  onChange={(e) => {
+                    setAmcSearchInput(e.target.value)
+                    setParcellesPage(1)
+                  }}
+                />
+              </div>
+              <span className="classement-count">{parcellesTotal} {t('ranking.total_terrains')}</span>
+            </div>
+
+            {analyse && (
               <div className="classement-summary-bar">
                 <span className="classement-summary-item">
                   {t('ranking.last_analysis')} : <strong>{formatDate(analyse.date_creation)}</strong>
@@ -753,19 +788,21 @@ export function ClassementPage(): React.JSX.Element {
                   {t('ranking.col_conformite')} : <strong>{statusLabel(analyse.statut)}</strong>
                 </span>
               </div>
+            )}
 
-              <div className="classement-table-wrapper">
-                <table className="classement-table">
-                  <thead>
-                    <tr>
-                      <th>{t('ranking.col_rang')}</th>
-                      <th>{t('ranking.col_parcelle')}</th>
-                      <th>{t('ranking.col_surface')}</th>
-                      <th>{t('ranking.col_actions')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {resultatsPagines.map((r) => (
+            <div className="classement-table-wrapper">
+              <table className="classement-table">
+                <thead>
+                  <tr>
+                    <th>{t('ranking.col_rang')}</th>
+                    <th>{t('ranking.col_parcelle')}</th>
+                    <th>{t('ranking.col_surface')}</th>
+                    <th>{t('ranking.col_actions')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {resultatsPagines.length > 0 ? (
+                    resultatsPagines.map((r) => (
                       <tr key={r.id}>
                         <td><span className="classement-rank">#{r.rang}</span></td>
                         <td>
@@ -779,18 +816,22 @@ export function ClassementPage(): React.JSX.Element {
                           <div className="classement-table-actions">
                             <button type="button" className="table-action-btn" title={t('ranking.view_details')} onClick={() => setDetail(r)}>{icons.eye}</button>
                             <Link
-                              to={`/projets/${projet.id}/classement/ajouter?analyse=${analyse.id}&parcelle=${encodeURIComponent(r.reference_cadastrale || r.id_parcelle)}`}
+                              to={`/projets/${projet.id}/classement/ajouter?analyse=${analyse?.id ?? ''}&parcelle=${encodeURIComponent(r.reference_cadastrale || r.id_parcelle)}`}
                               className="table-action-btn"
                               title={t('ranking.view_map')}
                             >{icons.mapPin}</Link>
                           </div>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    ))
+                  ) : (
+                    <tr><td colSpan={4} className="classement-table-empty">{t('ranking.empty')}</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
 
+            {parcellesTotalPages > 1 && (
               <div className="users-pagination">
                 <span className="pagination-info">
                   {t('messages.pagination_showing')} {parcellesStart}-{parcellesEnd} {t('messages.pagination_on')} {parcellesTotal}{' '}
@@ -822,17 +863,8 @@ export function ClassementPage(): React.JSX.Element {
                   </button>
                 </div>
               </div>
-            </>
-          ) : (
-            <div className="classement-empty">
-              <div className="classement-empty-icon">{icons.layers}</div>
-              <h3 className="classement-empty-title">{t('ranking.no_classement_title')}</h3>
-              <p className="classement-empty-desc">{t('ranking.no_classement_desc')}</p>
-              <Link to={`/projets/${projet.id}/classement/ajouter`} className="btn btn-primary">
-                {icons.plus} {t('ranking.launch_analysis')}
-              </Link>
-            </div>
-          )
+            )}
+          </>
         ) : null}
       </div>
 
