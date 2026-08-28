@@ -3,6 +3,7 @@
 // tables vectorielles, métriques financières, et capture satellite OSM / ESRI avec le contour du terrain).
 
 import type { Rentabilite } from '../api/projets'
+import { AP, APH, NAVY, BLUE_ACCENT, DARK, GRAY, LIGHT_GRAY, LINE, BG_CARD, BG_GREEN, GREEN_TEXT, BG_BLUE, BLUE_TEXT, BG_SUBTLE } from './pdfTheme'
 
 export interface RentaReportData {
   projectName?: string
@@ -43,23 +44,8 @@ export interface RentaReportData {
 }
 
 // ---------------------------------------------------------------------------
-// Constantes & Formatage A4
+// Constantes & Formatage A4 (importées de pdfTheme.ts — thème noir & blanc)
 // ---------------------------------------------------------------------------
-
-const AP = 595.28 // A4 portrait largeur
-const APH = 841.89 // A4 portrait hauteur
-
-const NAVY = '0.01 0.35 0.55'
-const BLUE_ACCENT = '0.02 0.52 0.78'
-const DARK = '0.06 0.09 0.16'
-const GRAY = '0.4 0.45 0.52'
-const LIGHT_GRAY = '0.6 0.65 0.72'
-const LINE = '0.88 0.91 0.94'
-const BG_CARD = '0.98 0.985 0.99'
-const BG_GREEN = '0.94 0.99 0.95'
-const GREEN_TEXT = '0.09 0.55 0.24'
-const BG_BLUE = '0.94 0.97 1.0'
-const BLUE_TEXT = '0.08 0.4 0.75'
 
 // ---------------------------------------------------------------------------
 // Encodage WinAnsi (polices standard PDF avec accents français)
@@ -472,7 +458,7 @@ function buildRentaPage1(data: RentaReportData, dateStr: string, hasImage: boole
   const c2H = 135
   const c2Bottom = c2Top - c2H
 
-  out.push(`0.06 0.09 0.16 rg ${c2X} ${c2Bottom} ${c2W} ${c2H} re f\n`)
+  out.push(`${DARK} rg ${c2X} ${c2Bottom} ${c2W} ${c2H} re f\n`)
   out.push(`${LINE} RG 0.8 w ${c2X} ${c2Bottom} ${c2W} ${c2H} re S\n`)
 
   if (hasImage) {
@@ -485,7 +471,7 @@ function buildRentaPage1(data: RentaReportData, dateStr: string, hasImage: boole
   }
 
   // Légende photo
-  out.push(`0.97 0.98 0.99 rg ${c2X} ${c2Bottom} ${c2W} 18 re f\n`)
+  out.push(`${BG_SUBTLE} rg ${c2X} ${c2Bottom} ${c2W} 18 re f\n`)
   out.push(`${LINE} RG 0.6 w ${c2X} ${(c2Bottom + 18).toFixed(2)} m ${c2X + c2W} ${(c2Bottom + 18).toFixed(2)} l S\n`)
   txt('Vue aérienne Satellite & Emprise du terrain (ESRI / OSM)', c2X + 8, c2Bottom + 6, 6.5, 'F2', GRAY)
 
@@ -643,7 +629,7 @@ function buildRentaPage2(data: RentaReportData, dateStr: string): string {
 
   // En-tête du tableau
   const headH = 22
-  out.push(`0.92 0.95 0.98 rg ${tX} ${(curY - headH).toFixed(2)} ${tW} ${headH} re f\n`)
+  out.push(`${BG_SUBTLE} rg ${tX} ${(curY - headH).toFixed(2)} ${tW} ${headH} re f\n`)
   out.push(`${LINE} RG 0.8 w ${tX} ${(curY - headH).toFixed(2)} ${tW} ${headH} re S\n`)
   txt('POSTE DE TRÉSORERIE (DH)', tX + 8, curY - 14, 7.5, 'F2', NAVY)
 
@@ -655,7 +641,7 @@ function buildRentaPage2(data: RentaReportData, dateStr: string): string {
 
   const renderSectionHeader = (title: string): void => {
     const secH = 16
-    out.push(`0.88 0.92 0.96 rg ${tX} ${(curY - secH).toFixed(2)} ${tW} ${secH} re f\n`)
+    out.push(`${BG_SUBTLE} rg ${tX} ${(curY - secH).toFixed(2)} ${tW} ${secH} re f\n`)
     out.push(`${LINE} RG 0.6 w ${tX} ${(curY - secH).toFixed(2)} ${tW} ${secH} re S\n`)
     txt(title, tX + 8, curY - 11, 7, 'F2', NAVY)
     curY -= secH
@@ -664,7 +650,7 @@ function buildRentaPage2(data: RentaReportData, dateStr: string): string {
   const renderDataRow = (label: string, values: Array<{ val: number | undefined; pct?: string }>, isEven: boolean): void => {
     const rowH = 17
     if (isEven) {
-      out.push(`0.985 0.99 1.0 rg ${tX} ${(curY - rowH).toFixed(2)} ${tW} ${rowH} re f\n`)
+      out.push(`${BG_SUBTLE} rg ${tX} ${(curY - rowH).toFixed(2)} ${tW} ${rowH} re f\n`)
     }
     out.push(`${LINE} RG 0.4 w ${tX} ${(curY - rowH).toFixed(2)} ${tW} ${rowH} re S\n`)
 
@@ -773,13 +759,13 @@ function buildRentaPage2(data: RentaReportData, dateStr: string): string {
 
   // 3. LIGNE TOTAL FLUX NET
   const netH = 26
-  out.push(`${BG_GREEN} rg ${tX} ${(curY - netH).toFixed(2)} ${tW} ${netH} re f\n`)
-  out.push(`0.09 0.55 0.24 RG 1.2 w ${tX} ${(curY - netH).toFixed(2)} ${tW} ${netH} re S\n`)
-  txt('FLUX NET DE TRÉSORERIE (DH)', tX + 8, curY - 16, 8.5, 'F2', GREEN_TEXT)
+  out.push(`${BG_SUBTLE} rg ${tX} ${(curY - netH).toFixed(2)} ${tW} ${netH} re f\n`)
+  out.push(`${DARK} RG 1.2 w ${tX} ${(curY - netH).toFixed(2)} ${tW} ${netH} re S\n`)
+  txt('FLUX NET DE TRÉSORERIE (DH)', tX + 8, curY - 16, 8.5, 'F2', DARK)
 
   fluxList.forEach((f, i) => {
     const yx = tX + colLabelW + i * colYearW
-    txtR(`${fmtVal(f.flux_net)} DH`, yx + colYearW - 8, curY - 16, 8.5, 'F2', GREEN_TEXT)
+    txtR(`${fmtVal(f.flux_net)} DH`, yx + colYearW - 8, curY - 16, 8.5, 'F2', DARK)
   })
   curY -= netH
 

@@ -543,6 +543,7 @@
     "legende_vide": "No layer displayed on the map",
     "carte_cadastrale": "Cadastral map",
     "plan_amenagement": "Development plan",
+    "couches_limites": "Administrative boundaries",
     "nav_search_placeholder": "Search a parcel (cadastral n°)",
     "nav_terrains": "Terrains",
     "nav_reglement": "Regulations",

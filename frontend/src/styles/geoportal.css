@@ -1724,6 +1724,10 @@
   background: #a855f7;
 }
 
+.geo-popup-overlay-dot--limites {
+  background: #14b8a6;
+}
+
 .geo-layers-popup-overlays--scroll {
   max-height: none;
   overflow-y: visible;

@@ -607,6 +607,7 @@ const SIDEBAR_TRANSITION_MS = 280
 const CADASTRE_STYLE = { color: '#b45309', weight: 1.4, opacity: 0.9, fillColor: '#f59e0b', fillOpacity: 0.18 }
 const CADASTRE_SEARCH_STYLE = { color: '#dc2626', weight: 4, opacity: 1, fillColor: '#ef4444', fillOpacity: 0.45 }
 const PLAN_AMENAGEMENT_STYLE = { color: '#7c3aed', weight: 1.2, opacity: 0.85, fillColor: '#a855f7', fillOpacity: 0.16 }
+const LIMITES_ADMIN_STYLE = { color: '#0d9488', weight: 1.8, opacity: 0.9, fillColor: '#14b8a6', fillOpacity: 0.12 }
 
 // Règlement du plan d'aménagement, servi depuis le dossier public (Vite dev et build).
 // Le fichier PDF définitif sera fourni par le client et placé à cet emplacement.
@@ -858,6 +859,7 @@ export function GeoportalPage(): React.JSX.Element {
   const [cadastreReady, setCadastreReady] = useState(false)
   const [cadastreFc, setCadastreFc] = useState<CoucheFeatureCollection | null>(null)
   const [paEnabled, setPaEnabled] = useState(false)
+  const [limitesEnabled, setLimitesEnabled] = useState(false)
   const [savedAnalyse, setSavedAnalyse] = useState<AnalyseDetail | null>(null)
   const [showSavedBanner, setShowSavedBanner] = useState(false)
   const [cadastreQuery, setCadastreQuery] = useState('')
@@ -878,6 +880,7 @@ export function GeoportalPage(): React.JSX.Element {
   const typeLayersRef = useRef<Record<string, any>>({})
   const cadastreLayerRef = useRef<any>(null)
   const paLayerRef = useRef<any>(null)
+  const limitesLayerRef = useRef<any>(null)
   const layersBarRef = useRef<HTMLDivElement>(null)
   const basemapMenuRef = useRef<HTMLDivElement>(null)
   const legendRef = useRef<HTMLDivElement>(null)
@@ -2314,7 +2317,7 @@ const bindPopupActionButtons = (popup: any): void => {
       .then((list) => {
         if (cancelled) return
         setCadastreFc(null)
-        const filtered = list.filter((c) => c.nom === 'cadastre' || c.nom === 'reseau_routier' || c.nom === 'equipements_publics' || c.nom === 'plan_amenagement')
+        const filtered = list.filter((c) => c.nom === 'cadastre' || c.nom === 'reseau_routier' || c.nom === 'equipements_publics' || c.nom === 'plan_amenagement' || c.nom === 'limites_admin')
         setCouchesDispo(filtered)
         const equipC = filtered.find((c) => c.nom === 'equipements_publics')
         if (equipC) {
@@ -2531,6 +2534,35 @@ const bindPopupActionButtons = (popup: any): void => {
         `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(title)}</div><div class="geoportal-popup-coords">${propsToHtml(feature.properties, PLAN_AMENAGEMENT_ATTRIBUTE_LABELS)}</div>${buildPopupActions(center.lat, center.lng)}</div>`,
         { autoPan: false }
       )
+        }
+      },
+    }).addTo(map)
+
+  // Couche « Limites administratives » : communes, provinces et régions.
+  const buildLimitesAdminLayer = (map: any, fc: CoucheFeatureCollection): any =>
+    L.geoJSON(validFeatures(fc), {
+      style: LIMITES_ADMIN_STYLE,
+      onEachFeature: (feature: any, layerItem: any) => {
+        layerItem.on('click', (ev: any) => {
+          const anchor = layerItem.getCenter?.() ?? layerItem.getLatLng?.() ?? ev?.latlng
+          if (anchor) centerMapOnPoint(map, anchor)
+        })
+        if (feature?.properties && Object.keys(feature.properties).length > 0) {
+          const p = feature.properties
+          const nom = p.nom ? String(p.nom) : 'Limite administrative'
+          const niveau = p.niveau ? String(p.niveau) : ''
+          const title = niveau ? `${nom} (${niveau})` : nom
+          const ring = extractRing(feature.geometry)
+          const center = ring ? ringCenter(ring) : { lat: NaN, lng: NaN }
+          const code = p.code ? String(p.code) : ''
+          const rows = Object.entries({ Nom: nom, Niveau: niveau, Code: code })
+            .filter(([, v]) => v)
+            .map(([k, v]) => `<div><strong>${escapeHtml(k)}</strong> : ${escapeHtml(v)}</div>`)
+            .join('')
+          layerItem.bindPopup(
+            `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(title)}</div><div class="geoportal-popup-coords">${rows}</div>${buildPopupActions(center.lat, center.lng)}</div>`,
+            { autoPan: false }
+          )
         }
       },
     }).addTo(map)
@@ -2934,6 +2966,26 @@ const bindPopupActionButtons = (popup: any): void => {
   }, [paEnabled, couchesDispo, projet])
 
   useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    try {
+      const id = couchesDispo.find((c) => c.nom === 'limites_admin')?.id
+      if (!id) return
+      if (limitesEnabled && !limitesLayerRef.current) {
+        const fc = coucheDataRef.current[id]
+        if (!fc) return
+        limitesLayerRef.current = buildLimitesAdminLayer(map, fc)
+        overlayFlyToBounds(map, limitesLayerRef.current.getBounds(), { duration: 0.8, maxZoom: 18 })
+      } else if (!limitesEnabled && limitesLayerRef.current) {
+        map.removeLayer(limitesLayerRef.current)
+        limitesLayerRef.current = null
+      }
+    } catch (err) {
+      console.warn('[couches] Limites admin toggle error:', err)
+    }
+  }, [limitesEnabled, couchesDispo, projet])
+
+  useEffect(() => {
     if (!projet) return
     const params = new URLSearchParams(window.location.search)
     const analyseId = params.get('analyse')
@@ -3272,23 +3324,6 @@ const bindPopupActionButtons = (popup: any): void => {
     }
   }
 
-  // « Retour au classement » depuis la vue focus terrain : réaffiche la liste
-  // complète des résultats dans le sidebar, sans relancer l'analyse.
-  const handleWizardBackToList = (): void => {
-    if (!wizardResultats) {
-      const cached = getCachedPonderation(projetId)
-      if (cached) {
-        setWizardResultats(cached)
-        setWizardStep('resultats')
-      }
-    } else {
-      setWizardStep('resultats')
-    }
-    setSidebarCollapsed(false)
-    closeTerrainCard()
-    refreshMapSize()
-  }
-
   if (projetError) {
     return (
       <DashboardLayout role="investisseur" activePage="ranking" hideSidebar projectContext={{ id: projetId, name: '...' }}>
@@ -3459,9 +3494,6 @@ const bindPopupActionButtons = (popup: any): void => {
               <button type="button" className="btn geo-btn-reset" onClick={handleWizardRestart}>
                 {icons.close} Réinitialiser
               </button>
-              <Link to={`/projets/${projetId}/classement`} className="geo-back-link">
-                {icons.chevronLeft} {t('ranking.back_to_classement')}
-              </Link>
             </div>
           </aside>
 
@@ -3614,6 +3646,21 @@ const bindPopupActionButtons = (popup: any): void => {
                           />
                           <span className="geo-popup-overlay-dot geo-popup-overlay-dot--pa"></span>
                           <span>{t('ranking.plan_amenagement')}</span>
+                        </label>
+                      </div>
+                    </div>
+                    <div className="geo-layers-popup-divider"></div>
+                    <div className="geo-layers-popup-section">
+                      <span className="geo-layers-popup-label">{t('ranking.couches_limites')}</span>
+                      <div className="geo-layers-popup-overlays">
+                        <label className="geo-popup-overlay-item">
+                          <input
+                            type="checkbox"
+                            checked={limitesEnabled}
+                            onChange={() => setLimitesEnabled((v) => !v)}
+                          />
+                          <span className="geo-popup-overlay-dot geo-popup-overlay-dot--limites"></span>
+                          <span>{t('ranking.couches_limites')}</span>
                         </label>
                       </div>
                     </div>
@@ -3806,6 +3853,12 @@ const bindPopupActionButtons = (popup: any): void => {
                           <div className="geo-legend-item">
                             <span className="geo-legend-swatch" style={{ background: '#a855f7' }}></span>
                             <span>{t('ranking.plan_amenagement')}</span>
+                          </div>
+                        ) : null}
+                        {limitesEnabled ? (
+                          <div className="geo-legend-item">
+                            <span className="geo-legend-swatch" style={{ background: '#14b8a6' }}></span>
+                            <span>{t('ranking.couches_limites')}</span>
                           </div>
                         ) : null}
                         {activeRouteTypes.map((rt) => (

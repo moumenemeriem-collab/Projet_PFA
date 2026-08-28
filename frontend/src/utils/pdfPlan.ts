@@ -5,6 +5,7 @@
 // Page 2 paysage (plan topographique vectoriel avec cartouche, échelle et coordonnées).
 
 import { isAffectationValide, type AffectationPiece } from './affectations'
+import { AP, APH, AL, ALH, NAVY, BLUE_ACCENT, DARK, GRAY, LIGHT_GRAY, LINE, GRID, BG_CARD, BG_GREEN, GREEN_TEXT, BG_BLUE, BLUE_TEXT, BG_AMBER, AMBER_TEXT, BG_SUBTLE } from './pdfTheme'
 
 interface Pt {
   x: number
@@ -20,27 +21,8 @@ interface PlanData {
 }
 
 // ---------------------------------------------------------------------------
-// Constantes & Formatage A4
+// Constantes & Formatage A4 (importées de pdfTheme.ts — thème noir & blanc)
 // ---------------------------------------------------------------------------
-
-const AP = 595.28 // A4 portrait largeur
-const APH = 841.89 // A4 portrait hauteur
-const AL = 841.89 // A4 paysage largeur
-const ALH = 595.28 // A4 paysage hauteur
-
-const NAVY = '0.01 0.35 0.55'
-const BLUE_ACCENT = '0.02 0.52 0.78'
-const DARK = '0.06 0.09 0.16'
-const GRAY = '0.4 0.45 0.52'
-const LINE = '0.88 0.91 0.94'
-const BG_CARD = '0.98 0.985 0.99'
-const BG_GREEN = '0.94 0.99 0.95'
-const GREEN_TEXT = '0.09 0.55 0.24'
-const BG_BLUE = '0.94 0.97 1.0'
-const BLUE_TEXT = '0.08 0.4 0.75'
-const BG_AMBER = '0.99 0.97 0.92'
-const AMBER_TEXT = '0.70 0.45 0.05'
-const GRID = '0.88 0.91 0.94'
 
 // ---------------------------------------------------------------------------
 // Projection EPSG:26191
@@ -299,9 +281,9 @@ function drawHeaderBanner(title: string, subtitle: string, badgeText: string, wi
     out.push(`${color} rg BT /${font} ${size} Tf 1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm (${esc(s)}) Tj ET\n`)
   }
 
-  txt('GEO INVEST • ANALYSE SPATIALE & FONCIÈRE', 36, bannerY + 48, 6.8, 'F2', '0.7 0.85 0.95')
+  txt('GEO INVEST • ANALYSE SPATIALE & FONCIÈRE', 36, bannerY + 48, 6.8, 'F2', LIGHT_GRAY)
   txt(title, 36, bannerY + 30, 14, 'F2', '1 1 1')
-  txt(subtitle, 36, bannerY + 14, 8.5, 'F1', '0.85 0.92 0.98')
+  txt(subtitle, 36, bannerY + 14, 8.5, 'F1', '0.8 0.82 0.85')
 
   if (badgeText) {
     const bw = textW(badgeText, 7.5, true) + 16
@@ -427,7 +409,7 @@ function buildPage1(d: PlanData, dateStr: string): string {
   infoRows.forEach((row, i) => {
     const ry = y - 16 - i * 17
     if (i % 2 === 1) {
-      out.push(`0.96 0.97 0.99 rg 37 ${(ry - 4).toFixed(2)} ${(AP - 74).toFixed(2)} 16 re f\n`)
+      out.push(`${BG_SUBTLE} rg 37 ${(ry - 4).toFixed(2)} ${(AP - 74).toFixed(2)} 16 re f\n`)
     }
     txt(row.label, 48, ry, 7.8, 'F2', GRAY)
     txt(row.val, 230, ry, 7.8, 'F1', DARK)
@@ -459,7 +441,7 @@ function buildPage1(d: PlanData, dateStr: string): string {
     const p = d.pts[i]
     const nextIdx = (i + 1) % n
     const sideLen = d.sides[i]
-    const rowBg = i % 2 === 0 ? '1 1 1' : '0.97 0.985 1'
+    const rowBg = i % 2 === 0 ? '1 1 1' : BG_SUBTLE
 
     out.push(`${rowBg} rg ${tableX} ${(y - 15).toFixed(2)} ${tableW} 15 re f\n`)
     out.push(`${LINE} RG 0.5 w ${tableX} ${(y - 15).toFixed(2)} m ${(tableX + tableW).toFixed(2)} ${(y - 15).toFixed(2)} l S\n`)
@@ -535,7 +517,7 @@ function buildPage2(d: PlanData, dateStr: string, opts: Page2Opts = {}): string 
   const A_Y1 = P_Y1 - IP
 
   // Fond du cadre de dessin
-  out.push(`0.995 0.998 1 rg ${P_X0} ${P_Y0} ${P_X1 - P_X0} ${P_Y1 - P_Y0} re f\n`)
+  out.push(`1 1 1 rg ${P_X0} ${P_Y0} ${P_X1 - P_X0} ${P_Y1 - P_Y0} re f\n`)
   out.push(`${LINE} RG 1 w ${P_X0} ${P_Y0} ${P_X1 - P_X0} ${P_Y1 - P_Y0} re S\n`)
 
   const scale = Math.min((A_X1 - A_X0) / (bx1 - bx0), (A_Y1 - A_Y0) / (by1 - by0))
@@ -571,7 +553,7 @@ function buildPage2(d: PlanData, dateStr: string, opts: Page2Opts = {}): string 
   if (opts.fill) {
     out.push(`${opts.fill} rg\n${pathCmd} f\n`)
   } else {
-    out.push(`0.92 0.96 1 rg\n${pathCmd} f\n`)
+    out.push(`${BG_SUBTLE} rg\n${pathCmd} f\n`)
   }
   out.push(`${NAVY} RG 1.5 w\n${pathCmd} S\n`)
 
@@ -686,7 +668,7 @@ function buildPage2(d: PlanData, dateStr: string, opts: Page2Opts = {}): string 
   cy -= 18
 
   // Tableau coordonnées compact
-  out.push(drawRoundedRect(T_X0 + 6, cy - 14, T_W - 12, 14, 2, '0.94 0.97 1.0'))
+  out.push(drawRoundedRect(T_X0 + 6, cy - 14, T_W - 12, 14, 2, BG_SUBTLE))
   txt('Point', T_X0 + 12, cy - 10, 6.8, 'F2', BLUE_TEXT)
   txtR('X (m)', T_X0 + 115, cy - 10, 6.8, 'F2', BLUE_TEXT)
   txtR('Y (m)', T_X0 + T_W - 14, cy - 10, 6.8, 'F2', BLUE_TEXT)
@@ -696,7 +678,7 @@ function buildPage2(d: PlanData, dateStr: string, opts: Page2Opts = {}): string 
   for (let i = 0; i < Math.min(n, maxRowsCartouche); i++) {
     const p = d.pts[i]
     if (i % 2 === 1) {
-      out.push(`0.96 0.97 0.99 rg ${(T_X0 + 6).toFixed(2)} ${(cy - 10).toFixed(2)} ${(T_W - 12).toFixed(2)} 11 re f\n`)
+      out.push(`${BG_SUBTLE} rg ${(T_X0 + 6).toFixed(2)} ${(cy - 10).toFixed(2)} ${(T_W - 12).toFixed(2)} 11 re f\n`)
     }
     txt(`P${i + 1}`, T_X0 + 12, cy - 8, 6.8, 'F2', BLUE_TEXT)
     txtR(frNum(p.x, 2), T_X0 + 115, cy - 8, 6.8, 'F1', DARK)
@@ -777,7 +759,7 @@ function buildAffSummaryPage(d: PlanData, pieces: AffectationPiece[], totalCount
   y -= 18
 
   pieces.forEach((pc, i) => {
-    const rowBg = i % 2 === 0 ? '1 1 1' : '0.97 0.985 1'
+    const rowBg = i % 2 === 0 ? '1 1 1' : BG_SUBTLE
     out.push(`${rowBg} rg ${tableX} ${(y - 18).toFixed(2)} ${tableW} 18 re f\n`)
     out.push(`${LINE} RG 0.5 w ${tableX} ${(y - 18).toFixed(2)} m ${(tableX + tableW).toFixed(2)} ${(y - 18).toFixed(2)} l S\n`)
 
@@ -797,7 +779,7 @@ function buildAffSummaryPage(d: PlanData, pieces: AffectationPiece[], totalCount
 
   if (pieces.length === 0) {
     out.push(`1 1 1 rg ${tableX} ${(y - 24).toFixed(2)} ${tableW} 24 re f\n`)
-    txt("Aucune affectation trouvée pour cette parcelle dans le plan d'aménagement.", tableX + 16, y - 16, 8, 'F1', '0.72 0.11 0.11')
+    txt("Aucune affectation trouvée pour cette parcelle dans le plan d'aménagement.", tableX + 16, y - 16, 8, 'F1', DARK)
     y -= 24
   }
 
