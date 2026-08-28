@@ -909,13 +909,12 @@ export function ClassementPage(): React.JSX.Element {
                       </div>
                       <button
                         type="button"
-                        className="btn btn-secondary btn-action"
-                        style={{ fontSize: '0.78rem', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                        className="table-action-btn"
                         disabled={historyLoading}
                         onClick={() => { void openHistoryAnalyse(a.id) }}
-                        title="Afficher les résultats dans la liste de classement"
+                        title={t('ranking.history_open')}
                       >
-                        {icons.eye} Voir
+                        {icons.eye}
                       </button>
                     </div>
                   ))}
