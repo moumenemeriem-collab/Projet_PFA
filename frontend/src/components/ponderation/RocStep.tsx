@@ -8,6 +8,7 @@ interface RocStepProps {
   criteresInitiaux: string[]
   critereLabels?: Record<string, string>
   onComplete: (categorie: string, ordre: string[]) => void
+  onBack?: () => void
 }
 
 export function RocStep({
@@ -16,6 +17,7 @@ export function RocStep({
   criteresInitiaux,
   critereLabels = {},
   onComplete,
+  onBack,
 }: RocStepProps): React.JSX.Element {
   const [ordre, setOrdre] = useState<string[]>(criteresInitiaux)
   const dragItem = useRef<number | null>(null)
@@ -121,6 +123,11 @@ export function RocStep({
       </div>
 
       <div className="step-actions">
+        {onBack && (
+          <WizardNextButton variant="secondary" onClick={onBack}>
+            {t('ponderation.previous')}
+          </WizardNextButton>
+        )}
         <WizardNextButton
           onClick={() => onComplete(categorie, ordre)}
         >

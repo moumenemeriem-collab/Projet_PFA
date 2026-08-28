@@ -3443,6 +3443,7 @@ const bindPopupActionButtons = (popup: any): void => {
                   initial={wizardMatriceAhp ?? undefined}
                   initialOrder={wizardOrdreCategoriesAhp.length === 3 ? wizardOrdreCategoriesAhp : undefined}
                   onComplete={handleWizardAhpComplete}
+                  onBack={() => setWizardStep('selection')}
                 />
               )}
 
@@ -3454,6 +3455,7 @@ const bindPopupActionButtons = (popup: any): void => {
                   criteresInitiaux={wizardOrdresRoc[wizardNextRocCat]}
                   critereLabels={CRITERE_LABELS}
                   onComplete={handleWizardRocComplete}
+                  onBack={() => setWizardStep('ahp')}
                 />
               )}
 
@@ -3487,51 +3489,61 @@ const bindPopupActionButtons = (popup: any): void => {
                 <div id="map" ref={mapContainerRef}></div>
 
                 <nav className="geo-nav" aria-label={t('ranking.nav_label')}>
-                  <div className="geo-nav-search">
-                    <span className="geo-nav-search-icon">{icons.search}</span>
-                    <input
-                      type="search"
-                      className="geo-nav-search-input"
-                      placeholder={t('ranking.nav_search_placeholder')}
-                      value={cadastreQuery}
-                      onChange={(e) => setCadastreQuery(e.target.value)}
-                      onKeyDown={handleCadastreSearchEnter}
-                      aria-label={t('ranking.search_terrain')}
-                    />
-                  </div>
-                  <div className="geo-nav-sep" aria-hidden="true"></div>
-                  <button
-                    type="button"
-                    className={`geo-nav-tab${cadastreEnabled ? ' geo-nav-tab--active' : ''}`}
-                    title={t('ranking.carte_cadastrale')}
-                    aria-pressed={cadastreEnabled}
-                    onClick={() => setCadastreEnabled((v) => !v)}
-                  >
-                    <span className="geo-nav-tab-icon">{icons.mapPin}</span>
-                    <span className="geo-nav-tab-label">{t('ranking.nav_terrains')}</span>
-                    {cadastreCount > 0 ? <em className="geo-nav-tab-count">({cadastreCount})</em> : null}
-                  </button>
-                  <button
-                    type="button"
-                    className={`geo-nav-tab${paEnabled ? ' geo-nav-tab--active' : ''}`}
-                    title={t('ranking.plan_amenagement')}
-                    aria-pressed={paEnabled}
-                    onClick={() => setPaEnabled((v) => !v)}
-                  >
-                    <span className="geo-nav-tab-icon">{icons.layers}</span>
-                    <span className="geo-nav-tab-label">{t('ranking.plan_amenagement')}</span>
-                  </button>
-                  <div className="geo-nav-sep" aria-hidden="true"></div>
-                  <a
-                    className="geo-nav-tab geo-nav-tab--link"
-                    href={REGLEMENT_PDF_URL}
-                    download
-                    title={t('ranking.nav_reglement')}
-                  >
-                    <span className="geo-nav-tab-icon"><Icon name="document" /></span>
-                    <span className="geo-nav-tab-label">{t('ranking.nav_reglement')}</span>
-                  </a>
-                </nav>
+                    <div className="geo-nav-search">
+                      <span className="geo-nav-search-icon">{icons.search}</span>
+                      <input
+                        type="search"
+                        className="geo-nav-search-input"
+                        placeholder={t('ranking.nav_search_placeholder')}
+                        value={cadastreQuery}
+                        onChange={(e) => setCadastreQuery(e.target.value)}
+                        onKeyDown={handleCadastreSearchEnter}
+                        aria-label={t('ranking.search_terrain')}
+                      />
+                    </div>
+                    <div className="geo-nav-sep" aria-hidden="true"></div>
+                    <button
+                      type="button"
+                      className={`geo-nav-tab${cadastreEnabled ? ' geo-nav-tab--active' : ''}`}
+                      title={t('ranking.carte_cadastrale')}
+                      aria-pressed={cadastreEnabled}
+                      onClick={() => setCadastreEnabled((v) => !v)}
+                    >
+                      <span className="geo-nav-tab-icon">{icons.mapPin}</span>
+                      <span className="geo-nav-tab-label">{t('ranking.nav_terrains')}</span>
+                      {cadastreCount > 0 ? <em className="geo-nav-tab-count">({cadastreCount})</em> : null}
+                    </button>
+                    <button
+                      type="button"
+                      className={`geo-nav-tab${paEnabled ? ' geo-nav-tab--active' : ''}`}
+                      title={t('ranking.plan_amenagement')}
+                      aria-pressed={paEnabled}
+                      onClick={() => setPaEnabled((v) => !v)}
+                    >
+                      <span className="geo-nav-tab-icon">{icons.layers}</span>
+                      <span className="geo-nav-tab-label">{t('ranking.plan_amenagement')}</span>
+                    </button>
+                    <div className="geo-nav-sep" aria-hidden="true"></div>
+                    <a
+                      className="geo-nav-tab geo-nav-tab--link"
+                      href={REGLEMENT_PDF_URL}
+                      download
+                      title={t('ranking.nav_reglement')}
+                    >
+                      <span className="geo-nav-tab-icon"><Icon name="document" /></span>
+                      <span className="geo-nav-tab-label">{t('ranking.nav_reglement')}</span>
+                    </a>
+                    <div className="geo-nav-sep" aria-hidden="true"></div>
+                    <button
+                      type="button"
+                      className="geo-nav-tab geo-nav-tab--back"
+                      onClick={() => navigate(`/projets/${projetId}/classement`)}
+                      title={t('ranking.back_to_classement')}
+                    >
+                      <span className="geo-nav-tab-icon">{icons.chevronLeft}</span>
+                      <span className="geo-nav-tab-label">{t('ranking.back_to_classement')}</span>
+                    </button>
+                  </nav>
 
                 <div className="geo-coord-display" id="coord-display">{coord}</div>
 
@@ -3892,33 +3904,26 @@ const bindPopupActionButtons = (popup: any): void => {
                   {icons.menu}
                 </button>
 
-                <div className={`geo-terrain-card${cardHidden ? ' geo-terrain-card--hidden' : ''}${cardMode === 'addTerrain' ? ' geo-terrain-card--add' : ''}${(cardMode === 'ponderationDetail' && selectedPonderationTerrain) || (cardMode === 'results' && selectedTerrain) ? ' geo-terrain-card--analyse' : ''}`} id="terrain-card">
-                  <div className={`geo-terrain-card-header${(cardMode === 'ponderationDetail' && selectedPonderationTerrain) || (cardMode === 'results' && selectedTerrain) ? ' geo-terrain-card-header--analyse' : ''}`}>
-                    {(cardMode === 'ponderationDetail' && selectedPonderationTerrain) || (cardMode === 'results' && selectedTerrain) ? (
-                      <div className="geo-analyse-header-content">
-                        <div className="geo-analyse-header-badge">
-                          {icons.building}
-                        </div>
-                        <div className="geo-analyse-header-text">
-                          <h3 id="card-title" className="geo-analyse-header-title">{cardTitle}</h3>
-                          <span className="geo-analyse-header-sub">{cardMode === 'ponderationDetail' && selectedPonderationTerrain ? (selectedPonderationTerrain.reference_cadastrale || selectedPonderationTerrain.zone_localisation) : (selectedTerrain?.infos_generales?.reference_cadastrale || '')}</span>
-                        </div>
+                <div className={`geo-terrain-card geo-terrain-card--analyse${cardHidden ? ' geo-terrain-card--hidden' : ''}${cardMode === 'addTerrain' ? ' geo-terrain-card--add' : ''}`} id="terrain-card">
+                  <div className="geo-terrain-card-header geo-terrain-card-header--analyse">
+                    <div className="geo-analyse-header-content">
+                      <div className="geo-analyse-header-badge">
+                        {icons.building}
                       </div>
-                    ) : (
-                      <h3 id="card-title">{cardTitle}</h3>
-                    )}
+                      <div className="geo-analyse-header-text">
+                        <h3 id="card-title" className="geo-analyse-header-title">{cardTitle}</h3>
+                        {(() => {
+                          const sub = cardMode === 'ponderationDetail' && selectedPonderationTerrain
+                            ? (selectedPonderationTerrain.reference_cadastrale || selectedPonderationTerrain.zone_localisation)
+                            : cardMode === 'results' && selectedTerrain
+                              ? (selectedTerrain.infos_generales?.reference_cadastrale || '')
+                              : ''
+                          return sub ? <span className="geo-analyse-header-sub">{sub}</span> : null
+                        })()}
+                      </div>
+                    </div>
                     <div className="geo-card-header-actions">
-                      {(cardMode === 'ponderationDetail' && selectedPonderationTerrain) || (cardMode === 'results' && selectedTerrain) ? (
-                        <button
-                          type="button"
-                          className="geo-terrain-card-backlist"
-                          onClick={handleWizardBackToList}
-                        >
-                          {icons.chevronLeft}
-                          <span>{t('ranking.back_to_classement')}</span>
-                        </button>
-                      ) : null}
-                      <button type="button" className={`geo-terrain-card-close${(cardMode === 'ponderationDetail' || cardMode === 'results') ? ' geo-terrain-card-close--analyse' : ''}`} id="terrain-card-toggle" onClick={closeTerrainCard}>
+                      <button type="button" className="geo-terrain-card-close geo-terrain-card-close--analyse" id="terrain-card-toggle" onClick={closeTerrainCard}>
                         {icons.close}
                       </button>
                     </div>
@@ -3948,9 +3953,14 @@ const bindPopupActionButtons = (popup: any): void => {
                           {renderAnalyseDeTerrainCard(buildResultatVM(selectedTerrain))}
                         </>
                       ) : (
-                        <div className="geo-sr-empty">
-                          <span className="geo-sr-empty-icon">{icons.search}</span>
-                          <p className="geo-sr-empty-text">{t('ranking.analyse_empty')}</p>
+                        <div className="geo-analyse-popup">
+                          <div className="geo-analyse-section">
+                            <h4 className="geo-analyse-section-title">{t('ranking.analyse_title')}</h4>
+                            <div className="geo-analyse-empty-card">
+                              <span className="geo-analyse-empty-icon">{icons.search}</span>
+                              <p className="geo-analyse-empty-text">{t('ranking.analyse_empty')}</p>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>

@@ -287,6 +287,7 @@ export function PonderationWizard({ projetId }: PonderationWizardProps): React.J
           initial={matriceAhp ?? undefined}
           initialOrder={ordreCategoriesAhp.length === 3 ? ordreCategoriesAhp : undefined}
           onComplete={handleAhpComplete}
+          onBack={() => setStep('selection')}
         />
       )}
 
@@ -298,6 +299,7 @@ export function PonderationWizard({ projetId }: PonderationWizardProps): React.J
           criteresInitiaux={ordresRoc[nextRocCat]}
           critereLabels={CRITERE_LABELS}
           onComplete={handleRocComplete}
+          onBack={() => setStep('ahp')}
         />
       )}
 
