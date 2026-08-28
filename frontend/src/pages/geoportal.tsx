@@ -34,6 +34,7 @@ import {
   type AffectationPiece,
   type PreparedPAZone,
 } from '../utils/affectations'
+import { generateAndDownloadRentaPdfReport } from '../utils/rentaPdfReport'
 
 import osmImg from '../assets/features/OSM.png'
 import satImg from '../assets/features/osm_sat.jpg'
@@ -741,7 +742,7 @@ export function GeoportalPage(): React.JSX.Element {
     setRentaInputsSaved(null)
     setRentaUsingCachedSurface(false)
     setRentaViewMode(false)
-    setRentaSidebarOpen(true)
+    setRentaSidebarOpen(false)
     setRentaModalOpen(true)
     setRentaForm((f) => ({
       ...f,
@@ -863,6 +864,7 @@ export function GeoportalPage(): React.JSX.Element {
     setRentaSurfaceEquipement(null)
     setRentaAffectationsOpen(false)
     setRentaSurfaceLoading(true)
+    setRentaSidebarOpen(false)
     setRentaModalOpen(true)
   }
 
@@ -895,8 +897,9 @@ export function GeoportalPage(): React.JSX.Element {
   const [rentaRing, setRentaRing] = useState<number[][]>([])
   const [rentaAffectationsOpen, setRentaAffectationsOpen] = useState(false)
   const [rentaSurfaceLoading, setRentaSurfaceLoading] = useState(false)
-  const [rentaSidebarOpen, setRentaSidebarOpen] = useState(true)
+  const [rentaSidebarOpen, setRentaSidebarOpen] = useState(false)
   const [rentaDetailOpen, setRentaDetailOpen] = useState(false)
+  const [rentaGeneratingPdf, setRentaGeneratingPdf] = useState(false)
 
   // Reconstruit le résultat d'intersection terrain×PA depuis le cache stocké
   // dans `inputs`. Les terrains créés depuis le popup n'ont pas de géométrie en
@@ -1108,7 +1111,7 @@ export function GeoportalPage(): React.JSX.Element {
       setRentaInputsSaved(null)
       setRentaUsingCachedSurface(false)
       setRentaViewMode(false)
-      setRentaSidebarOpen(true)
+      setRentaSidebarOpen(false)
       setRentaModalOpen(true)
       setRentaForm((f) => ({
         ...f,
@@ -1326,18 +1329,8 @@ export function GeoportalPage(): React.JSX.Element {
       quote_part_appartement: numRenta(rentaForm.quotePartApp),
       quote_part_commerce: numRenta(rentaForm.quotePartCommerce),
       quote_part_bureau: numRenta(rentaForm.quotePartBureau),
-      quote_part_equipement: rentaForm.hasEquipement ? (() => {
-        const cosVal = numRenta(rentaForm.cos) ?? 0
-        const surfaceVendable = baseSurf * cosVal * 0.9
-        const surfEq = rentaSurfaceEquipement?.surface_equipement ?? 0
-        return surfaceVendable > 0 && surfEq > 0 ? Math.round(surfEq / surfaceVendable * 10000) / 100 : 0
-      })() : 0,
-      quote_part_equipement_prive: rentaForm.hasEquipementPrive ? (() => {
-        const cosVal = numRenta(rentaForm.cos) ?? 0
-        const surfaceVendable = baseSurf * cosVal * 0.9
-        const surfEqPrive = rentaSurfaceEquipement?.surface_equipement_prive ?? 0
-        return surfaceVendable > 0 && surfEqPrive > 0 ? Math.round(surfEqPrive / surfaceVendable * 10000) / 100 : 0
-      })() : 0,
+      quote_part_equipement: 0,
+      quote_part_equipement_prive: 0,
       prix_vente_appartement: numRenta(rentaForm.prixVenteApp),
       prix_vente_commerce: numRenta(rentaForm.prixVenteCommerce),
       prix_vente_bureau: numRenta(rentaForm.prixVenteBureau),
@@ -1508,6 +1501,56 @@ export function GeoportalPage(): React.JSX.Element {
       refreshRentaTerrains()
     } catch (err) {
       setRentaError(formatApiErrors(err))
+    }
+  }
+
+  const handleDownloadRentaReport = async (): Promise<void> => {
+    if (!rentaResult?.ok) return
+    setRentaGeneratingPdf(true)
+    try {
+      let polygonCoords: number[][] | undefined = rentaRing && rentaRing.length >= 3 ? rentaRing : undefined
+      if (!polygonCoords && rentaParcelInfo?.ref) {
+        const cadastreId = couchesDispo.find((c) => c.nom === 'cadastre')?.id
+        const cadFeat = cadastreId != null
+          ? coucheDataRef.current[cadastreId]?.features.find((f) => String(f.properties?.num) === String(rentaParcelInfo.ref))
+          : undefined
+        if (cadFeat?.geometry) {
+          polygonCoords = extractRing(cadFeat.geometry) ?? undefined
+        }
+      }
+      if (!polygonCoords && selectedTerrain?.geom) {
+        polygonCoords = extractRing(selectedTerrain.geom) ?? undefined
+      }
+
+      await generateAndDownloadRentaPdfReport({
+        projectName: projet?.nom,
+        terrainNom: rentaTerrainNom || rentaParcelInfo?.nom || 'Terrain',
+        reference: rentaParcelInfo?.ref,
+        superficie: rentaParcelInfo?.superficie,
+        lat: rentaParcelInfo?.lat,
+        lng: rentaParcelInfo?.lng,
+        polygonCoords,
+        rentaResult,
+        rentaForm: {
+          ...rentaForm,
+          prixFoncierM2: rentaInputsSaved?.form.prixFoncierM2 ?? rentaForm.prixFoncierM2,
+          fraisAcquisition: rentaInputsSaved?.form.fraisAcquisition ?? rentaForm.fraisAcquisition,
+          tauxChute: rentaInputsSaved?.form.tauxChute ?? rentaForm.tauxChute,
+          cos: rentaInputsSaved?.form.cos ?? rentaForm.cos,
+          cus: rentaInputsSaved?.form.cus ?? rentaForm.cus,
+          tauxEtudes: rentaInputsSaved?.form.tauxEtudes ?? rentaForm.tauxEtudes,
+          tauxImprevus: rentaInputsSaved?.form.tauxImprevus ?? rentaForm.tauxImprevus,
+          tauxCommercialisation: rentaInputsSaved?.form.tauxCommercialisation ?? rentaForm.tauxCommercialisation,
+          tauxActualisation: rentaInputsSaved?.form.tauxActualisation ?? rentaForm.tauxActualisation,
+          dureeConstruction: rentaInputsSaved?.form.dureeConstruction ?? rentaForm.dureeConstruction,
+          dureeCommercialisation: rentaInputsSaved?.form.dureeCommercialisation ?? rentaForm.dureeCommercialisation,
+        },
+      })
+    } catch (err) {
+      console.error('[pdf-report] error generating report:', err)
+      setRentaError('Erreur lors de la génération du rapport PDF')
+    } finally {
+      setRentaGeneratingPdf(false)
     }
   }
 
@@ -3306,11 +3349,16 @@ const bindPopupActionButtons = (popup: any): void => {
               <span style={{ fontSize: '0.7rem', opacity: 0.8, fontWeight: 400 }}>{rentaParcelInfo?.ref || rentaTerrainNom || rentaParcelInfo?.nom || ''}</span>
             </div>
             <div className="geo-dims-header-actions">
-              {!rentaSidebarOpen && (
-                <button type="button" className="renta-sidebar-reopen" title="Afficher la liste des terrains" onClick={() => setRentaSidebarOpen(true)}>
-                  {icons.building} <span style={{ fontSize: '0.78rem' }}>Terrains</span>
-                </button>
-              )}
+              <button
+                type="button"
+                className={`renta-sidebar-toggle-btn${rentaSidebarOpen ? ' renta-sidebar-toggle-btn--active' : ''}`}
+                title={rentaSidebarOpen ? 'Masquer la liste des terrains' : 'Afficher la liste des terrains'}
+                onClick={() => setRentaSidebarOpen((v) => !v)}
+              >
+                {icons.building}
+                <span>Terrains du projet</span>
+                <span className="renta-sidebar-toggle-count">{rentaTerrains.length}</span>
+              </button>
               <button type="button" className="geo-dims-close" data-dims-close aria-label="Fermer" onClick={() => setRentaModalOpen(false)}>&times;</button>
             </div>
           </div>
@@ -3922,12 +3970,40 @@ const bindPopupActionButtons = (popup: any): void => {
                       </strong>
                     </div>
                   </div>
-                  <button type="button" className="geo-dims-btn geo-dims-btn--ghost renta-detail-toggle" onClick={() => setRentaDetailOpen((v) => !v)}>
-                    {t('projects.detail_calc_btn')} {rentaDetailOpen ? '▲' : '▼'}
-                  </button>
+                  <div className="renta-actions-bar">
+                    <button
+                      type="button"
+                      className="renta-pdf-download-btn"
+                      onClick={handleDownloadRentaReport}
+                      disabled={rentaGeneratingPdf}
+                      title="Télécharger directement le rapport PDF d'étude de rentabilité"
+                    >
+                      {rentaGeneratingPdf && <div className="renta-pdf-spinner" aria-hidden="true" />}
+                      <span>{rentaGeneratingPdf ? 'Génération en cours...' : 'Télécharger le rapport (PDF)'}</span>
+                    </button>
+
+                    <button type="button" className="geo-dims-btn geo-dims-btn--ghost renta-detail-toggle" onClick={() => setRentaDetailOpen((v) => !v)}>
+                      {t('projects.detail_calc_btn')} {rentaDetailOpen ? '▲' : '▼'}
+                    </button>
+                  </div>
                   {rentaDetailOpen ? (
                     <div className="renta-detail-panel">
                       <h4 className="renta-detail-title">{t('projects.detail_calc_title')}</h4>
+
+                      <section className="renta-detail-sec">
+                        <h5>{t('projects.detail_parametres')}</h5>
+                        <CalcRow label="Prix foncier (DH/m²)" value={rentaResult.parametres?.prix_foncier_m2 ?? (rentaInputsSaved?.form.prixFoncierM2 ? Number(rentaInputsSaved.form.prixFoncierM2) : (rentaForm.prixFoncierM2 ? Number(rentaForm.prixFoncierM2) : undefined))} unit="DH/m²" />
+                        <CalcRow label="Frais d'acquisition (%)" value={rentaResult.parametres?.frais_acquisition_pct ?? (rentaInputsSaved?.form.fraisAcquisition ? Number(rentaInputsSaved.form.fraisAcquisition) : (rentaForm.fraisAcquisition ? Number(rentaForm.fraisAcquisition) : undefined))} unit="%" />
+                        <CalcRow label="Taux de chute (%)" value={rentaResult.parametres?.taux_chute_pct ?? (rentaInputsSaved?.form.tauxChute ? Number(rentaInputsSaved.form.tauxChute) : (rentaForm.tauxChute ? Number(rentaForm.tauxChute) : undefined))} unit="%" />
+                        <CalcRow label="COS" value={rentaResult.parametres?.cos ?? (rentaInputsSaved?.form.cos ? Number(rentaInputsSaved.form.cos) : (rentaForm.cos ? Number(rentaForm.cos) : undefined))} unit="" />
+                        <CalcRow label="CUS" value={rentaResult.parametres?.cus ?? (rentaInputsSaved?.form.cus ? Number(rentaInputsSaved.form.cus) : (rentaForm.cus ? Number(rentaForm.cus) : undefined))} unit="" />
+                        <CalcRow label="Études & Honoraires (%)" value={rentaResult.parametres?.taux_etudes_pct ?? (rentaInputsSaved?.form.tauxEtudes ? Number(rentaInputsSaved.form.tauxEtudes) : (rentaForm.tauxEtudes ? Number(rentaForm.tauxEtudes) : undefined))} unit="%" />
+                        <CalcRow label="Imprévus (%)" value={rentaResult.parametres?.taux_imprevus_pct ?? (rentaInputsSaved?.form.tauxImprevus ? Number(rentaInputsSaved.form.tauxImprevus) : (rentaForm.tauxImprevus ? Number(rentaForm.tauxImprevus) : undefined))} unit="%" />
+                        <CalcRow label="Frais de commercialisation (%)" value={rentaResult.parametres?.taux_commercialisation_pct ?? (rentaInputsSaved?.form.tauxCommercialisation ? Number(rentaInputsSaved.form.tauxCommercialisation) : (rentaForm.tauxCommercialisation ? Number(rentaForm.tauxCommercialisation) : undefined))} unit="%" />
+                        <CalcRow label="Taux d'actualisation (%)" value={rentaResult.parametres?.taux_actualisation_pct ?? (rentaInputsSaved?.form.tauxActualisation ? Number(rentaInputsSaved.form.tauxActualisation) : (rentaForm.tauxActualisation ? Number(rentaForm.tauxActualisation) : undefined))} unit="%" />
+                        <CalcRow label="Durée de construction (ans)" value={rentaResult.parametres?.duree_construction ?? (rentaInputsSaved?.form.dureeConstruction ? Number(rentaInputsSaved.form.dureeConstruction) : (rentaForm.dureeConstruction ? Number(rentaForm.dureeConstruction) : undefined))} unit="ans" />
+                        <CalcRow label="Durée de commercialisation (ans)" value={rentaResult.parametres?.duree_commercialisation ?? (rentaInputsSaved?.form.dureeCommercialisation ? Number(rentaInputsSaved.form.dureeCommercialisation) : (rentaForm.dureeCommercialisation ? Number(rentaForm.dureeCommercialisation) : undefined))} unit="ans" />
+                      </section>
 
                       <section className="renta-detail-sec">
                         <h5>{t('projects.detail_surfaces')}</h5>
@@ -4037,7 +4113,8 @@ const bindPopupActionButtons = (popup: any): void => {
                                 <tr>
                                   <td className="renta-flux-row-label">Coût de construction</td>
                                   {rentaResult.flux.map((f) => {
-                                    const pct = f.annee < 2 ? '50%' : undefined
+                                    const pctVal = rentaResult.repartition_construction?.[f.annee]
+                                    const pct = pctVal != null && pctVal > 0 ? `${pctVal}%` : undefined
                                     return (
                                       <td key={f.annee}>
                                         {f.construction > 0 ? (
@@ -4053,7 +4130,8 @@ const bindPopupActionButtons = (popup: any): void => {
                                 <tr>
                                   <td className="renta-flux-row-label">Études et honoraires</td>
                                   {rentaResult.flux.map((f) => {
-                                    const pct = f.annee < 2 ? '50%' : undefined
+                                    const pctVal = rentaResult.repartition_construction?.[f.annee]
+                                    const pct = pctVal != null && pctVal > 0 ? `${pctVal}%` : undefined
                                     return (
                                       <td key={f.annee}>
                                         {f.etudes_honoraires > 0 ? (
@@ -4069,7 +4147,8 @@ const bindPopupActionButtons = (popup: any): void => {
                                 <tr>
                                   <td className="renta-flux-row-label">Imprévus</td>
                                   {rentaResult.flux.map((f) => {
-                                    const pct = f.annee < 2 ? '50%' : undefined
+                                    const pctVal = rentaResult.repartition_construction?.[f.annee]
+                                    const pct = pctVal != null && pctVal > 0 ? `${pctVal}%` : undefined
                                     return (
                                       <td key={f.annee}>
                                         {f.imprevus > 0 ? (
@@ -4091,7 +4170,9 @@ const bindPopupActionButtons = (popup: any): void => {
                                   <td className="renta-flux-row-label">Chiffre d'affaires (hors équipements)</td>
                                   {rentaResult.flux.map((f) => {
                                     const val = f.ca_commercialisation ?? (f.annee === 0 ? 0 : f.ca)
-                                    const pct = f.annee === 1 ? '30%' : f.annee === 2 ? '30%' : f.annee === 3 ? '40%' : undefined
+                                    const idx = f.annee - 1
+                                    const pctVal = idx >= 0 ? rentaResult.repartition_ventes?.[idx] : undefined
+                                    const pct = pctVal != null && pctVal > 0 ? `${pctVal}%` : undefined
                                     return (
                                       <td key={f.annee}>
                                         {val > 0 ? (
@@ -4108,7 +4189,9 @@ const bindPopupActionButtons = (popup: any): void => {
                                   <td className="renta-flux-row-label">Frais de commercialisation</td>
                                   {rentaResult.flux.map((f) => {
                                     const val = f.frais_commercialisation ?? f.commercialisation
-                                    const pct = f.annee === 1 ? '30%' : f.annee === 2 ? '30%' : f.annee === 3 ? '40%' : undefined
+                                    const idx = f.annee - 1
+                                    const pctVal = idx >= 0 ? rentaResult.repartition_ventes?.[idx] : undefined
+                                    const pct = pctVal != null && pctVal > 0 ? `${pctVal}%` : undefined
                                     return (
                                       <td key={f.annee}>
                                         {val > 0 ? (
@@ -4125,12 +4208,15 @@ const bindPopupActionButtons = (popup: any): void => {
                                   <td className="renta-flux-row-label">Ventes équipements publics</td>
                                   {rentaResult.flux.map((f) => {
                                     const val = f.ca_equipement_public ?? (f.annee === 1 ? (rentaResult.ca?.ca_equipements ?? 0) : 0)
+                                    const idx = f.annee - 1
+                                    const pctVal = idx >= 0 ? rentaResult.repartition_ventes_equipement?.[idx] : undefined
+                                    const pct = pctVal != null && pctVal > 0 ? `${pctVal}%` : undefined
                                     return (
                                       <td key={f.annee}>
                                         {val > 0 ? (
                                           <div className="renta-flux-val">
                                             <span>{val.toLocaleString('fr-FR')}</span>
-                                            <span className="renta-flux-pct">(100%)</span>
+                                            {pct ? <span className="renta-flux-pct">({pct})</span> : null}
                                           </div>
                                         ) : '—'}
                                       </td>
@@ -4141,12 +4227,15 @@ const bindPopupActionButtons = (popup: any): void => {
                                   <td className="renta-flux-row-label">Ventes équipements privés</td>
                                   {rentaResult.flux.map((f) => {
                                     const val = f.ca_equipement_prive ?? (f.annee === 1 ? (rentaResult.ca?.ca_equipements_prives ?? 0) : 0)
+                                    const idx = f.annee - 1
+                                    const pctVal = idx >= 0 ? rentaResult.repartition_ventes_equipement_prive?.[idx] : undefined
+                                    const pct = pctVal != null && pctVal > 0 ? `${pctVal}%` : undefined
                                     return (
                                       <td key={f.annee}>
                                         {val > 0 ? (
                                           <div className="renta-flux-val">
                                             <span>{val.toLocaleString('fr-FR')}</span>
-                                            <span className="renta-flux-pct">(100%)</span>
+                                            {pct ? <span className="renta-flux-pct">({pct})</span> : null}
                                           </div>
                                         ) : '—'}
                                       </td>
@@ -4197,16 +4286,24 @@ const bindPopupActionButtons = (popup: any): void => {
 
               {rentaSidebarOpen && <div className="renta-modal-sidebar">
                 <div className="renta-sidebar-header">
-                  <div>
-                    <h4>{icons.building} Terrains du projet</h4>
-                    <span>{rentaTerrains.length} terrain{rentaTerrains.length !== 1 ? 's' : ''} enregistré{rentaTerrains.length !== 1 ? 's' : ''}</span>
+                  <div className="renta-sidebar-header-info">
+                    <div className="renta-sidebar-header-badge">
+                      {icons.building}
+                    </div>
+                    <div>
+                      <h4 className="renta-sidebar-header-title">Terrains du projet</h4>
+                      <span className="renta-sidebar-header-sub">
+                        {rentaTerrains.length} terrain{rentaTerrains.length > 1 ? 's' : ''} enregistré{rentaTerrains.length > 1 ? 's' : ''}
+                      </span>
+                    </div>
                   </div>
-                  <button type="button" className="renta-sidebar-close" aria-label="Fermer la liste" onClick={() => setRentaSidebarOpen(false)}>&times;</button>
+                  <button type="button" className="renta-sidebar-close" title="Fermer la liste" aria-label="Fermer la liste" onClick={() => setRentaSidebarOpen(false)}>&times;</button>
                 </div>
               {rentaTerrains.length === 0 ? (
                 <div className="renta-sidebar-empty">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>
-                  <p>Aucun terrain enregistré pour ce projet.<br/>Calculez la rentabilité d'un terrain puis enregistrez-le.</p>
+                  <div className="renta-sidebar-empty-icon">{icons.building}</div>
+                  <h5>Aucun terrain enregistré</h5>
+                  <p>Calculez la rentabilité financière d'un terrain puis cliquez sur <strong>Enregistrer</strong> pour l'ajouter à cette liste comparative.</p>
                 </div>
               ) : (
                 <div className="renta-sidebar-list">
@@ -4229,34 +4326,49 @@ const bindPopupActionButtons = (popup: any): void => {
                         >
                           <div className="renta-terrain-card-top">
                             <span className="renta-terrain-card-rank">#{i + 1}</span>
-                            <div className="renta-terrain-card-name">{tr.nom || tr.num_titre_foncier || `Terrain #${tr.id}`}</div>
+                            <div className="renta-terrain-card-title-wrap">
+                              <div className="renta-terrain-card-name" title={tr.nom || tr.num_titre_foncier || `Terrain #${tr.id}`}>
+                                {tr.nom || tr.num_titre_foncier || `Terrain #${tr.id}`}
+                              </div>
+                              <span className="renta-terrain-card-surf">
+                                {Number(tr.superficie).toLocaleString('fr-FR')} m²
+                              </span>
+                            </div>
+                            <div className="renta-terrain-card-actions" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                className="renta-terrain-icon-btn renta-terrain-icon-btn--edit"
+                                title="Modifier ce terrain"
+                                aria-label="Modifier"
+                                onClick={() => { handleSelectRentaTerrain(tr); setRentaViewMode(false) }}
+                              >
+                                {icons.edit}
+                              </button>
+                              <button
+                                type="button"
+                                className="renta-terrain-icon-btn renta-terrain-icon-btn--del"
+                                title="Supprimer ce terrain"
+                                aria-label="Supprimer"
+                                onClick={() => { void handleDeleteRentaTerrain(tr.id) }}
+                              >
+                                {icons.trash}
+                              </button>
+                            </div>
                           </div>
-                          <div className="renta-terrain-card-surf">{Number(tr.superficie).toLocaleString('fr-FR')} m²</div>
+
                           <div className="renta-terrain-card-data">
-                            <div className="renta-terrain-card-datum">
-                              <span>TRI</span>
-                              <strong className={hasRenta ? (tri! >= 0 ? 'text-success' : 'text-error') : 'text-muted'}>{hasRenta ? `${tri!.toFixed(2)}%` : '—'}</strong>
+                            <div className={`renta-terrain-card-kpi${hasRenta ? (tri! >= 0 ? ' renta-terrain-card-kpi--pos' : ' renta-terrain-card-kpi--neg') : ''}`}>
+                              <span className="renta-terrain-card-kpi-label">TRI</span>
+                              <strong className="renta-terrain-card-kpi-val">
+                                {hasRenta ? `${tri!.toFixed(2)}%` : '—'}
+                              </strong>
                             </div>
-                            <div className="renta-terrain-card-datum">
-                              <span>Bénéfice net</span>
-                              <strong className={benefice != null ? (benefice >= 0 ? 'text-success' : 'text-error') : 'text-muted'}>{benefice != null ? `${benefice.toLocaleString('fr-FR')} DH` : '—'}</strong>
+                            <div className={`renta-terrain-card-kpi${benefice != null ? (benefice >= 0 ? ' renta-terrain-card-kpi--pos' : ' renta-terrain-card-kpi--neg') : ''}`}>
+                              <span className="renta-terrain-card-kpi-label">Bénéfice net</span>
+                              <strong className="renta-terrain-card-kpi-val">
+                                {benefice != null ? `${benefice.toLocaleString('fr-FR')} DH` : '—'}
+                              </strong>
                             </div>
-                          </div>
-                          <div className="renta-terrain-card-actions" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              type="button"
-                              className="renta-terrain-card-btn renta-terrain-card-btn--edit"
-                              onClick={() => { handleSelectRentaTerrain(tr); setRentaViewMode(false) }}
-                            >
-                              Modifier
-                            </button>
-                            <button
-                              type="button"
-                              className="renta-terrain-card-btn renta-terrain-card-btn--del"
-                              onClick={() => { void handleDeleteRentaTerrain(tr.id) }}
-                            >
-                              Supprimer
-                            </button>
                           </div>
                         </div>
                       )

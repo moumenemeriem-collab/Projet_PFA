@@ -55,6 +55,19 @@ export interface Rentabilite {
     frais_acquisition: number
     cout_total: number
   }
+  parametres?: {
+    prix_foncier_m2?: number
+    frais_acquisition_pct?: number
+    taux_chute_pct?: number
+    cos?: number
+    cus?: number
+    taux_etudes_pct?: number
+    taux_imprevus_pct?: number
+    taux_commercialisation_pct?: number
+    taux_actualisation_pct?: number
+    duree_construction?: number
+    duree_commercialisation?: number
+  }
   cout_total_projet?: number
   benefice_net?: number
   roi?: number
