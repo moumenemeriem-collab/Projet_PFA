@@ -3290,23 +3290,6 @@ const bindPopupActionButtons = (popup: any): void => {
     }
   }
 
-  // « Retour au classement » depuis la vue focus terrain : réaffiche la liste
-  // complète des résultats dans le sidebar, sans relancer l'analyse.
-  const handleWizardBackToList = (): void => {
-    if (!wizardResultats) {
-      const cached = getCachedPonderation(projetId)
-      if (cached) {
-        setWizardResultats(cached)
-        setWizardStep('resultats')
-      }
-    } else {
-      setWizardStep('resultats')
-    }
-    setSidebarCollapsed(false)
-    closeTerrainCard()
-    refreshMapSize()
-  }
-
   if (projetError) {
     return (
       <DashboardLayout role="investisseur" activePage="ranking" hideSidebar projectContext={{ id: projetId, name: '...' }}>
