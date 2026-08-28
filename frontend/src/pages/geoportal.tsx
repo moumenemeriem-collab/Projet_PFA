@@ -1391,13 +1391,30 @@ export function GeoportalPage(): React.JSX.Element {
     setRentaNote(null)
     setRentaError(null)
     try {
-      let terrainId = rentaTerrainId
+      const round6 = (v: number): number | null => {
+        if (!Number.isFinite(v)) return null
+        return Math.round(v * 1e6) / 1e6
+      }
+      // On ne met à jour un terrain existant que si l'ID correspond réellement à un terrain
+      // enregistré du projet. Depuis les résultats d'analyse (cadastre), rentaTerrainId est un
+      // ID de parcelle cadastrale (pas un Terrain), donc on crée systématiquement un nouveau terrain.
+      const existingTerrain = rentaTerrainId != null && rentaTerrains.some((rt) => rt.id === rentaTerrainId)
+      let terrainId: number | null = existingTerrain ? rentaTerrainId : null
       if (!terrainId) {
-        const round6 = (v: number): number | null => {
-          if (!Number.isFinite(v)) return null
-          return Math.round(v * 1e6) / 1e6
-        }
         const titre = rentaParcelInfo.ref || rentaParcelInfo.nom || `Terrain ${Date.now()}`
+        let ring: number[][] = rentaRing && rentaRing.length >= 3 ? rentaRing : []
+        if (ring.length < 3 && rentaParcelInfo.ref) {
+          const cadastreId = couchesDispo.find((c) => c.nom === 'cadastre')?.id
+          const cadFeat = cadastreId != null
+            ? coucheDataRef.current[cadastreId]?.features.find((f) => String(f.properties?.num) === String(rentaParcelInfo.ref))
+            : undefined
+          if (cadFeat?.geometry) {
+            ring = extractRing(cadFeat.geometry) ?? []
+          }
+        }
+        const geometry = ring.length >= 3
+          ? JSON.stringify({ type: 'Polygon', coordinates: [closeRing(ring)] })
+          : ''
         const terrain = await createTerrain(projetId, {
           num_titre_foncier: titre.slice(0, 255),
           statut_juridique: 'titre',
@@ -1410,7 +1427,7 @@ export function GeoportalPage(): React.JSX.Element {
           superficie: Number.isFinite(rentaParcelInfo.superficie) ? Math.round(rentaParcelInfo.superficie) : 0,
           lat: round6(rentaParcelInfo.lat),
           lng: round6(rentaParcelInfo.lng),
-          geometry: '',
+          geometry,
         })
         terrainId = terrain.id
       }

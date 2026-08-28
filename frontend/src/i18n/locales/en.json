@@ -787,7 +787,8 @@
     "geo_geojson_ok": "Polygon imported — area:",
     "geo_area": "Area (polygon)",
     "price_per_m2": "Price per m²",
-    "surface_constructible": "Potential buildable area"
+    "surface_constructible": "Potential buildable area",
+    "launch_ponderation": "Weighted multi-criteria analysis"
   },
   "about": {
     "hero": {
@@ -934,8 +935,7 @@
     "no_results": "No analysis results available.",
     "onboarding_title": "Welcome to GEO INVEST",
     "onboarding_desc": "Start by creating your first project to analyze land potential.",
-    "create_project": "Create a project",
-    "launch_ponderation": "Weighted multi-criteria analysis"
+    "create_project": "Create a project"
   },
   "ponderation": {
     "title": "Weighted multi-criteria analysis",

@@ -1261,10 +1261,8 @@ def extraire_donnees_ponderation(projet_pk: int, selections: dict) -> dict:
     routes = _load_routes()
     equipments = _load_equipment()
 
-    if not parcels_db and not TerrainModel.objects.filter(projet_id=projet_pk).exists():
+    if not parcels_db:
         return {"terrains": [], "min_max_distances": {}}
-
-    terrains_qs = list(TerrainModel.objects.filter(projet_id=projet_pk))
 
     # Préparer les segments routes
     seg_count = len(routes['s_lat'])
@@ -1312,45 +1310,23 @@ def extraire_donnees_ponderation(projet_pk: int, selections: dict) -> dict:
         'enseignement': [], 'sante': [], 'administration': [], 'routes': [],
     }
 
-    # Si le projet a des terrains enregistrés, on les utilise, sinon on utilise les parcelles cadastrales candidates
+    # On utilise toujours l'ensemble des parcelles cadastrales comme candidats (indépendamment
+    # des terrains éventuellement enregistrés du projet), pour classer tout le cadastre.
     candidats = []
-    if terrains_qs:
-        for t in terrains_qs:
-            geom = None
-            if t.geometry is not None:
-                try:
-                    geom = json.loads(t.geometry.geojson)
-                except Exception:
-                    geom = None
-            candidats.append({
-                'id': t.id,
-                'nom': t.nom,
-                'lat': float(t.lat),
-                'lng': float(t.lng),
-                'superficie': float(t.superficie),
-                'reference_cadastrale': t.num_titre_foncier or t.num_parcelle or '',
-                'indice': t.indice or '',
-                'consistance': t.consistance or '',
-                'fid': t.fid,
-                'num_parcelle': t.num_parcelle or '',
-                'geometry': geom,
-                '_terrain': t,
-            })
-    else:
-        for p in parcels_db:
-            candidats.append({
-                'id': p['id'],
-                'nom': p.get('num') or f"Parcelle {p['id']}",
-                'lat': float(p['lat']),
-                'lng': float(p['lng']),
-                'superficie': float(p.get('surface') or 0),
-                'reference_cadastrale': p.get('num') or '',
-                'indice': p.get('indice') or '',
-                'consistance': p.get('Consistance') or '',
-                'fid': p.get('fid'),
-                'num_parcelle': p.get('num') or '',
-                'geometry': p.get('geometry'),
-            })
+    for p in parcels_db:
+        candidats.append({
+            'id': p['id'],
+            'nom': p.get('num') or f"Parcelle {p['id']}",
+            'lat': float(p['lat']),
+            'lng': float(p['lng']),
+            'superficie': float(p.get('surface') or 0),
+            'reference_cadastrale': p.get('num') or '',
+            'indice': p.get('indice') or '',
+            'consistance': p.get('Consistance') or '',
+            'fid': p.get('fid'),
+            'num_parcelle': p.get('num') or '',
+            'geometry': p.get('geometry'),
+        })
 
     for cand in candidats:
         tid = cand['id']
@@ -1408,6 +1384,12 @@ def extraire_donnees_ponderation(projet_pk: int, selections: dict) -> dict:
             zone = t_obj.zone_localisation_calculee or None
         if zone is None:
             zone = determiner_localisation(cand.get('geometry'), limite_commune)
+        if zone is None and cand.get('lat') is not None and cand.get('lng') is not None:
+            # Repli : terrain sans polygone mais avec un centroïde (lat/lng)
+            if point_in_polygon(float(cand['lat']), float(cand['lng']), limite_commune):
+                zone = 'centre_ville'
+            else:
+                zone = 'periurbaine'
 
         # --- Altitude (MNT) ---
         altitude = None

@@ -787,7 +787,8 @@
     "geo_geojson_ok": "Polygone importé — superficie :",
     "geo_area": "Superficie (polygone)",
     "price_per_m2": "Prix au m²",
-    "surface_constructible": "Surface constructible potentielle"
+    "surface_constructible": "Surface constructible potentielle",
+    "launch_ponderation": "Analyse multicritère pondérée"
   },
   "about": {
     "hero": {
@@ -934,8 +935,7 @@
     "no_results": "Aucun résultat d'analyse disponible.",
     "onboarding_title": "Bienvenue sur GEO INVEST",
     "onboarding_desc": "Commencez par créer votre premier projet pour analyser le potentiel foncier.",
-    "create_project": "Créer un projet",
-    "launch_ponderation": "Analyse multicritère pondérée"
+    "create_project": "Créer un projet"
   },
   "ponderation": {
     "title": "Analyse multicritère pondérée",

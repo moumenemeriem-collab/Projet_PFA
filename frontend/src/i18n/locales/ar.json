@@ -787,7 +787,8 @@
     "geo_geojson_ok": "تم استيراد المضلع — المساحة:",
     "geo_area": "المساحة (مضلع)",
     "price_per_m2": "الثمن لكل م²",
-    "surface_constructible": "المساحة القابلة للبناء"
+    "surface_constructible": "المساحة القابلة للبناء",
+    "launch_ponderation": "تحليل متعدد المعايير المرجح"
   },
   "about": {
     "hero": {
@@ -934,8 +935,7 @@
     "no_results": "لا توجد نتائج تحليل متاحة.",
     "onboarding_title": "مرحبًا بك في GEO INVEST",
     "onboarding_desc": "ابدأ بإنشاء مشروعك الأول لتحليل الإمكانات العقارية.",
-    "create_project": "إنشاء مشروع",
-    "launch_ponderation": "تحليل متعدد المعايير المرجح"
+    "create_project": "إنشاء مشروع"
   },
   "ponderation": {
     "title": "تحليل متعدد المعايير المرجح",
