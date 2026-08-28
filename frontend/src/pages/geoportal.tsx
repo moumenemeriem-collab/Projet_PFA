@@ -7,7 +7,7 @@ import { TerrainGeometryEditor, emptyGeom, type TerrainGeom } from '../component
 import { formatApiErrors } from '../api/auth'
 import { fetchProjet, previewRentabilite, type Projet, type ProjetPayload, type Rentabilite } from '../api/projets'
 import { createTerrain, computeSurfaceConstructible, computeSurfaceEquipement, deleteTerrain, fetchSurfaceConstructible, fetchSurfaceEquipement, fetchTerrains, saveTerrainRentabilite, type AffectationSurface, type AnalyseFiltres, type AnalyseResultat, type SurfaceConstructibleResponse, type SurfaceEquipementResponse, type Terrain } from '../api/terrains'
-import { fetchAnalyseDetail, type AnalyseDetail, type ResultatAnalyse } from '../api/analyses'
+import { fetchAnalyseDetail, fetchAnalyses, type Analyse, type AnalyseDetail, type ResultatAnalyse } from '../api/analyses'
 import { createAnalysePondere, type PonderationResponse, type TerrainPondere } from '../api/analyses'
 import { clearCachedPonderation, getCachedPonderation, setCachedPonderation } from '../utils/ponderationCache'
 import { fetchCouches, fetchCoucheGeoJSON, type Couche, type CoucheFeature, type CoucheFeatureCollection } from '../api/couches'
@@ -858,6 +858,9 @@ export function GeoportalPage(): React.JSX.Element {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [cardHidden, setCardHidden] = useState(true)
   const [cardMode, setCardMode] = useState<CardMode>('search')
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyAnalyses, setHistoryAnalyses] = useState<Analyse[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
   const [selectedTerrain, setSelectedTerrain] = useState<AnalyseResultat | null>(null)
   const [selectedPonderationTerrain, setSelectedPonderationTerrain] = useState<TerrainPondere | null>(null)
   const [cardError, setCardError] = useState<string | null>(null)
@@ -2200,6 +2203,57 @@ const bindPopupActionButtons = (popup: any): void => {
 
   useEffect(() => {
     if (!projetId) return
+    fetchAnalyses(projetId)
+      .then((list) => setHistoryAnalyses(list))
+      .catch(() => {})
+  }, [projetId])
+
+  const openHistoryAnalyse = async (analyseId: number): Promise<void> => {
+    if (!projetId) return
+    setHistoryLoading(true)
+    try {
+      const detail = await fetchAnalyseDetail(projetId, analyseId)
+      if (detail && detail.resultats && detail.resultats.length > 0) {
+        const mappedResultats: TerrainPondere[] = detail.resultats.map((r, idx) => ({
+          id: r.id,
+          nom: r.nom || `Terrain #${r.rang ?? idx + 1}`,
+          superficie: r.superficie ?? 0,
+          lat: r.lat ?? 0,
+          lng: r.lng ?? 0,
+          reference_cadastrale: r.reference_cadastrale || r.id_parcelle,
+          indice: r.indice,
+          score_final: r.score_final ?? ((100 - ((r.rang ?? idx + 1) - 1) * (100 / Math.max(1, detail.resultats.length))) / 100),
+          rang: r.rang ?? idx + 1,
+          contributions: [],
+          distances: {},
+          zone_localisation: '',
+          altitude: null,
+          geometry: (r as any).geom ?? (r as any).geometry ?? null,
+          num_parcelle: r.id_parcelle,
+        }))
+        const ponderationResp: PonderationResponse = {
+          total: detail.resultats.length,
+          resultats: mappedResultats,
+          poids_globaux: {},
+          poids_ahp: {},
+          CR: 0,
+          coherent: true,
+        }
+        setWizardResultats(ponderationResp)
+        setCachedPonderation(projetId, ponderationResp)
+        setWizardStep('resultats')
+        setSidebarCollapsed(false)
+      }
+      setHistoryOpen(false)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!projetId) return
     let cancelled = false
     fetchProjet(projetId)
       .then((p) => {
@@ -3508,9 +3562,22 @@ const bindPopupActionButtons = (popup: any): void => {
               )}
             </div>
 
-            <div className="geo-sidebar-footer">
+            <div className="geo-sidebar-footer" style={{ display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'space-between' }}>
               <button type="button" className="btn geo-btn-reset" onClick={handleWizardRestart}>
                 {icons.close} Réinitialiser
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-action"
+                style={{ fontSize: '0.78rem', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                onClick={() => {
+                  if (projetId) {
+                    fetchAnalyses(projetId).then(setHistoryAnalyses).catch(() => {})
+                  }
+                  setHistoryOpen(true)
+                }}
+              >
+                {icons.database} {t('ranking.analysis_history')}
               </button>
             </div>
           </aside>
@@ -5231,6 +5298,40 @@ const bindPopupActionButtons = (popup: any): void => {
         </div>
       </div>,
       document.body
+    ) : null}
+
+    {historyOpen ? (
+      <div className="admin-modal-overlay" onClick={() => setHistoryOpen(false)}>
+        <div className="admin-modal classement-modal--history" onClick={(e) => e.stopPropagation()}>
+          <div className="admin-modal-header">
+            <h3>{t('ranking.history_title')}</h3>
+            <button type="button" className="admin-modal-close" aria-label={t('common.close')} onClick={() => setHistoryOpen(false)}>{icons.close}</button>
+          </div>
+          <div className="classement-modal-body">
+            {historyAnalyses.length === 0 ? (
+              <div className="classement-empty">
+                <p className="classement-empty-desc">{t('ranking.no_classement_desc')}</p>
+              </div>
+            ) : (
+              <div className="classement-history-list">
+                {historyAnalyses.map((a) => (
+                  <div key={a.id} className="classement-history-item">
+                    <div className="classement-history-info">
+                      <span className="classement-history-date">{new Date(a.date_creation).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                      <span className="classement-history-meta">
+                        {a.nombre_parcelles} {t('ranking.analyses_count')} · {a.statut}
+                      </span>
+                    </div>
+                    <button type="button" className="table-action-btn" disabled={historyLoading} onClick={() => { void openHistoryAnalyse(a.id) }} title={t('ranking.history_open')}>
+                      {icons.eye}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     ) : null}
     </>
   )

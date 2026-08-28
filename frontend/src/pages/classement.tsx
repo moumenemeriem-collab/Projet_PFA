@@ -774,6 +774,14 @@ export function ClassementPage(): React.JSX.Element {
                 />
               </div>
               <span className="classement-count">{parcellesTotal} {t('ranking.total_terrains')}</span>
+              <button
+                type="button"
+                className="btn btn-secondary btn-action"
+                disabled={analyses.length === 0}
+                onClick={() => setHistoryOpen(true)}
+              >
+                {icons.database} {t('ranking.analysis_history')}
+              </button>
             </div>
 
             {analyse && (
