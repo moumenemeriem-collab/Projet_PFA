@@ -112,23 +112,50 @@ function RentaUnitCalcSection({
   isViewMode,
 }: RentaUnitCalcSectionProps): React.JSX.Element {
   const hasLoadedAffectations = affectations !== undefined
+
+  // Surface totale des emprises non constructibles (voies, équipements publics/privés, espaces verts, servitudes)
+  const nonConstrList = (affectations || []).filter(
+    (a) => a.type !== 'constructible' || !isAffectationValide(a.designation, a as unknown as Record<string, unknown>)
+  )
+  const totalNonConstrM2 = nonConstrList.reduce((sum, a) => sum + (Number(a.surface_m2) || 0), 0)
+
+  // Affectations constructibles valides
   const rawList = (affectations || [])
     .filter((a) => a.type === 'constructible' && a.surface_m2 > 0 && isAffectationValide(a.designation, a as unknown as Record<string, unknown>))
 
-  const items = rawList.length > 0
-    ? rawList
-    : (!hasLoadedAffectations && parcelInfo ? [{
-        designation: parcelInfo.ref || parcelInfo.nom || 'Terrain',
-        surface_m2: parcelInfo.superficie || 0,
-        type_construction: 'Logement collectif / Mixte',
-        type: 'constructible' as const,
-        cos: parseFloat(rentaForm.cos) || 1,
-        cus: parseFloat(rentaForm.cus) || null,
-        hauteur_max: '11,50 m',
-        largeur_min: null,
-      }] : [])
+  const totalRawConstrM2 = rawList.reduce((sum, a) => sum + (Number(a.surface_m2) || 0), 0)
 
-  if (items.length === 0) {
+  // Pour chaque affectation constructible, déduire la surface des voies, équipements et espaces verts qui s'y intersectent
+  const items = rawList.map((a) => {
+    const rawArea = Number(a.surface_m2) || 0
+    let netArea = rawArea
+    if (totalNonConstrM2 > 0 && totalRawConstrM2 > 0) {
+      const deductionPart = (rawArea / totalRawConstrM2) * totalNonConstrM2
+      netArea = Math.max(0, Math.round((rawArea - deductionPart) * 100) / 100)
+    }
+    return {
+      ...a,
+      net_surface_m2: netArea,
+      raw_surface_m2: rawArea,
+    }
+  })
+
+  const fallbackList = (!hasLoadedAffectations && parcelInfo ? [{
+    designation: parcelInfo.ref || parcelInfo.nom || 'Terrain',
+    surface_m2: Math.max(0, (parcelInfo.superficie || 0) - totalNonConstrM2),
+    net_surface_m2: Math.max(0, (parcelInfo.superficie || 0) - totalNonConstrM2),
+    raw_surface_m2: parcelInfo.superficie || 0,
+    type_construction: 'Logement collectif / Mixte',
+    type: 'constructible' as const,
+    cos: parseFloat(rentaForm.cos) || 1,
+    cus: parseFloat(rentaForm.cus) || null,
+    hauteur_max: '11,50 m',
+    largeur_min: null,
+  }] : [])
+
+  const displayItems = items.length > 0 ? items : fallbackList
+
+  if (displayItems.length === 0) {
     return (
       <div className={isViewMode ? 'renta-view-sec' : 'geo-card-form-section'} style={{ marginTop: isViewMode ? undefined : 12 }}>
         <span className="geo-layers-popup-label" style={{ margin: 0 }}>
@@ -144,11 +171,12 @@ function RentaUnitCalcSection({
   const formCos = parseFloat(rentaForm.cos) || 1
   const formTauxChute = parseFloat(rentaForm.tauxChute) || 0
 
-  const calculatedRows = items.map((a, idx) => {
+  const calculatedRows = displayItems.map((a, idx) => {
     const key = a.designation || `aff_${idx}`
     const hauteurInfo = getHauteurEtEtages(a.designation || '', a as unknown as Record<string, unknown>)
 
-    const defaultSurface = a.surface_m2 || 0
+    // Surface nette après déduction des voies et équipements
+    const defaultSurface = a.net_surface_m2 ?? a.surface_m2 ?? 0
     const defaultHauteur = hauteurInfo.hauteurMax !== '—' ? hauteurInfo.hauteurMax : (a.hauteur_max ? (String(a.hauteur_max).endsWith('m') ? String(a.hauteur_max) : `${a.hauteur_max} m`) : '11,50 m')
     const defaultEtagesNum = parseEtagesToNum(hauteurInfo.nombreEtages !== '—' ? hauteurInfo.nombreEtages : 'R+2')
     const defaultSurfaceUnite = 80
@@ -167,8 +195,8 @@ function RentaUnitCalcSection({
 
     const cosToUse = a.cos != null && !isNaN(Number(a.cos)) ? Number(a.cos) : formCos
 
-    // Formules :
-    // 1. surface vendable (de l'affectation) = COS * Surface de l'affectation * (1 - chutte/100) * 0.9
+    // Formules demandées :
+    // 1. surface vendable (de l'affectation) = COS * Surface de l'affectation * (1 - chute/100) * 0.9
     const surfaceVendableSol = cosToUse * userSurface * (1 - formTauxChute / 100) * 0.9
 
     // 2. Surface plancher vendable = surface vendable * (nbr_etage + 1)
@@ -183,6 +211,7 @@ function RentaUnitCalcSection({
       designation: a.designation || 'Affectation',
       type_construction: a.type_construction || '—',
       surface: userSurface,
+      rawSurface: a.raw_surface_m2 ?? a.surface_m2,
       hauteur: userHauteur,
       nombreEtages: userEtages,
       surfaceUnite: userSurfaceUnite,
@@ -208,7 +237,9 @@ function RentaUnitCalcSection({
           Calcul du nombre d'unités par affectation
         </span>
         <span style={{ fontSize: '0.73rem', color: '#64748b', fontStyle: 'italic' }}>
-          S. plancher = S. vendable &times; (Nbr &eacute;tages + 1) &bull; Nbr unit&eacute;s = S. plancher / S. unit&eacute;
+          {totalNonConstrM2 > 0
+            ? `Surfaces nettes (hors voies & équipements : -${totalNonConstrM2.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m²) • S. plancher = S. vendable × (Nbr étages + 1)`
+            : `S. plancher = S. vendable × (Nbr étages + 1) • Nbr unités = S. plancher / S. unité`}
         </span>
       </div>
 
