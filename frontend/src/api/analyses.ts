@@ -5,6 +5,7 @@ export interface ResultatAnalyse {
   id: number
   id_parcelle: string
   reference_cadastrale: string
+  indice?: string
   nom: string
   superficie: number | null
   lat: number | null

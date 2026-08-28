@@ -13,7 +13,7 @@ import {
   type ResultatAnalyse,
 } from '../api/analyses'
 import { fetchCouches, fetchCoucheGeoJSON } from '../api/couches'
-import { attributeLabel, CADASTRE_ATTRIBUTE_LABELS } from '../utils/attributeLabels'
+import { attributeLabel, CADASTRE_ATTRIBUTE_LABELS, formatParcelleRef, formatParcelleTitle } from '../utils/attributeLabels'
 import { t } from '../i18n/index'
 
 const PAGE_SIZE = 10
@@ -55,9 +55,10 @@ function confBadge(r: ResultatAnalyse): React.JSX.Element {
 
 function renderTerrainRow(t_: Terrain, onDelete: (id: number) => void): React.JSX.Element {
   const hasCoords = t_.lat != null && t_.lng != null
+  const displayTitle = formatParcelleTitle({ nom: t_.nom, num: t_.num_parcelle || t_.num_titre_foncier, indice: t_.indice })
   return (
     <tr data-terrain-id={t_.id}>
-      <td><strong>{t_.nom}</strong></td>
+      <td><strong>{displayTitle}</strong></td>
       <td>{Number(t_.superficie).toLocaleString()} m²</td>
       <td>{t_.indice || '—'}</td>
       <td>{t_.consistance || '—'}</td>
@@ -79,18 +80,20 @@ function renderTerrainRow(t_: Terrain, onDelete: (id: number) => void): React.JS
 }
 
 function DetailModal({ resultat, cadastre, onClose }: { resultat: ResultatAnalyse; cadastre?: Record<string, unknown> | null; onClose: () => void }): React.JSX.Element {
+  const displayTitle = formatParcelleTitle({ nom: resultat.nom, id_parcelle: resultat.id_parcelle, reference_cadastrale: resultat.reference_cadastrale, indice: resultat.indice })
+  const displayRef = formatParcelleRef(resultat.reference_cadastrale || resultat.id_parcelle, resultat.indice)
   return (
     <div className="admin-modal-overlay" onClick={onClose}>
       <div className="admin-modal admin-modal--wide" onClick={(e) => e.stopPropagation()}>
         <div className="admin-modal-header">
-          <h3>{t('ranking.details_title')} — {resultat.nom}</h3>
+          <h3>{t('ranking.details_title')} — {displayTitle}</h3>
           <button type="button" className="admin-modal-close" aria-label={t('common.close')} onClick={onClose}>{icons.close}</button>
         </div>
         <div className="classement-modal-body">
           <div className="classement-detail-grid">
             <div className="classement-detail-item">
               <span className="classement-detail-label">{t('ranking.col_parcelle')}</span>
-              <span className="classement-detail-value">{resultat.reference_cadastrale || resultat.id_parcelle}</span>
+              <span className="classement-detail-value">{displayRef || '—'}</span>
             </div>
             <div className="classement-detail-item">
               <span className="classement-detail-label">{t('ranking.col_rang')}</span>
@@ -588,8 +591,8 @@ export function ClassementPage(): React.JSX.Element {
                           <td><span className="classement-rank">#{rank}</span></td>
                           <td>
                             <div className="classement-parcelle">
-                              <strong>{t_.nom}</strong>
-                              <span className="classement-ref">{t_.num_titre_foncier || t_.num_parcelle || '—'}</span>
+                              <strong>{formatParcelleTitle({ nom: t_.nom, num: t_.num_titre_foncier || t_.num_parcelle, indice: t_.indice })}</strong>
+                              <span className="classement-ref">{formatParcelleRef(t_.num_titre_foncier || t_.num_parcelle || t_.nom, t_.indice) || '—'}</span>
                             </div>
                           </td>
                           <td>{Number(t_.superficie).toLocaleString('fr-FR')} m²</td>

@@ -113,6 +113,7 @@ export interface AnalyseResultat {
   prix_terrain: number | null
   infos_generales: {
     reference_cadastrale: string
+    indice?: string
     commune: string
     province: string
     region: string
@@ -133,6 +134,7 @@ export interface AnalyseResultat {
   geom?: Record<string, unknown> | null
   fid?: number | null
   num_parcelle?: string
+  indice?: string
 }
 
 export interface CritereConformite {

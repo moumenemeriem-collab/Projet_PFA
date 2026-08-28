@@ -10,7 +10,7 @@ import { createTerrain, computeSurfaceConstructible, computeSurfaceEquipement, d
 import { fetchAnalyseDetail, type AnalyseDetail, type ResultatAnalyse } from '../api/analyses'
 import { createAnalysePondere, type PonderationResponse, type TerrainPondere } from '../api/analyses'
 import { fetchCouches, fetchCoucheGeoJSON, type Couche, type CoucheFeature, type CoucheFeatureCollection } from '../api/couches'
-import { attributeLabel, CADASTRE_ATTRIBUTE_LABELS, PLAN_AMENAGEMENT_ATTRIBUTE_LABELS } from '../utils/attributeLabels'
+import { attributeLabel, CADASTRE_ATTRIBUTE_LABELS, PLAN_AMENAGEMENT_ATTRIBUTE_LABELS, formatParcelleRef, formatParcelleTitle } from '../utils/attributeLabels'
 import { getReglesPrincipales } from '../utils/reglementationPA'
 import { CritereSelectionStep } from '../components/ponderation/CritereSelectionStep'
 import { AhpStep } from '../components/ponderation/AhpStep'
@@ -410,7 +410,7 @@ function ordinalSuffix(n: number): string {
 function toAnalyseResultat(r: ResultatAnalyse): AnalyseResultat {
   return {
     id: r.id_parcelle != null ? Number(r.id_parcelle) : 0,
-    nom: r.nom || `Parcelle ${r.id_parcelle}`,
+    nom: formatParcelleTitle({ nom: r.nom, id_parcelle: r.id_parcelle, indice: r.indice }),
     superficie: r.superficie ?? 0,
     lat: r.lat ?? 0,
     lng: r.lng ?? 0,
@@ -428,7 +428,8 @@ function toAnalyseResultat(r: ResultatAnalyse): AnalyseResultat {
     type_rentabilite: (r.type_rentabilite || 'indisponible') as AnalyseResultat['type_rentabilite'],
     prix_terrain: r.prix_terrain,
     infos_generales: {
-      reference_cadastrale: r.reference_cadastrale || r.id_parcelle || '—',
+      reference_cadastrale: formatParcelleRef(r.reference_cadastrale || r.id_parcelle, r.indice) || '—',
+      indice: r.indice,
       commune: '—',
       province: '—',
       region: '—',
@@ -446,6 +447,7 @@ function toAnalyseResultat(r: ResultatAnalyse): AnalyseResultat {
     points_forts: r.points_forts ?? [],
     points_faibles: r.points_faibles ?? [],
     geom: (r as any).geom ?? (r as any).geometry ?? null,
+    indice: r.indice,
   }
 }
 
@@ -475,7 +477,7 @@ export function GeoportalPage(): React.JSX.Element {
   const projetId = Number(id)
   const [projet, setProjet] = useState<Projet | null>(null)
   const [projetError, setProjetError] = useState<string | null>(null)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [cardHidden, setCardHidden] = useState(true)
   const [cardMode, setCardMode] = useState<CardMode>('search')
   const [selectedTerrain, setSelectedTerrain] = useState<AnalyseResultat | null>(null)
@@ -493,7 +495,7 @@ export function GeoportalPage(): React.JSX.Element {
   const [equipTypes, setEquipTypes] = useState<CoucheType[]>([])
   const [typeToggles, setTypeToggles] = useState<Record<string, boolean>>({})
   const [coucheSectionsOpen, setCoucheSectionsOpen] = useState<Record<string, boolean>>({ routes: true, equipements: true })
-  const [cadastreEnabled, setCadastreEnabled] = useState(false)
+  const [cadastreEnabled, setCadastreEnabled] = useState(true)
   const [cadastreReady, setCadastreReady] = useState(false)
   const [cadastreFc, setCadastreFc] = useState<CoucheFeatureCollection | null>(null)
   const [paEnabled, setPaEnabled] = useState(false)
@@ -674,7 +676,7 @@ export function GeoportalPage(): React.JSX.Element {
 
   const mapPondereToAnalyseResultat = (tp: TerrainPondere): AnalyseResultat => ({
     id: tp.id,
-    nom: tp.nom,
+    nom: formatParcelleTitle({ nom: tp.nom, num: tp.num_parcelle || tp.reference_cadastrale, indice: tp.indice }),
     superficie: tp.superficie,
     lat: tp.lat,
     lng: tp.lng,
@@ -692,7 +694,8 @@ export function GeoportalPage(): React.JSX.Element {
     type_rentabilite: 'indisponible',
     prix_terrain: null,
     infos_generales: {
-      reference_cadastrale: tp.reference_cadastrale || tp.nom,
+      reference_cadastrale: formatParcelleRef(tp.reference_cadastrale || tp.nom, tp.indice),
+      indice: tp.indice,
       commune: '—',
       province: '—',
       region: '—',
@@ -712,6 +715,7 @@ export function GeoportalPage(): React.JSX.Element {
     geom: (tp.geometry ?? null) as Record<string, unknown> | null,
     fid: tp.fid ?? null,
     num_parcelle: tp.num_parcelle ?? '',
+    indice: tp.indice,
   })
 
   const handleWizardViewOnMap = useCallback((terrain: TerrainPondere): void => {
@@ -727,19 +731,45 @@ export function GeoportalPage(): React.JSX.Element {
     analyseResultatsRef.current = wizardResultats.resultats.map(mapPondereToAnalyseResultat)
   }, [wizardResultats])
 
-  const handleWizardOpenRentabilite = useCallback((terrain: TerrainPondere): void => {
-    setRentaTerrainId(terrain.id)
-    setRentaTerrainNom(terrain.nom)
+  const resolveTerrainRing = (geom: Record<string, unknown> | null | undefined, ref?: string): number[][] => {
+    if (geom) {
+      const r = extractRing(geom)
+      if (r && r.length >= 3) return r
+    }
+    if (ref) {
+      const cadastreId = couchesDispo.find((c) => c.nom === 'cadastre')?.id
+      const cadFeat = cadastreId != null
+        ? coucheDataRef.current[cadastreId]?.features.find((f) => String(f.properties?.num) === String(ref))
+        : undefined
+      if (cadFeat?.geometry) {
+        const r = extractRing(cadFeat.geometry)
+        if (r && r.length >= 3) return r
+      }
+    }
+    return []
+  }
+
+  const openRentaModal = (opts: { terrainId?: number | null; nom?: string; superficie?: number | null; lat?: number | null; lng?: number | null; ref?: string; ring?: number[][] }): void => {
+    const parsedRing = opts.ring && opts.ring.length >= 3 ? opts.ring : []
+    const calculatedSurf = parsedRing.length >= 3 ? Math.round(ringAreaM2(parsedRing)) : 0
+    const surf = opts.superficie && opts.superficie > 0 ? opts.superficie : (calculatedSurf > 0 ? calculatedSurf : Number(projet?.surface_souhaitee ?? 0))
+    setRentaTerrainId(opts.terrainId != null ? Number(opts.terrainId) : null)
+    setRentaTerrainNom(opts.nom ?? '')
+    setRentaRing(parsedRing)
     setRentaParcelInfo({
-      nom: terrain.nom,
-      superficie: terrain.superficie,
-      lat: terrain.lat,
-      lng: terrain.lng,
-      ref: terrain.reference_cadastrale || terrain.nom,
+      nom: opts.nom ?? '',
+      superficie: surf,
+      lat: opts.lat && Number.isFinite(opts.lat) ? opts.lat : 0,
+      lng: opts.lng && Number.isFinite(opts.lng) ? opts.lng : 0,
+      ref: opts.ref ?? '',
     })
     setRentaResult(null)
     setRentaError(null)
     setRentaNote(null)
+    setRentaSurfaceConstructible(null)
+    setRentaSurfaceEquipement(null)
+    setRentaAffectationsOpen(false)
+    setRentaSurfaceLoading(true)
     setRentaInputsSaved(null)
     setRentaUsingCachedSurface(false)
     setRentaViewMode(false)
@@ -752,7 +782,19 @@ export function GeoportalPage(): React.JSX.Element {
       prixVenteEquipement: '', prixVenteEquipementPrive: '',
       coutConstrApp: '', coutConstrCommerce: '', coutConstrBureau: '',
     }))
-  }, [])
+  }
+
+  const handleWizardOpenRentabilite = (terrain: TerrainPondere): void => {
+    openRentaModal({
+      terrainId: terrain.id,
+      nom: terrain.nom,
+      superficie: terrain.superficie,
+      lat: terrain.lat,
+      lng: terrain.lng,
+      ref: terrain.reference_cadastrale || terrain.nom,
+      ring: resolveTerrainRing(terrain.geometry, terrain.reference_cadastrale || terrain.nom),
+    })
+  }
 
   const toPct100 = (v: number | null | undefined): number => {
     if (v == null || !Number.isFinite(v)) return 0
@@ -848,25 +890,15 @@ export function GeoportalPage(): React.JSX.Element {
   }
 
   const openRentabiliteFromResultat = (tr: AnalyseResultat): void => {
-    setRentaTerrainId(tr.id)
-    setRentaTerrainNom(tr.nom)
-    setRentaRing([])
-    setRentaParcelInfo({
+    openRentaModal({
+      terrainId: tr.id,
       nom: tr.nom,
       superficie: tr.superficie,
       lat: tr.lat,
       lng: tr.lng,
       ref: tr.infos_generales?.reference_cadastrale || tr.nom,
+      ring: resolveTerrainRing(tr.geom, tr.infos_generales?.reference_cadastrale || tr.nom),
     })
-    setRentaResult(null)
-    setRentaError(null)
-    setRentaNote(null)
-    setRentaSurfaceConstructible(null)
-    setRentaSurfaceEquipement(null)
-    setRentaAffectationsOpen(false)
-    setRentaSurfaceLoading(true)
-    setRentaSidebarOpen(false)
-    setRentaModalOpen(true)
   }
 
   const [rentaTerrainId, setRentaTerrainId] = useState<number | null>(null)
@@ -1081,46 +1113,17 @@ export function GeoportalPage(): React.JSX.Element {
     } else if (action === 'affectations-detail') {
       openAffectationsDetail()
     } else if (action === 'rentabilite') {
-      const tid = btn.getAttribute('data-terrain-id')
-      const tnom = btn.getAttribute('data-terrain-nom') ?? ''
-      const tsurf = btn.getAttribute('data-terrain-surf')
-      const tlat = btn.getAttribute('data-terrain-lat')
-      const tlng = btn.getAttribute('data-terrain-lng')
-      const tref = btn.getAttribute('data-terrain-ref') ?? ''
-      const tRing = btn.getAttribute('data-terrain-ring')
       let parsedRing: number[][] = []
-      try { parsedRing = tRing ? JSON.parse(tRing) as number[][] : [] } catch { parsedRing = [] }
-      const calculatedSurf = parsedRing.length >= 3 ? Math.round(ringAreaM2(parsedRing)) : 0
-      const parsedSurf = tsurf && Number(tsurf) > 0 ? Number(tsurf) : (calculatedSurf > 0 ? calculatedSurf : Number(projet?.surface_souhaitee ?? 0))
-      setRentaTerrainId(tid ? Number(tid) : null)
-      setRentaTerrainNom(tnom)
-      setRentaRing(parsedRing)
-      setRentaParcelInfo({
-        nom: tnom,
-        superficie: parsedSurf,
-        lat: tlat ? Number(tlat) : 0,
-        lng: tlng ? Number(tlng) : 0,
-        ref: tref,
+      try { parsedRing = JSON.parse(btn.getAttribute('data-terrain-ring') ?? '[]') as number[][] } catch { parsedRing = [] }
+      openRentaModal({
+        terrainId: btn.getAttribute('data-terrain-id') ? Number(btn.getAttribute('data-terrain-id')) : null,
+        nom: btn.getAttribute('data-terrain-nom') ?? '',
+        superficie: Number(btn.getAttribute('data-terrain-surf')) || null,
+        lat: Number(btn.getAttribute('data-terrain-lat')) || null,
+        lng: Number(btn.getAttribute('data-terrain-lng')) || null,
+        ref: btn.getAttribute('data-terrain-ref') ?? '',
+        ring: parsedRing,
       })
-      setRentaResult(null)
-      setRentaError(null)
-      setRentaSurfaceConstructible(null)
-      setRentaSurfaceEquipement(null)
-      setRentaAffectationsOpen(false)
-      setRentaSurfaceLoading(true)
-      setRentaNote(null)
-      setRentaInputsSaved(null)
-      setRentaUsingCachedSurface(false)
-      setRentaViewMode(false)
-      setRentaSidebarOpen(false)
-      setRentaModalOpen(true)
-      setRentaForm((f) => ({
-        ...f,
-        cos: '', cus: '',
-        prixVenteApp: '', prixVenteCommerce: '', prixVenteBureau: '',
-        prixVenteEquipement: '', prixVenteEquipementPrive: '',
-        coutConstrApp: '', coutConstrCommerce: '', coutConstrBureau: '',
-      }))
     }
   }
 
@@ -1443,7 +1446,7 @@ export function GeoportalPage(): React.JSX.Element {
       setRentaNote('Terrain enregistré avec succès !')
       localStorage.setItem(`terrain_created_${projetId}`, String(Date.now()))
       refreshRentaTerrains()
-      setTimeout(() => setRentaModalOpen(false), 1200)
+      setRentaSidebarOpen(true)
     } catch (err) {
       setRentaError(formatApiErrors(err))
     } finally {
@@ -1601,7 +1604,8 @@ export function GeoportalPage(): React.JSX.Element {
     }
 
     const ring = extractRing(cadFeat.geometry)
-    const title = `Parcelle ${idParcelle}`
+    const title = formatParcelleTitle(cadFeat.properties as Record<string, unknown> | undefined || { num: idParcelle })
+    const fullRef = formatParcelleRef(cadFeat.properties?.num ?? idParcelle, cadFeat.properties?.indice)
     const pieces = computeParcelAffectations(cadFeat, paPrepared)
 
     if (affectationsLayerRef.current) {
@@ -1678,7 +1682,7 @@ export function GeoportalPage(): React.JSX.Element {
         `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(title)}</div>` +
         `${info}` +
         `<div class="geoportal-popup-coords">${propsToHtml(cadFeat.properties, CADASTRE_ATTRIBUTE_LABELS, ['fid', 'num'])}</div>` +
-        `${buildPopupActions(center.lat, center.lng, ring, title, { idParcelle, computed: pieces.length > 0 }, { nom: title, superficie: surfVal, lat: center.lat, lng: center.lng, ref: idParcelle, ring })}</div>`
+        `${buildPopupActions(center.lat, center.lng, ring, title, { idParcelle, computed: pieces.length > 0 }, { nom: title, superficie: surfVal, lat: center.lat, lng: center.lng, ref: fullRef, ring })}</div>`
       )
       bindPopupActionButtons(popup)
     }
@@ -2128,14 +2132,15 @@ const bindPopupActionButtons = (popup: any): void => {
         })
         if (feature?.properties && Object.keys(feature.properties).length > 0) {
           const p = feature.properties
-          const idParcelle = p.num ? `Parcelle ${p.num}` : 'Parcelle cadastrale'
+          const idParcelle = formatParcelleTitle(p)
+          const fullRef = formatParcelleRef(p.num, p.indice)
           const ring = extractRing(feature.geometry)
           const center = ring ? ringCenter(ring) : { lat: NaN, lng: NaN }
           const num = p.num != null ? String(p.num) : ''
           const affOpts: PopupAffectationsOpts = { idParcelle: num, computed: num !== '' && affectationsResultRef.current?.terrainNum === num }
           const parcelSuperficie = Number(p.surface) || (ring && ring.length >= 3 ? Math.round(ringAreaM2(ring)) : 0)
           layerItem.bindPopup(
-            `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(idParcelle)}</div><div class="geoportal-popup-coords">${propsToHtml(feature.properties, CADASTRE_ATTRIBUTE_LABELS, ['fid', 'num'])}</div>${buildPopupActions(center.lat, center.lng, ring, idParcelle, num ? affOpts : null, ring && ring.length >= 3 ? { nom: idParcelle, superficie: parcelSuperficie, lat: center.lat, lng: center.lng, ref: num, ring } : undefined)}</div>`,
+            `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(idParcelle)}</div><div class="geoportal-popup-coords">${propsToHtml(feature.properties, CADASTRE_ATTRIBUTE_LABELS, ['fid', 'num'])}</div>${buildPopupActions(center.lat, center.lng, ring, idParcelle, num ? affOpts : null, ring && ring.length >= 3 ? { nom: idParcelle, superficie: parcelSuperficie, lat: center.lat, lng: center.lng, ref: fullRef, ring } : undefined)}</div>`,
             { autoPan: false }
           )
         }
@@ -2166,13 +2171,14 @@ const bindPopupActionButtons = (popup: any): void => {
 
   const buildParcellePopup = (tr: AnalyseResultat, p: Record<string, unknown>, ring?: number[][] | null, terrainId?: number): string => {
     const center = ring ? ringCenter(ring) : { lat: NaN, lng: NaN }
-    const title = p.num != null ? `Parcelle ${p.num}` : tr.nom
+    const title = formatParcelleTitle({ ...p, nom: tr.nom, indice: p.indice ?? tr.indice ?? tr.infos_generales?.indice })
     const num = p.num != null ? String(p.num) : ''
+    const fullRef = formatParcelleRef(p.num ?? tr.num_parcelle ?? tr.infos_generales?.reference_cadastrale, p.indice ?? tr.indice ?? tr.infos_generales?.indice)
     const affOpts: PopupAffectationsOpts | null = num !== ''
       ? { idParcelle: num, computed: affectationsResultRef.current?.terrainNum === num }
       : null
     return `<div class="geoportal-popup">
-        <div class="geoportal-popup-title">${escapeHtml(tr.nom)}</div>
+        <div class="geoportal-popup-title">${escapeHtml(title)}</div>
         <div class="geoportal-popup-classement">
           <span class="geoportal-popup-rank">${t('ranking.classement_sur')} <strong>#${tr.classement}${ordinalSuffix(tr.classement)}</strong></span>
         </div>
@@ -2180,7 +2186,7 @@ const bindPopupActionButtons = (popup: any): void => {
           ${(tr.criteres_conformite ?? []).map(c => `<div class="geoportal-popup-row"><span>${escapeHtml(c.label)}</span><strong>${c.pct >= 50 ? '✓' : '✗'}</strong></div>`).join('')}
         </div>
         <div class="geoportal-popup-coords">${propsToHtml(p, CADASTRE_ATTRIBUTE_LABELS, ['fid', 'num'])}</div>
-        ${buildPopupActions(center.lat, center.lng, ring, title, affOpts, { terrainId: terrainId ?? tr.id, nom: tr.nom, superficie: tr.superficie, lat: Number.isFinite(center.lat) ? center.lat : tr.lat, lng: Number.isFinite(center.lng) ? center.lng : tr.lng, ref: String(p.num ?? tr.num_parcelle ?? ''), ring: ring ?? undefined })}
+        ${buildPopupActions(center.lat, center.lng, ring, title, affOpts, { terrainId: terrainId ?? tr.id, nom: title, superficie: tr.superficie, lat: Number.isFinite(center.lat) ? center.lat : tr.lat, lng: Number.isFinite(center.lng) ? center.lng : tr.lng, ref: fullRef, ring: ring ?? undefined })}
       </div>`
   }
 
@@ -2359,14 +2365,15 @@ const bindPopupActionButtons = (popup: any): void => {
   }
 
   const cadastreParcelPopup = (props: Record<string, unknown>, ring?: number[][] | null): string => {
-    const idParcelle = props.num ? `Parcelle ${props.num}` : 'Parcelle cadastrale'
+    const idParcelle = formatParcelleTitle(props)
     const center = ring ? ringCenter(ring) : { lat: NaN, lng: NaN }
     const num = props.num != null ? String(props.num) : ''
+    const fullRef = formatParcelleRef(props.num, props.indice)
     const affOpts: PopupAffectationsOpts | null = num !== ''
       ? { idParcelle: num, computed: affectationsResultRef.current?.terrainNum === num }
       : null
     const parcelSuperficie = Number(props.surface) || (ring && ring.length >= 3 ? Math.round(ringAreaM2(ring)) : 0)
-    const rentaInfo = ring && ring.length >= 3 ? { nom: idParcelle, superficie: parcelSuperficie, lat: center.lat, lng: center.lng, ref: num, ring } : undefined
+    const rentaInfo = ring && ring.length >= 3 ? { nom: idParcelle, superficie: parcelSuperficie, lat: center.lat, lng: center.lng, ref: fullRef, ring } : undefined
     return `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(idParcelle)}</div><div class="geoportal-popup-coords">${propsToHtml(props, CADASTRE_ATTRIBUTE_LABELS, ['fid', 'num'])}</div>${buildPopupActions(center.lat, center.lng, ring, idParcelle, affOpts, rentaInfo)}</div>`
   }
 
@@ -3065,7 +3072,8 @@ const bindPopupActionButtons = (popup: any): void => {
                     <button
                       type="button"
                       className={`geo-top-fab${layersPopupOpen ? ' geo-top-fab--active' : ''}`}
-                      title={t('ranking.couches')}
+                      data-tooltip={t('ranking.couches')}
+                      aria-label={t('ranking.couches')}
                       aria-expanded={layersPopupOpen}
                       onClick={(e) => {
                         e.stopPropagation()
@@ -3182,7 +3190,8 @@ const bindPopupActionButtons = (popup: any): void => {
                     type="button"
                     className={`geo-top-fab${basemapMenuOpen ? ' geo-top-fab--active' : ''}`}
                     id="basemap-fab"
-                    title={`${t('ranking.basemap')} — ${currentBasemap.name}`}
+                    data-tooltip={`${t('ranking.basemap')} — ${currentBasemap.name}`}
+                    aria-label={`${t('ranking.basemap')} — ${currentBasemap.name}`}
                     aria-expanded={basemapMenuOpen}
                     onClick={(e) => {
                       e.stopPropagation()
@@ -3241,7 +3250,8 @@ const bindPopupActionButtons = (popup: any): void => {
                     <button
                       type="button"
                       className={`geo-top-fab${cardMode === 'addTerrain' ? ' geo-top-fab--active' : ''}`}
-                      title={t('ranking.add_terrain_title')}
+                      data-tooltip={t('ranking.add_terrain_title')}
+                      aria-label={t('ranking.add_terrain_title')}
                       aria-expanded={cardMode === 'addTerrain'}
                       onClick={(e) => {
                         e.stopPropagation()
@@ -3267,7 +3277,8 @@ const bindPopupActionButtons = (popup: any): void => {
                     <button
                       type="button"
                       className={`geo-top-fab${legendOpen ? ' geo-top-fab--active' : ''}`}
-                      title={t('ranking.legende')}
+                      data-tooltip={t('ranking.legende')}
+                      aria-label={t('ranking.legende')}
                       aria-expanded={legendOpen}
                       onClick={(e) => {
                         e.stopPropagation()
@@ -3366,7 +3377,8 @@ const bindPopupActionButtons = (popup: any): void => {
                   type="button"
                   className={`geo-fab geo-fab-sidebar${sidebarCollapsed ? '' : ' geo-fab--active'}`}
                   id="sidebar-toggle"
-                  title={t('ranking.filter_title')}
+                  data-tooltip={t('ranking.filter_title')}
+                  aria-label={t('ranking.filter_title')}
                   onClick={() => toggleSidebar()}
                 >
                   {icons.menu}
@@ -3608,7 +3620,7 @@ const bindPopupActionButtons = (popup: any): void => {
               {rentaViewMode ? (
                 <div className="renta-view-block">
                   <div className="renta-view-head">
-                    <strong>{rentaTerrainNom || rentaParcelInfo?.ref || `Terrain #${rentaTerrainId}`}</strong>
+                    <strong>{formatParcelleTitle({ nom: rentaTerrainNom || rentaParcelInfo?.nom, ref: rentaParcelInfo?.ref })}</strong>
                     <span>{rentaParcelInfo?.superficie ? `${Number(rentaParcelInfo.superficie).toLocaleString('fr-FR')} m²` : ''}</span>
                   </div>
 
@@ -4434,8 +4446,8 @@ const bindPopupActionButtons = (popup: any): void => {
                           <div className="renta-terrain-card-top">
                             <span className="renta-terrain-card-rank">#{i + 1}</span>
                             <div className="renta-terrain-card-title-wrap">
-                              <div className="renta-terrain-card-name" title={tr.nom || tr.num_titre_foncier || `Terrain #${tr.id}`}>
-                                {tr.nom || tr.num_titre_foncier || `Terrain #${tr.id}`}
+                              <div className="renta-terrain-card-name" title={formatParcelleTitle({ nom: tr.nom, num: tr.num_titre_foncier || tr.num_parcelle, indice: tr.indice })}>
+                                {formatParcelleTitle({ nom: tr.nom, num: tr.num_titre_foncier || tr.num_parcelle, indice: tr.indice })}
                               </div>
                               <span className="renta-terrain-card-surf">
                                 {Number(tr.superficie).toLocaleString('fr-FR')} m²
