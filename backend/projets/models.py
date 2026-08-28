@@ -410,3 +410,34 @@ class PonderationPreference(models.Model):
 
     def __str__(self):
         return f'Pondération {self.projet.nom} - {self.date_mise_a_jour:%Y-%m-%d %H:%M}'
+
+
+class ParametreAffectation(models.Model):
+    """Table 'Paramètres affectation' stockant les règles réglementaires et paramètres de chaque désignation."""
+
+    code = models.CharField(max_length=50, verbose_name="Désignation / Code", db_index=True)
+    zone = models.CharField(max_length=50, blank=True, null=True, verbose_name="Zone")
+    categorie = models.CharField(max_length=100, blank=True, null=True, verbose_name="Catégorie")
+    type_operation = models.CharField(max_length=200, blank=True, null=True, verbose_name="Type d'opération")
+    type_construction = models.CharField(max_length=200, blank=True, null=True, verbose_name="Type de construction")
+    definition = models.TextField(blank=True, null=True, verbose_name="Définition")
+    cos = models.CharField(max_length=100, blank=True, null=True, verbose_name="COS")
+    cus = models.CharField(max_length=100, blank=True, null=True, verbose_name="CUS / CES")
+    hauteur_max = models.CharField(max_length=100, blank=True, null=True, verbose_name="Hauteur max (m)")
+    nombre_etages = models.CharField(max_length=100, blank=True, null=True, verbose_name="Nombre d'étages")
+    largeur_min = models.CharField(max_length=100, blank=True, null=True, verbose_name="Largeur min")
+    surface_min = models.CharField(max_length=100, blank=True, null=True, verbose_name="Surface min")
+    conditions = models.TextField(blank=True, null=True, verbose_name="Conditions")
+    statut = models.CharField(max_length=100, blank=True, null=True, verbose_name="Statut")
+    source = models.CharField(max_length=255, blank=True, null=True, verbose_name="Source réglementaire")
+    date_creation = models.DateTimeField(auto_now_add=True)
+    date_mise_a_jour = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'parametres_affectation'
+        verbose_name = 'Paramètre affectation'
+        verbose_name_plural = 'Paramètres affectation'
+        ordering = ['code', 'type_operation']
+
+    def __str__(self):
+        return f'{self.code} - {self.type_operation or self.categorie}'
