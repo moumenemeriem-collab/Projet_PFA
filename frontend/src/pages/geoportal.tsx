@@ -9,6 +9,7 @@ import { fetchProjet, previewRentabilite, type Projet, type ProjetPayload, type 
 import { createTerrain, computeSurfaceConstructible, computeSurfaceEquipement, deleteTerrain, fetchSurfaceConstructible, fetchSurfaceEquipement, fetchTerrains, saveTerrainRentabilite, type AnalyseFiltres, type AnalyseResultat, type SurfaceConstructibleResponse, type SurfaceEquipementResponse, type Terrain } from '../api/terrains'
 import { fetchAnalyseDetail, type AnalyseDetail, type ResultatAnalyse } from '../api/analyses'
 import { createAnalysePondere, type PonderationResponse, type TerrainPondere } from '../api/analyses'
+import { clearCachedPonderation, getCachedPonderation, setCachedPonderation } from '../utils/ponderationCache'
 import { fetchCouches, fetchCoucheGeoJSON, type Couche, type CoucheFeature, type CoucheFeatureCollection } from '../api/couches'
 import { attributeLabel, CADASTRE_ATTRIBUTE_LABELS, PLAN_AMENAGEMENT_ATTRIBUTE_LABELS, formatParcelleRef, formatParcelleTitle } from '../utils/attributeLabels'
 import { getReglesPrincipales } from '../utils/reglementationPA'
@@ -652,6 +653,7 @@ export function GeoportalPage(): React.JSX.Element {
           seuil: 0,
         })
         setWizardResultats(response)
+        setCachedPonderation(projetId, response)
         setWizardStep('resultats')
       } catch (err) {
         setWizardError(err instanceof Error ? err.message : 'Erreur inconnue')
@@ -663,6 +665,7 @@ export function GeoportalPage(): React.JSX.Element {
   }, [allRocDone, wizardStep, wizardMatriceAhp, wizardOrdreCategoriesAhp, wizardOrdresRoc, wizardSelections, projetId])
 
   const handleWizardRestart = (): void => {
+    clearCachedPonderation(projetId)
     setWizardStep('selection')
     setWizardSelections(null)
     setWizardMatriceAhp(null)
@@ -708,7 +711,15 @@ export function GeoportalPage(): React.JSX.Element {
     criteres: [],
     criteres_satisfaits: 0,
     criteres_total: 0,
-    criteres_conformite: [],
+    criteres_conformite: (tp.contributions ?? []).map((c) => ({
+      cle: c.critere,
+      poids: c.poids,
+      pct: toPct100(c.score),
+      label: CRITERE_LABELS[c.critere] ?? c.critere,
+      valeur: c.score,
+      cible: 1,
+      unite: '%',
+    })),
     classement: tp.rang,
     points_forts: [],
     points_faibles: [],
@@ -823,7 +834,6 @@ export function GeoportalPage(): React.JSX.Element {
 
   const renderAnalyseDeTerrainCard = (
     data: { reference: string; superficie: number; lat: number; lng: number; rang: number; scorePct: number; criteres: { label: string; pct: number }[] },
-    onRentabilite: () => void,
   ): React.JSX.Element => {
     const scoreCol = data.scorePct >= 70 ? '#16a34a' : data.scorePct >= 40 ? '#d97706' : '#dc2626'
     return (
@@ -879,26 +889,8 @@ export function GeoportalPage(): React.JSX.Element {
             </div>
           </div>
         )}
-
-        <div className="geo-analyse-actions">
-          <button type="button" className="btn btn-primary" onClick={onRentabilite}>
-            Calculer la rentabilité
-          </button>
-        </div>
       </div>
     )
-  }
-
-  const openRentabiliteFromResultat = (tr: AnalyseResultat): void => {
-    openRentaModal({
-      terrainId: tr.id,
-      nom: tr.nom,
-      superficie: tr.superficie,
-      lat: tr.lat,
-      lng: tr.lng,
-      ref: tr.infos_generales?.reference_cadastrale || tr.nom,
-      ring: resolveTerrainRing(tr.geom, tr.infos_generales?.reference_cadastrale || tr.nom),
-    })
   }
 
   const [rentaTerrainId, setRentaTerrainId] = useState<number | null>(null)
@@ -2697,6 +2689,106 @@ const bindPopupActionButtons = (popup: any): void => {
   }, [projet])
 
   useEffect(() => {
+    if (!projet) return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('analyse')) return
+    const geoRaw = params.get('geo')
+    if (!geoRaw) return
+    let geom: Record<string, unknown> | null = null
+    try {
+      const g = JSON.parse(decodeURIComponent(geoRaw)) as Record<string, unknown>
+      if (g && (g.type === 'Polygon' || g.type === 'MultiPolygon')) geom = g
+    } catch { /* ignore */ }
+    if (!geom) return
+    const num = Number(params.get('tid')) || 0
+    const ref = params.get('ref') || ''
+    const rawLat = Number(params.get('lat'))
+    const rawLng = Number(params.get('lng'))
+    const lat = Number.isFinite(rawLat) ? rawLat : 0
+    const lng = Number.isFinite(rawLng) ? rawLng : 0
+    const superficie = Number(params.get('surf')) || 0
+    const rawScore = Number(params.get('score'))
+    const score = Number.isFinite(rawScore) ? rawScore : 0
+    const rang = Number(params.get('rang')) || 0
+    const nom = params.get('nom') || (ref ? `Parcelle ${ref}` : 'Parcelle')
+    // Recherche le terrain dans les résultats déjà en cache (écrits par la page Classement)
+    // pour récupérer notamment les scores par critère de l'analyse multicritère.
+    const cachedRes = getCachedPonderation(projetId)
+    const cachedTerrain = cachedRes?.resultats.find(
+      (tp) =>
+        String(tp.id) === String(num) ||
+        (ref && tp.reference_cadastrale && String(tp.reference_cadastrale) === String(ref)),
+    )
+    const criteresConformite = cachedTerrain
+      ? (cachedTerrain.contributions ?? []).map((c) => ({
+          cle: c.critere,
+          poids: c.poids,
+          pct: toPct100(c.score),
+          label: CRITERE_LABELS[c.critere] ?? c.critere,
+          valeur: c.score,
+          cible: 1,
+          unite: '%',
+        }))
+      : []
+    const finalScore = cachedTerrain ? cachedTerrain.score_final : score
+    const finalRang = cachedTerrain ? cachedTerrain.rang : rang
+    const finalNom = cachedTerrain ? cachedTerrain.nom : nom
+    const finalSuperficie = cachedTerrain ? cachedTerrain.superficie : superficie
+    setCardMode('loading')
+    setCardHidden(false)
+    setCadastreEnabled(true)
+    const obj = {
+      id: num,
+      nom: finalNom,
+      superficie: finalSuperficie,
+      lat,
+      lng,
+      score_global: finalScore,
+      score_final: finalScore,
+      score_amc: finalScore,
+      score_accessibilite: null,
+      score_positionnement: null,
+      score_topographie: null,
+      score_superficie: null,
+      roi: null,
+      marge: null,
+      benefice_net: null,
+      score_rentabilite: null,
+      type_rentabilite: 'indisponible' as const,
+      prix_terrain: null,
+      infos_generales: {
+        reference_cadastrale: ref,
+        commune: '—',
+        province: '—',
+        region: '—',
+        superficie: finalSuperficie ? `${finalSuperficie.toFixed(2)} m²` : '—',
+        perimetre: '—',
+        latitude: lat,
+        longitude: lng,
+        zone_amenagement: '—',
+      },
+      criteres: [],
+      criteres_satisfaits: 0,
+      criteres_total: 0,
+      criteres_conformite: criteresConformite,
+      classement: finalRang,
+      points_forts: [],
+      points_faibles: [],
+      geom,
+      fid: null,
+      num_parcelle: ref,
+    } as AnalyseResultat
+    analyseResultatsRef.current = [obj]
+    selectedTerrainIdRef.current = obj.id
+    focusParcelleRef.current = obj.id
+    setSelectedTerrain(obj)
+    showTerrainBuffer(obj)
+    focusTerrainOnMap(obj)
+    setCardMode('results')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projet])
+
+  useEffect(() => {
     if (!showSavedBanner) return
     const timer = setTimeout(() => setShowSavedBanner(false), 3000)
     return () => clearTimeout(timer)
@@ -2783,8 +2875,13 @@ const bindPopupActionButtons = (popup: any): void => {
     setCardMode('ponderationDetail')
     setCardHidden(false)
     refreshMapSize()
-    // Cadrage sur la géométrie réelle du terrain + mise en évidence (si la parcelle est connue)
-    const match = analyseResultatsRef.current.find(
+    // Reconstruit toujours la liste complète depuis les résultats du wizard pour que
+    // CHAQUE terrain de la liste puisse être mis en évidence (polygone coloré) + cadré.
+    // (la liste n'est pas écrasée par le terrain ciblé via ?geo= ou ?parcelle=)
+    const full = (wizardResultats?.resultats ?? []).map(mapPondereToAnalyseResultat)
+    if (full.length > 0) analyseResultatsRef.current = full
+    const source = full.length > 0 ? full : analyseResultatsRef.current
+    const match = source.find(
       (tr) =>
         tr.id === terrain.id ||
         (terrain.reference_cadastrale != null &&
@@ -2794,9 +2891,28 @@ const bindPopupActionButtons = (popup: any): void => {
     )
     if (match) {
       focusTerrainOnMap(match)
-    } else if (mapRef.current && terrain.lat && terrain.lng) {
-      mapRef.current.flyTo([terrain.lat, terrain.lng], Math.min(17, Math.max(mapRef.current.getZoom(), 15)), { duration: 0.8 })
+    } else {
+      // Repli : terrain issu d'une liste non reconstruite → on le focalise quand même
+      const direct = mapPondereToAnalyseResultat(terrain)
+      focusTerrainOnMap(direct)
     }
+  }
+
+  // « Retour au classement » depuis la vue focus terrain : réaffiche la liste
+  // complète des résultats dans le sidebar, sans relancer l'analyse.
+  const handleWizardBackToList = (): void => {
+    if (!wizardResultats) {
+      const cached = getCachedPonderation(projetId)
+      if (cached) {
+        setWizardResultats(cached)
+        setWizardStep('resultats')
+      }
+    } else {
+      setWizardStep('resultats')
+    }
+    setSidebarCollapsed(false)
+    closeTerrainCard()
+    refreshMapSize()
   }
 
   if (projetError) {
@@ -3400,6 +3516,16 @@ const bindPopupActionButtons = (popup: any): void => {
                       <h3 id="card-title">{cardTitle}</h3>
                     )}
                     <div className="geo-card-header-actions">
+                      {(cardMode === 'ponderationDetail' && selectedPonderationTerrain) || (cardMode === 'results' && selectedTerrain) ? (
+                        <button
+                          type="button"
+                          className="geo-terrain-card-backlist"
+                          onClick={handleWizardBackToList}
+                        >
+                          {icons.chevronLeft}
+                          <span>{t('ranking.back_to_classement')}</span>
+                        </button>
+                      ) : null}
                       <button type="button" className={`geo-terrain-card-close${(cardMode === 'ponderationDetail' || cardMode === 'results') ? ' geo-terrain-card-close--analyse' : ''}`} id="terrain-card-toggle" onClick={closeTerrainCard}>
                         {icons.close}
                       </button>
@@ -3419,10 +3545,7 @@ const bindPopupActionButtons = (popup: any): void => {
                           <p className="geo-sr-empty-text">{t('ranking.no_terrains_found')}</p>
                         </div>
                       ) : cardMode === 'ponderationDetail' && selectedPonderationTerrain ? (
-                        renderAnalyseDeTerrainCard(
-                          buildPondereVM(selectedPonderationTerrain),
-                          () => handleWizardOpenRentabilite(selectedPonderationTerrain),
-                        )
+                        renderAnalyseDeTerrainCard(buildPondereVM(selectedPonderationTerrain))
                       ) : cardMode === 'results' && selectedTerrain ? (
                         <>
                           {savedAnalyse && showSavedBanner ? (
@@ -3430,7 +3553,7 @@ const bindPopupActionButtons = (popup: any): void => {
                               ✓ {t('ranking.analyse_saved')}
                             </div>
                           ) : null}
-                          {renderAnalyseDeTerrainCard(buildResultatVM(selectedTerrain), () => openRentabiliteFromResultat(selectedTerrain))}
+                          {renderAnalyseDeTerrainCard(buildResultatVM(selectedTerrain))}
                         </>
                       ) : (
                         <div className="geo-sr-empty">

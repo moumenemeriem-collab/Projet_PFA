@@ -1973,6 +1973,32 @@
   flex-shrink: 0;
 }
 
+.geo-terrain-card-backlist {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 8px;
+  border: none;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.geo-terrain-card-backlist:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.geo-terrain-card-backlist svg {
+  width: 13px;
+  height: 13px;
+}
+
 .geo-card-back {
   width: 24px;
   height: 24px;

@@ -1373,15 +1373,26 @@
 .resultats-simple-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
+  gap: 8px;
+  padding: 8px 10px 8px 8px;
   background: var(--wz-surface);
   border: 1.5px solid var(--wz-border);
   border-radius: var(--wz-radius-sm);
-  cursor: pointer;
   transition: all 0.2s ease;
-  text-align: left;
   width: 100%;
+}
+
+.resultats-simple-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
   font-family: inherit;
 }
 
@@ -1395,6 +1406,27 @@
   border-color: var(--wz-primary);
   background: var(--wz-primary-light);
   box-shadow: 0 0 0 2px var(--wz-primary-glow);
+}
+
+.resultats-map-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border-radius: var(--wz-radius-sm);
+  border: 1.5px solid var(--wz-border);
+  background: var(--wz-surface);
+  color: var(--wz-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.resultats-map-btn:hover {
+  color: var(--wz-primary);
+  border-color: var(--wz-primary);
+  background: var(--wz-primary-light);
 }
 
 .resultats-simple-rank {

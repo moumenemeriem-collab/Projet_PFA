@@ -11,6 +11,7 @@ import {
   type PonderationResponse,
 } from '../../api/analyses'
 import { calculerPoidsAHP, type AhpResult } from '../../utils/ahp'
+import { clearCachedPonderation, setCachedPonderation } from '../../utils/ponderationCache'
 
 interface PonderationWizardProps {
   projetId: number
@@ -155,6 +156,7 @@ export function PonderationWizard({ projetId }: PonderationWizardProps): React.J
           seuil: 0,
         })
         setResultats(response)
+        setCachedPonderation(projetId, response)
         setStep('resultats')
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erreur inconnue')
@@ -166,6 +168,7 @@ export function PonderationWizard({ projetId }: PonderationWizardProps): React.J
   }, [allRocDone, step, matriceAhp, ordreCategoriesAhp, ordresRoc, selections, projetId])
 
   const handleRestart = (): void => {
+    clearCachedPonderation(projetId)
     setStep('selection')
     setSelections(null)
     setMatriceAhp(null)
