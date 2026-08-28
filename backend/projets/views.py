@@ -825,6 +825,68 @@ def _is_non_definie_designation(designation: str) -> bool:
     return True
 
 
+def _is_child_affectation(code_a: str, code_b: str) -> bool:
+    """Retourne True si code_a est une affectation fille / sous-zone de code_b (mère).
+    Ex: IN2 est fille de IN, B2 est fille de B, SB4 est fille de B ou SB, DS1 est fille de D.
+    """
+    ca = (code_a or '').strip().upper()
+    cb = (code_b or '').strip().upper()
+    if not ca or not cb or ca == cb:
+        return False
+    if ca.startswith(cb) and len(ca) > len(cb):
+        return True
+    if ca.startswith('SB') and cb == 'B':
+        return True
+    if ca.startswith('DS') and cb == 'D':
+        return True
+    return False
+
+
+def _resolve_parent_child_constructibles(affectations: list) -> list:
+    """Résout les superpositions entre affectations constructibles parent/enfant.
+    Pour les affectations comme IN et IN2 :
+    - Conserve l'affectation fille IN2 avec sa surface.
+    - Déduit la surface de IN2 de l'affectation mère IN.
+    - Si la surface restante de IN est <= 0.1 m² (complètement superposées), supprime IN.
+    """
+    if not affectations:
+        return []
+
+    constr = [dict(a) for a in affectations if a.get('type') == 'constructible']
+    non_constr = [dict(a) for a in affectations if a.get('type') != 'constructible']
+
+    if len(constr) <= 1:
+        return affectations
+
+    # Trier les constructibles par spécificité décroissante (les filles en premier)
+    def _spec_key(a):
+        code = a['designation'].upper()
+        digits = sum(1 for c in code if c.isdigit())
+        return (digits > 0, len(code), a['surface_m2'])
+
+    constr_sorted = sorted(constr, key=_spec_key, reverse=True)
+
+    for i, child in enumerate(constr_sorted):
+        child_code = child['designation'].upper()
+        child_area = child['surface_m2']
+        if child_area <= 0:
+            continue
+
+        for j in range(i + 1, len(constr_sorted)):
+            parent = constr_sorted[j]
+            parent_code = parent['designation'].upper()
+            if parent['surface_m2'] <= 0:
+                continue
+
+            if _is_child_affectation(child_code, parent_code):
+                parent['surface_m2'] = max(0.0, round(parent['surface_m2'] - child_area, 2))
+
+    active_constr = [a for a in constr_sorted if a['surface_m2'] > 0.1]
+    active_constr.sort(key=lambda a: a['surface_m2'], reverse=True)
+
+    return active_constr + non_constr
+
+
 class SurfaceConstructibleView(APIView):
     authentication_classes = [JWTOptionalAuthentication]
     permission_classes = [AllowAny]
@@ -893,7 +955,7 @@ class SurfaceConstructibleView(APIView):
             )
 
         non_constr = 0.0
-        affectations = []
+        raw_affectations = []
         for designation, type_construction, cos_val, cus_val, h_max, l_min, area_m2 in rows:
             area = round(float(area_m2), 2)
             if area <= 0:
@@ -920,10 +982,13 @@ class SurfaceConstructibleView(APIView):
                 'largeur_min': l_min_str,
             }
             if _is_constructible_designation(raw_d):
-                affectations.append(aff_item)
+                raw_affectations.append(aff_item)
             else:
                 non_constr += area
-                affectations.append(aff_item)
+                raw_affectations.append(aff_item)
+
+        # Résolution des superpositions parent / enfant
+        affectations = _resolve_parent_child_constructibles(raw_affectations)
 
         surface_constructible = max(0.0, terrain_superficie - non_constr)
         taux = round(surface_constructible / terrain_superficie * 100, 1) if terrain_superficie > 0 else 0.0
@@ -933,9 +998,6 @@ class SurfaceConstructibleView(APIView):
             constr_affectations = [a for a in affectations if a['type'] == 'constructible']
             if constr_affectations:
                 def _dominant_key(a):
-                    # Trier par surface décroissante, puis par spécificité de la désignation :
-                    # une désignation plus longue (ex: B2) est considérée plus spécifique
-                    # qu'une désignation plus courte (ex: B), donc优先 en cas d'égalité.
                     return (a['surface_m2'], len(a['designation']))
                 dominant = max(constr_affectations, key=_dominant_key)
 

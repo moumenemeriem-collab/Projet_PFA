@@ -212,6 +212,7 @@
     "field_name_label": "Nom du projet",
     "field_name_placeholder": "Ex: Lotissement Al-Amal II",
     "field_type_label": "Type de projet",
+    "field_type_placeholder": "Sélectionner un type de projet",
     "field_description_label": "Description",
     "field_description_placeholder": "Décrivez les objectifs de votre investissement...",
     "section_land": "Spécifications foncières",

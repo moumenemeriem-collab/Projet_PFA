@@ -212,6 +212,7 @@
     "field_name_label": "Project name",
     "field_name_placeholder": "E.g.: Al-Amal II Development",
     "field_type_label": "Project type",
+    "field_type_placeholder": "Select a project type",
     "field_description_label": "Description",
     "field_description_placeholder": "Describe your investment objectives...",
     "section_land": "Land specifications",

@@ -6,7 +6,7 @@ import { DashboardLayout } from '../components/DashboardLayout'
 import { TerrainGeometryEditor, emptyGeom, type TerrainGeom } from '../components/TerrainGeometryEditor'
 import { formatApiErrors } from '../api/auth'
 import { fetchProjet, previewRentabilite, type Projet, type ProjetPayload, type Rentabilite } from '../api/projets'
-import { createTerrain, computeSurfaceConstructible, computeSurfaceEquipement, deleteTerrain, fetchSurfaceConstructible, fetchSurfaceEquipement, fetchTerrains, saveTerrainRentabilite, type AnalyseFiltres, type AnalyseResultat, type SurfaceConstructibleResponse, type SurfaceEquipementResponse, type Terrain } from '../api/terrains'
+import { createTerrain, computeSurfaceConstructible, computeSurfaceEquipement, deleteTerrain, fetchSurfaceConstructible, fetchSurfaceEquipement, fetchTerrains, saveTerrainRentabilite, type AffectationSurface, type AnalyseFiltres, type AnalyseResultat, type SurfaceConstructibleResponse, type SurfaceEquipementResponse, type Terrain } from '../api/terrains'
 import { fetchAnalyseDetail, type AnalyseDetail, type ResultatAnalyse } from '../api/analyses'
 import { createAnalysePondere, type PonderationResponse, type TerrainPondere } from '../api/analyses'
 import { clearCachedPonderation, getCachedPonderation, setCachedPonderation } from '../utils/ponderationCache'
@@ -83,6 +83,364 @@ interface RentaSavedInputs {
   // permet de réafficher sans refaire le calcul GIS pour un terrain enregistré.
   surface_constructible_data?: SurfaceConstructibleResponse | null
   surface_equipement_data?: SurfaceEquipementResponse | null
+  unit_configs?: Record<string, { surface?: string; hauteur?: string; nombreEtages?: string; surfaceUnite?: string }>
+}
+
+function parseEtagesToNum(str: string | undefined | null): number {
+  if (!str) return 2
+  const m = String(str).match(/R\+(\d+)/i)
+  if (m) return parseInt(m[1], 10)
+  const val = parseFloat(String(str).replace(/[^\d.]/g, ''))
+  return isNaN(val) || val < 0 ? 2 : val
+}
+
+function parseHauteurToNum(str: string | number | undefined | null): number {
+  if (str === undefined || str === null || str === '') return 11.5
+  if (typeof str === 'number') return str
+  const clean = String(str).replace(',', '.').replace(/[^\d.]/g, '')
+  const val = parseFloat(clean)
+  return isNaN(val) || val <= 0 ? 11.5 : val
+}
+
+interface RentaUnitCalcSectionProps {
+  affectations: AffectationSurface[] | undefined
+  parcelInfo: { nom?: string; superficie?: number; ref?: string } | null
+  rentaForm: RentaForm
+  unitConfigs: Record<string, { surface?: string; hauteur?: string; nombreEtages?: string; surfaceUnite?: string }>
+  setUnitConfigs?: React.Dispatch<React.SetStateAction<Record<string, { surface?: string; hauteur?: string; nombreEtages?: string; surfaceUnite?: string }>>>
+  isViewMode: boolean
+}
+
+function RentaUnitCalcSection({
+  affectations,
+  parcelInfo,
+  rentaForm,
+  unitConfigs,
+  setUnitConfigs,
+  isViewMode,
+}: RentaUnitCalcSectionProps): React.JSX.Element {
+  const hasLoadedAffectations = affectations !== undefined
+
+  // Surface totale des emprises non constructibles (voies, équipements publics/privés, espaces verts, servitudes)
+  const nonConstrList = (affectations || []).filter(
+    (a) => a.type !== 'constructible' || !isAffectationValide(a.designation, a as unknown as Record<string, unknown>)
+  )
+  const totalNonConstrM2 = nonConstrList.reduce((sum, a) => sum + (Number(a.surface_m2) || 0), 0)
+
+  // Affectations constructibles valides
+  const rawList = (affectations || [])
+    .filter((a) => a.type === 'constructible' && a.surface_m2 > 0 && isAffectationValide(a.designation, a as unknown as Record<string, unknown>))
+
+  const totalRawConstrM2 = rawList.reduce((sum, a) => sum + (Number(a.surface_m2) || 0), 0)
+
+  // Pour chaque affectation constructible, déduire la surface des voies, équipements et espaces verts qui s'y intersectent
+  const items = rawList.map((a) => {
+    const rawArea = Number(a.surface_m2) || 0
+    let netArea = rawArea
+    if (totalNonConstrM2 > 0 && totalRawConstrM2 > 0) {
+      const deductionPart = (rawArea / totalRawConstrM2) * totalNonConstrM2
+      netArea = Math.max(0, Math.round((rawArea - deductionPart) * 100) / 100)
+    }
+    return {
+      ...a,
+      net_surface_m2: netArea,
+      raw_surface_m2: rawArea,
+    }
+  })
+
+  const fallbackList = (!hasLoadedAffectations && parcelInfo ? [{
+    designation: parcelInfo.ref || parcelInfo.nom || 'Terrain',
+    surface_m2: Math.max(0, (parcelInfo.superficie || 0) - totalNonConstrM2),
+    net_surface_m2: Math.max(0, (parcelInfo.superficie || 0) - totalNonConstrM2),
+    raw_surface_m2: parcelInfo.superficie || 0,
+    type_construction: 'Logement collectif / Mixte',
+    type: 'constructible' as const,
+    cos: parseFloat(rentaForm.cos) || 1,
+    cus: parseFloat(rentaForm.cus) || null,
+    hauteur_max: '11,50 m',
+    largeur_min: null,
+  }] : [])
+
+  const displayItems = items.length > 0 ? items : fallbackList
+
+  if (displayItems.length === 0) {
+    return (
+      <div className={isViewMode ? 'renta-view-sec' : 'geo-card-form-section'} style={{ marginTop: isViewMode ? undefined : 12 }}>
+        <span className="geo-layers-popup-label" style={{ margin: 0 }}>
+          Calcul du nombre d'unités par affectation
+        </span>
+        <div style={{ fontSize: '0.8rem', color: '#64748b', fontStyle: 'italic', padding: '6px 0' }}>
+          Aucune affectation constructible d&eacute;tect&eacute;e sur ce terrain.
+        </div>
+      </div>
+    )
+  }
+
+  const formCos = parseFloat(rentaForm.cos) || 1
+  const formTauxChute = parseFloat(rentaForm.tauxChute) || 0
+
+  const calculatedRows = displayItems.map((a, idx) => {
+    const key = a.designation || `aff_${idx}`
+    const hauteurInfo = getHauteurEtEtages(a.designation || '', a as unknown as Record<string, unknown>)
+
+    // Surface nette après déduction des voies et équipements
+    const defaultSurface = a.net_surface_m2 ?? a.surface_m2 ?? 0
+    const defaultHauteurRaw = hauteurInfo.hauteurMax !== '—' ? hauteurInfo.hauteurMax : (a.hauteur_max || '11.5')
+    const defaultHauteurNum = parseHauteurToNum(defaultHauteurRaw)
+    const defaultEtagesNum = parseEtagesToNum(hauteurInfo.nombreEtages !== '—' ? hauteurInfo.nombreEtages : 'R+2')
+
+    const userSurfaceStr = unitConfigs[key]?.surface
+    const userSurface = userSurfaceStr !== undefined && userSurfaceStr !== '' ? (parseFloat(userSurfaceStr) || 0) : defaultSurface
+
+    const userHauteurStr = unitConfigs[key]?.hauteur
+    const userHauteur = userHauteurStr !== undefined && userHauteurStr !== '' ? (parseFloat(String(userHauteurStr).replace(',', '.')) || 0) : defaultHauteurNum
+
+    const userEtagesStr = unitConfigs[key]?.nombreEtages
+    const userEtages = userEtagesStr !== undefined && userEtagesStr !== '' ? (parseFloat(userEtagesStr) || 0) : defaultEtagesNum
+
+    const cosToUse = a.cos != null && !isNaN(Number(a.cos)) ? Number(a.cos) : formCos
+
+    // Formules demandées :
+    // 1. surface vendable (de l'affectation) = COS * Surface de l'affectation * (1 - chute/100) * 0.9
+    const surfaceVendableSol = cosToUse * userSurface * (1 - formTauxChute / 100) * 0.9
+    const maxSurfaceUnite = Math.max(0, Math.round(surfaceVendableSol * 100) / 100)
+
+    // Surface unité vide par défaut, plafonnée à S. vendable sol
+    const userSurfaceUniteStr = unitConfigs[key]?.surfaceUnite
+    const userSurfaceUnite = userSurfaceUniteStr !== undefined && userSurfaceUniteStr !== ''
+      ? Math.min(maxSurfaceUnite > 0 ? maxSurfaceUnite : Infinity, Math.max(0, parseFloat(userSurfaceUniteStr) || 0))
+      : 0
+
+    // 2. Surface plancher vendable = surface vendable * (nbr_etage + 1)
+    const surfacePlancherVendable = surfaceVendableSol * (userEtages + 1)
+
+    // 3. nombre des unités = Surface plancher vendable / surface d'unité (si surface d'unité renseignée)
+    const nombreUnites = userSurfaceUnite > 0 ? (surfacePlancherVendable / userSurfaceUnite) : 0
+    const nombreUnitesArrondi = Math.floor(nombreUnites)
+
+    return {
+      key,
+      designation: a.designation || 'Affectation',
+      type_construction: a.type_construction || '—',
+      surface: userSurface,
+      rawSurface: a.raw_surface_m2 ?? a.surface_m2,
+      hauteur: userHauteur,
+      nombreEtages: userEtages,
+      surfaceUnite: userSurfaceUnite,
+      surfaceUniteRaw: userSurfaceUniteStr,
+      maxSurfaceUnite,
+      cos: cosToUse,
+      surfaceVendableSol,
+      surfacePlancherVendable,
+      nombreUnites,
+      nombreUnitesArrondi,
+    }
+  })
+
+  const totalSurface = calculatedRows.reduce((sum, r) => sum + r.surface, 0)
+  const totalVendableSol = calculatedRows.reduce((sum, r) => sum + r.surfaceVendableSol, 0)
+  const totalPlancherVendable = calculatedRows.reduce((sum, r) => sum + r.surfacePlancherVendable, 0)
+  const totalUnites = calculatedRows.reduce((sum, r) => sum + r.nombreUnitesArrondi, 0)
+
+  if (calculatedRows.length === 0) return <></>
+
+  return (
+    <div className={isViewMode ? 'renta-view-sec' : 'geo-card-form-section'} style={{ marginTop: isViewMode ? undefined : 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
+        <span className="geo-layers-popup-label" style={{ margin: 0 }}>
+          Calcul du nombre d'unités par affectation
+        </span>
+      </div>
+
+      <div className="renta-flux-table-wrap">
+        <table className="renta-flux-table">
+          <thead>
+            <tr>
+              <th style={{ textAlign: 'left' }}>Affectation</th>
+              <th style={{ textAlign: 'right' }}>Surface (m&sup2;)</th>
+              <th style={{ textAlign: 'center' }}>Hauteur max (m)</th>
+              <th style={{ textAlign: 'center' }}>Nbr &eacute;tages</th>
+              <th style={{ textAlign: 'center' }}>Surface unit&eacute; (m&sup2;)</th>
+              <th style={{ textAlign: 'right' }}>S. vendable sol (m&sup2;)</th>
+              <th style={{ textAlign: 'right' }}>S. plancher vendable (m&sup2;)</th>
+              <th style={{ textAlign: 'center' }}>Nombre d'unit&eacute;s</th>
+            </tr>
+          </thead>
+          <tbody>
+            {calculatedRows.map((item) => (
+              <tr key={item.key}>
+                <td className="renta-flux-row-label" style={{ minWidth: 130 }}>
+                  <span style={{
+                    display: 'inline-block', padding: '2px 8px', borderRadius: 4,
+                    background: '#e2e8f0', color: '#1e293b', fontSize: '0.75rem', fontWeight: 700
+                  }}>
+                    {item.designation}
+                  </span>
+                  {item.type_construction && item.type_construction !== '—' && (
+                    <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 400, marginTop: 2, maxWidth: 160, whiteSpace: 'normal', lineHeight: 1.2 }}>
+                      {item.type_construction}
+                    </div>
+                  )}
+                </td>
+
+                {/* Surface */}
+                <td style={{ textAlign: 'right' }}>
+                  {isViewMode ? (
+                    <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                      {item.surface.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m&sup2;
+                    </span>
+                  ) : (
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={unitConfigs[item.key]?.surface !== undefined ? unitConfigs[item.key].surface : item.surface}
+                      onChange={(e) => setUnitConfigs && setUnitConfigs((prev) => ({
+                        ...prev,
+                        [item.key]: { ...(prev[item.key] || {}), surface: e.target.value }
+                      }))}
+                      style={{ width: 85, padding: '4px 8px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: '0.78rem', textAlign: 'right' }}
+                    />
+                  )}
+                </td>
+
+                {/* Hauteur max (m) */}
+                <td style={{ textAlign: 'center' }}>
+                  {isViewMode ? (
+                    <span>{item.hauteur.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m</span>
+                  ) : (
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={unitConfigs[item.key]?.hauteur !== undefined ? unitConfigs[item.key].hauteur : item.hauteur}
+                      onChange={(e) => setUnitConfigs && setUnitConfigs((prev) => ({
+                        ...prev,
+                        [item.key]: { ...(prev[item.key] || {}), hauteur: e.target.value }
+                      }))}
+                      style={{ width: 70, padding: '4px 6px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: '0.78rem', textAlign: 'center' }}
+                    />
+                  )}
+                </td>
+
+                {/* Nombre d'étages */}
+                <td style={{ textAlign: 'center' }}>
+                  {isViewMode ? (
+                    <strong style={{ color: '#1e293b' }}>R+{item.nombreEtages}</strong>
+                  ) : (
+                    <input
+                      type="number"
+                      min="0"
+                      max="50"
+                      step="1"
+                      value={unitConfigs[item.key]?.nombreEtages !== undefined ? unitConfigs[item.key].nombreEtages : item.nombreEtages}
+                      onChange={(e) => setUnitConfigs && setUnitConfigs((prev) => ({
+                        ...prev,
+                        [item.key]: { ...(prev[item.key] || {}), nombreEtages: e.target.value }
+                      }))}
+                      style={{ width: 60, padding: '4px 6px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: '0.78rem', textAlign: 'center', fontWeight: 600 }}
+                    />
+                  )}
+                </td>
+
+                {/* Surface d'unité (input vide par défaut, plafonné à S. vendable sol) */}
+                <td style={{ textAlign: 'center' }}>
+                  {isViewMode ? (
+                    item.surfaceUnite > 0 ? (
+                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{item.surfaceUnite} m&sup2;</span>
+                    ) : (
+                      <span style={{ color: '#94a3b8' }}>—</span>
+                    )
+                  ) : (
+                    <input
+                      type="number"
+                      min="1"
+                      max={item.maxSurfaceUnite > 0 ? item.maxSurfaceUnite : undefined}
+                      step="1"
+                      placeholder="—"
+                      value={unitConfigs[item.key]?.surfaceUnite !== undefined ? unitConfigs[item.key].surfaceUnite : ''}
+                      onChange={(e) => {
+                        if (!setUnitConfigs) return
+                        let val = e.target.value
+                        if (val !== '') {
+                          const num = parseFloat(val)
+                          if (!isNaN(num)) {
+                            if (num < 0) val = '0'
+                            else if (item.maxSurfaceUnite > 0 && num > item.maxSurfaceUnite) {
+                              val = String(item.maxSurfaceUnite)
+                            }
+                          }
+                        }
+                        setUnitConfigs((prev) => ({
+                          ...prev,
+                          [item.key]: { ...(prev[item.key] || {}), surfaceUnite: val }
+                        }))
+                      }}
+                      style={{ width: 75, padding: '4px 8px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#ffffff', fontSize: '0.78rem', textAlign: 'center' }}
+                    />
+                  )}
+                </td>
+
+                {/* Surface vendable au sol */}
+                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#475569' }}>
+                  {item.surfaceVendableSol.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m&sup2;
+                </td>
+
+                {/* Surface plancher vendable */}
+                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: '#0f172a' }}>
+                  {item.surfacePlancherVendable.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m&sup2;
+                </td>
+
+                {/* Nombre d'unités */}
+                <td style={{ textAlign: 'center' }}>
+                  {item.surfaceUnite > 0 ? (
+                    <span style={{
+                      display: 'inline-block', padding: '3px 10px', borderRadius: 999,
+                      background: '#0284c7', color: '#fff', fontWeight: 700, fontSize: '0.8rem',
+                      fontVariantNumeric: 'tabular-nums'
+                    }}>
+                      {item.nombreUnitesArrondi} <span style={{ fontSize: '0.68rem', fontWeight: 400, opacity: 0.9 }}>({item.nombreUnites.toFixed(1)})</span>
+                    </span>
+                  ) : (
+                    <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>—</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="renta-flux-net-row">
+              <td className="renta-flux-row-label" style={{ background: '#ffffff' }}>Total estimé</td>
+              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 800, background: '#ffffff' }}>
+                {totalSurface.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m&sup2;
+              </td>
+              <td colSpan={3} style={{ background: '#ffffff' }}></td>
+              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#475569', fontWeight: 600, background: '#ffffff' }}>
+                {totalVendableSol.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m&sup2;
+              </td>
+              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#0f172a', fontWeight: 800, background: '#ffffff' }}>
+                {totalPlancherVendable.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m&sup2;
+              </td>
+              <td style={{ textAlign: 'center', background: '#ffffff' }}>
+                <span className="renta-flux-net">
+                  {totalUnites > 0 ? (
+                    <span style={{
+                      display: 'inline-block', padding: '4px 12px', borderRadius: 999,
+                      background: '#16a34a', color: '#fff', fontWeight: 700, fontSize: '0.82rem'
+                    }}>
+                      {totalUnites} unit&eacute;s
+                    </span>
+                  ) : (
+                    <span style={{ color: '#94a3b8', fontWeight: 600 }}>—</span>
+                  )}
+                </span>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  )
 }
 
 const rentaFormDests = (f: RentaForm): Array<{ key: string; label: string; active: boolean }> => [
@@ -786,6 +1144,7 @@ export function GeoportalPage(): React.JSX.Element {
     setRentaViewMode(false)
     setRentaSidebarOpen(false)
     setRentaModalOpen(true)
+    setRentaUnitConfigs({})
     setRentaForm((f) => ({
       ...f,
       cos: '', cus: '',
@@ -925,6 +1284,7 @@ export function GeoportalPage(): React.JSX.Element {
   const [rentaSidebarOpen, setRentaSidebarOpen] = useState(false)
   const [rentaDetailOpen, setRentaDetailOpen] = useState(false)
   const [rentaGeneratingPdf, setRentaGeneratingPdf] = useState(false)
+  const [rentaUnitConfigs, setRentaUnitConfigs] = useState<Record<string, { surface?: string; hauteur?: string; nombreEtages?: string; surfaceUnite?: string }>>({})
 
   // Reconstruit le résultat d'intersection terrain×PA depuis le cache stocké
   // dans `inputs`. Les terrains créés depuis le popup n'ont pas de géométrie en
@@ -1373,6 +1733,7 @@ export function GeoportalPage(): React.JSX.Element {
     surface_equipement_prive: rentaSurfaceEquipement?.surface_equipement_prive ?? 0,
     surface_constructible_data: rentaSurfaceConstructible,
     surface_equipement_data: rentaSurfaceEquipement,
+    unit_configs: rentaUnitConfigs,
   })
 
   const refreshRentaTerrains = (): void => {
@@ -1455,6 +1816,9 @@ export function GeoportalPage(): React.JSX.Element {
   const handleRentaReset = (): void => {
     if (rentaInputsSaved) {
       setRentaForm({ ...rentaInputsSaved.form })
+      if (rentaInputsSaved.unit_configs) {
+        setRentaUnitConfigs(rentaInputsSaved.unit_configs)
+      }
     }
     setRentaNote(null)
     setRentaError(null)
@@ -1463,6 +1827,9 @@ export function GeoportalPage(): React.JSX.Element {
   const handleRentaCancel = (): void => {
     if (rentaInputsSaved) {
       setRentaForm({ ...rentaInputsSaved.form })
+      if (rentaInputsSaved.unit_configs) {
+        setRentaUnitConfigs(rentaInputsSaved.unit_configs)
+      }
     }
     setRentaNote(null)
     setRentaError(null)
@@ -1493,6 +1860,13 @@ export function GeoportalPage(): React.JSX.Element {
     setRentaUsingCachedSurface(!!stored)
     if (stored) {
       setRentaForm({ ...stored.form })
+      if (stored.unit_configs) {
+        setRentaUnitConfigs(stored.unit_configs)
+      } else {
+        setRentaUnitConfigs({})
+      }
+    } else {
+      setRentaUnitConfigs({})
     }
     setRentaViewMode(!!rj && (rj as Record<string, unknown>).ok === true)
   }
@@ -3813,6 +4187,14 @@ const bindPopupActionButtons = (popup: any): void => {
                     </div>
                   </div>
 
+                  <RentaUnitCalcSection
+                    affectations={rentaSurfaceConstructible?.affectations}
+                    parcelInfo={rentaParcelInfo}
+                    rentaForm={rentaInputsSaved.form}
+                    unitConfigs={rentaInputsSaved.unit_configs || rentaUnitConfigs}
+                    isViewMode={true}
+                  />
+
                   <div className="renta-view-sec">
                     <span className="geo-layers-popup-label">{t('projects.section_destinations')}</span>
                     <div className="renta-view-tags">
@@ -3899,6 +4281,15 @@ const bindPopupActionButtons = (popup: any): void => {
                     onChange={(e) => setRentaForm((f) => ({ ...f, cus: e.target.value }))} />
                 </div>
               </div>
+
+              <RentaUnitCalcSection
+                affectations={rentaSurfaceConstructible?.affectations}
+                parcelInfo={rentaParcelInfo}
+                rentaForm={rentaForm}
+                unitConfigs={rentaUnitConfigs}
+                setUnitConfigs={setRentaUnitConfigs}
+                isViewMode={false}
+              />
 
               <div className="geo-card-form-section">
                 <span className="geo-layers-popup-label">{t('projects.section_destinations')}</span>

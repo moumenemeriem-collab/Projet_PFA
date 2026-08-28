@@ -272,8 +272,51 @@ export function computeParcelAffectations(
     }
   }
 
-  pieces.sort((a, b) => b.areaM2 - a.areaM2)
-  return pieces
+  return resolveParentChildAffectations(pieces, totalArea)
+}
+
+export function isChildAffectation(codeA: string, codeB: string): boolean {
+  const ca = (codeA || '').trim().toUpperCase()
+  const cb = (codeB || '').trim().toUpperCase()
+  if (!ca || !cb || ca === cb) return false
+  if (ca.startsWith(cb) && ca.length > cb.length) return true
+  if (ca.startsWith('SB') && cb === 'B') return true
+  if (ca.startsWith('DS') && cb === 'D') return true
+  return false
+}
+
+export function resolveParentChildAffectations(pieces: AffectationPiece[], totalArea: number): AffectationPiece[] {
+  if (pieces.length <= 1) return pieces
+
+  // Trier par spécificité décroissante (les filles en premier)
+  const sorted = [...pieces].sort((a, b) => {
+    const codeA = a.designation.toUpperCase()
+    const codeB = b.designation.toUpperCase()
+    const digitsA = (codeA.match(/\d+/g) || []).join('').length
+    const digitsB = (codeB.match(/\d+/g) || []).join('').length
+    if (digitsA !== digitsB) return digitsB - digitsA
+    if (codeA.length !== codeB.length) return codeB.length - codeA.length
+    return b.areaM2 - a.areaM2
+  })
+
+  for (let i = 0; i < sorted.length; i++) {
+    const child = sorted[i]
+    if (!child || child.areaM2 <= 0.1) continue
+
+    for (let j = i + 1; j < sorted.length; j++) {
+      const parent = sorted[j]
+      if (!parent || parent.areaM2 <= 0.1) continue
+
+      if (isChildAffectation(child.designation, parent.designation)) {
+        parent.areaM2 = Math.max(0, Math.round((parent.areaM2 - child.areaM2) * 100) / 100)
+        parent.percent = totalArea > 0 ? (parent.areaM2 / totalArea) * 100 : 0
+      }
+    }
+  }
+
+  const finalPieces = sorted.filter((p) => p.areaM2 > 0.1)
+  finalPieces.sort((a, b) => b.areaM2 - a.areaM2)
+  return finalPieces
 }
 
 // ── Plan SVG (parcelle + affectations colorées), inspiré du plan topographique ──
