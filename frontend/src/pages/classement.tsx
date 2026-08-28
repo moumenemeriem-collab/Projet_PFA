@@ -470,7 +470,12 @@ export function ClassementPage(): React.JSX.Element {
     try {
       const detail = await fetchAnalyseDetail(projetId, analyseId)
       setAnalyse(detail)
+      setTab('rentabilite')
+      setParcellesPage(1)
+      setAmcSearchInput('')
       setHistoryOpen(false)
+      setAlert({ type: 'success', message: 'Analyse chargée dans la liste Résultats AMC.' })
+      setTimeout(() => setAlert(null), 3000)
     } catch (err) {
       setAlert({ type: 'error', message: formatApiErrors(err) })
     } finally {
@@ -902,8 +907,15 @@ export function ClassementPage(): React.JSX.Element {
                           {a.nombre_parcelles} {t('ranking.analyses_count')} · {statusLabel(a.statut)}
                         </span>
                       </div>
-                      <button type="button" className="table-action-btn" disabled={historyLoading} onClick={() => { void openHistoryAnalyse(a.id) }} title={t('ranking.history_open')}>
-                        {icons.eye}
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-action"
+                        style={{ fontSize: '0.78rem', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                        disabled={historyLoading}
+                        onClick={() => { void openHistoryAnalyse(a.id) }}
+                        title="Afficher les résultats dans la liste de classement"
+                      >
+                        {icons.eye} Voir
                       </button>
                     </div>
                   ))}

@@ -7,7 +7,7 @@ import { TerrainGeometryEditor, emptyGeom, type TerrainGeom } from '../component
 import { formatApiErrors } from '../api/auth'
 import { fetchProjet, previewRentabilite, type Projet, type ProjetPayload, type Rentabilite } from '../api/projets'
 import { createTerrain, computeSurfaceConstructible, computeSurfaceEquipement, deleteTerrain, fetchSurfaceConstructible, fetchSurfaceEquipement, fetchTerrains, saveTerrainRentabilite, type AffectationSurface, type AnalyseFiltres, type AnalyseResultat, type SurfaceConstructibleResponse, type SurfaceEquipementResponse, type Terrain } from '../api/terrains'
-import { fetchAnalyseDetail, fetchAnalyses, type Analyse, type AnalyseDetail, type ResultatAnalyse } from '../api/analyses'
+import { fetchAnalyseDetail, type AnalyseDetail, type ResultatAnalyse } from '../api/analyses'
 import { createAnalysePondere, type PonderationResponse, type TerrainPondere } from '../api/analyses'
 import { clearCachedPonderation, getCachedPonderation, setCachedPonderation } from '../utils/ponderationCache'
 import { fetchCouches, fetchCoucheGeoJSON, type Couche, type CoucheFeature, type CoucheFeatureCollection } from '../api/couches'
@@ -858,9 +858,9 @@ export function GeoportalPage(): React.JSX.Element {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [cardHidden, setCardHidden] = useState(true)
   const [cardMode, setCardMode] = useState<CardMode>('search')
-  const [historyOpen, setHistoryOpen] = useState(false)
-  const [historyAnalyses, setHistoryAnalyses] = useState<Analyse[]>([])
-  const [historyLoading, setHistoryLoading] = useState(false)
+  const [savingAnalyse, setSavingAnalyse] = useState(false)
+  const [analyseSaved, setAnalyseSaved] = useState(false)
+  const [analyseSaveSuccess, setAnalyseSaveSuccess] = useState<string | null>(null)
   const [selectedTerrain, setSelectedTerrain] = useState<AnalyseResultat | null>(null)
   const [selectedPonderationTerrain, setSelectedPonderationTerrain] = useState<TerrainPondere | null>(null)
   const [cardError, setCardError] = useState<string | null>(null)
@@ -1037,6 +1037,8 @@ export function GeoportalPage(): React.JSX.Element {
         setWizardResultats(response)
         setCachedPonderation(projetId, response)
         setWizardStep('resultats')
+        setAnalyseSaved(false)
+        setAnalyseSaveSuccess(null)
       } catch (err) {
         setWizardError(err instanceof Error ? err.message : 'Erreur inconnue')
       } finally {
@@ -1046,8 +1048,33 @@ export function GeoportalPage(): React.JSX.Element {
     void run()
   }, [allRocDone, wizardStep, wizardMatriceAhp, wizardOrdreCategoriesAhp, wizardOrdresRoc, wizardSelections, projetId])
 
+  const handleSaveAnalyse = async (): Promise<void> => {
+    if (!projetId || !wizardResultats) return
+    setSavingAnalyse(true)
+    try {
+      localStorage.setItem(`analyse_created_${projetId}`, String(Date.now()))
+      setAnalyseSaved(true)
+      setAnalyseSaveSuccess("Analyse enregistrée avec succès dans l'historique !")
+      setTimeout(() => setAnalyseSaveSuccess(null), 4000)
+    } catch (err) {
+      setWizardError(err instanceof Error ? err.message : "Erreur lors de l'enregistrement")
+    } finally {
+      setSavingAnalyse(false)
+    }
+  }
+
   const handleWizardRestart = (): void => {
     clearCachedPonderation(projetId)
+    setWizardStep('selection')
+    setWizardSelections(null)
+    setWizardMatriceAhp(null)
+    setWizardOrdreCategoriesAhp([])
+    setWizardOrdresRoc({})
+    setWizardRocStepsDone([])
+    setWizardResultats(null)
+    setWizardError(null)
+    setAnalyseSaved(false)
+    setAnalyseSaveSuccess(null)
     setWizardStep('selection')
     setWizardSelections(null)
     setWizardMatriceAhp(null)
@@ -2200,57 +2227,6 @@ const bindPopupActionButtons = (popup: any): void => {
       navigate('/projets', { replace: true })
     }
   }, [id, projetId, navigate])
-
-  useEffect(() => {
-    if (!projetId) return
-    fetchAnalyses(projetId)
-      .then((list) => setHistoryAnalyses(list))
-      .catch(() => {})
-  }, [projetId])
-
-  const openHistoryAnalyse = async (analyseId: number): Promise<void> => {
-    if (!projetId) return
-    setHistoryLoading(true)
-    try {
-      const detail = await fetchAnalyseDetail(projetId, analyseId)
-      if (detail && detail.resultats && detail.resultats.length > 0) {
-        const mappedResultats: TerrainPondere[] = detail.resultats.map((r, idx) => ({
-          id: r.id,
-          nom: r.nom || `Terrain #${r.rang ?? idx + 1}`,
-          superficie: r.superficie ?? 0,
-          lat: r.lat ?? 0,
-          lng: r.lng ?? 0,
-          reference_cadastrale: r.reference_cadastrale || r.id_parcelle,
-          indice: r.indice,
-          score_final: r.score_final ?? ((100 - ((r.rang ?? idx + 1) - 1) * (100 / Math.max(1, detail.resultats.length))) / 100),
-          rang: r.rang ?? idx + 1,
-          contributions: [],
-          distances: {},
-          zone_localisation: '',
-          altitude: null,
-          geometry: (r as any).geom ?? (r as any).geometry ?? null,
-          num_parcelle: r.id_parcelle,
-        }))
-        const ponderationResp: PonderationResponse = {
-          total: detail.resultats.length,
-          resultats: mappedResultats,
-          poids_globaux: {},
-          poids_ahp: {},
-          CR: 0,
-          coherent: true,
-        }
-        setWizardResultats(ponderationResp)
-        setCachedPonderation(projetId, ponderationResp)
-        setWizardStep('resultats')
-        setSidebarCollapsed(false)
-      }
-      setHistoryOpen(false)
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setHistoryLoading(false)
-    }
-  }
 
   useEffect(() => {
     if (!projetId) return
@@ -3512,6 +3488,12 @@ const bindPopupActionButtons = (popup: any): void => {
                 })()}
               </div>
 
+              {analyseSaveSuccess && (
+                <div className="form-alert form-alert--success" style={{ margin: '0 0 0.75rem', fontSize: '0.8rem' }}>
+                  {analyseSaveSuccess}
+                </div>
+              )}
+
               {wizardError && (
                 <div className="form-alert form-alert--error" style={{ margin: '0 0 0.75rem', fontSize: '0.8rem' }}>{wizardError}</div>
               )}
@@ -3566,19 +3548,28 @@ const bindPopupActionButtons = (popup: any): void => {
               <button type="button" className="btn geo-btn-reset" onClick={handleWizardRestart}>
                 {icons.close} Réinitialiser
               </button>
-              <button
-                type="button"
-                className="btn btn-secondary btn-action"
-                style={{ fontSize: '0.78rem', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                onClick={() => {
-                  if (projetId) {
-                    fetchAnalyses(projetId).then(setHistoryAnalyses).catch(() => {})
-                  }
-                  setHistoryOpen(true)
-                }}
-              >
-                {icons.database} {t('ranking.analysis_history')}
-              </button>
+              {wizardStep === 'resultats' && wizardResultats ? (
+                <button
+                  type="button"
+                  className="btn btn-primary btn-action"
+                  style={{ fontSize: '0.8rem', padding: '7px 14px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  disabled={savingAnalyse || analyseSaved}
+                  onClick={() => { void handleSaveAnalyse() }}
+                >
+                  {analyseSaved ? (
+                    <>
+                      <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                        <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      Enregistrée
+                    </>
+                  ) : (
+                    <>
+                      {icons.save} Enregistrer l'analyse
+                    </>
+                  )}
+                </button>
+              ) : null}
             </div>
           </aside>
 
@@ -5298,40 +5289,6 @@ const bindPopupActionButtons = (popup: any): void => {
         </div>
       </div>,
       document.body
-    ) : null}
-
-    {historyOpen ? (
-      <div className="admin-modal-overlay" onClick={() => setHistoryOpen(false)}>
-        <div className="admin-modal classement-modal--history" onClick={(e) => e.stopPropagation()}>
-          <div className="admin-modal-header">
-            <h3>{t('ranking.history_title')}</h3>
-            <button type="button" className="admin-modal-close" aria-label={t('common.close')} onClick={() => setHistoryOpen(false)}>{icons.close}</button>
-          </div>
-          <div className="classement-modal-body">
-            {historyAnalyses.length === 0 ? (
-              <div className="classement-empty">
-                <p className="classement-empty-desc">{t('ranking.no_classement_desc')}</p>
-              </div>
-            ) : (
-              <div className="classement-history-list">
-                {historyAnalyses.map((a) => (
-                  <div key={a.id} className="classement-history-item">
-                    <div className="classement-history-info">
-                      <span className="classement-history-date">{new Date(a.date_creation).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}</span>
-                      <span className="classement-history-meta">
-                        {a.nombre_parcelles} {t('ranking.analyses_count')} · {a.statut}
-                      </span>
-                    </div>
-                    <button type="button" className="table-action-btn" disabled={historyLoading} onClick={() => { void openHistoryAnalyse(a.id) }} title={t('ranking.history_open')}>
-                      {icons.eye}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
     ) : null}
     </>
   )
