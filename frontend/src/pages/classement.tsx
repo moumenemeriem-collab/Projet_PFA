@@ -578,15 +578,6 @@ export function ClassementPage(): React.JSX.Element {
               <span className="classement-count">{savedTotal} {t('ranking.total_terrains')}</span>
             </div>
 
-            <div className="classement-summary-bar">
-              <span className="classement-summary-item">
-                Terrains enregistrés : <strong>{savedTerrains.length}</strong>
-              </span>
-              <span className="classement-summary-item">
-                Avec calcul de rentabilité : <strong>{savedTerrains.filter((t_) => !!t_.rentabilite_json).length}</strong>
-              </span>
-            </div>
-
             <div className="classement-table-wrapper">
               <table className="classement-table">
                 <thead>
