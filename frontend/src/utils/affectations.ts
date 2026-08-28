@@ -2,6 +2,7 @@
 // (intersection géométrique via @turf/intersect) + affichage détaillé.
 
 import intersect from '@turf/intersect'
+import difference from '@turf/difference'
 import { extractRing, polygonAreaM2 } from './terrainDims'
 import { downloadAffectationsPdf } from './pdfPlan'
 import { getReglesPrincipales, getHauteurEtEtages } from './reglementationPA'
@@ -272,8 +273,76 @@ export function computeParcelAffectations(
     }
   }
 
-  pieces.sort((a, b) => b.areaM2 - a.areaM2)
-  return pieces
+  return resolveOverlappingAffectationPieces(pieces, totalArea)
+}
+
+export function isChildAffectation(codeA: string, codeB: string): boolean {
+  const ca = (codeA || '').trim().toUpperCase()
+  const cb = (codeB || '').trim().toUpperCase()
+  if (!ca || !cb || ca === cb) return false
+  if (ca.startsWith(cb) && ca.length > cb.length) return true
+  if (ca.startsWith('SB') && cb === 'B') return true
+  if (ca.startsWith('DS') && cb === 'D') return true
+  return false
+}
+
+export function resolveOverlappingAffectationPieces(pieces: AffectationPiece[], totalArea: number): AffectationPiece[] {
+  if (pieces.length <= 1) return pieces
+
+  // Trier par spécificité décroissante (les filles d'abord : chiffres, longueur)
+  const sorted = [...pieces].sort((a, b) => {
+    const codeA = a.designation.toUpperCase()
+    const codeB = b.designation.toUpperCase()
+    const digitsA = (codeA.match(/\d+/g) || []).join('').length
+    const digitsB = (codeB.match(/\d+/g) || []).join('').length
+    if (digitsA !== digitsB) return digitsB - digitsA
+    if (codeA.length !== codeB.length) return codeB.length - codeA.length
+    return b.areaM2 - a.areaM2
+  })
+
+  for (let i = 0; i < sorted.length; i++) {
+    const child = sorted[i]
+    if (!child || child.areaM2 <= 0.1) continue
+
+    // Soustraire cette pièce fille de toutes les pièces parentes suivantes
+    for (let j = i + 1; j < sorted.length; j++) {
+      const parent = sorted[j]
+      if (!parent || parent.areaM2 <= 0.1) continue
+
+      const isParent = isChildAffectation(child.designation, parent.designation) ||
+        (child.designation.length > parent.designation.length && parent.designation.length > 0 && child.designation.includes(parent.designation))
+
+      if (isParent) {
+        try {
+          const diff = difference({
+            type: 'FeatureCollection',
+            features: [parent.feature, child.feature],
+          })
+          if (diff && diff.geometry) {
+            const newArea = geometryAreaM2(diff.geometry)
+            if (newArea > 0.1) {
+              parent.feature = diff
+              parent.areaM2 = newArea
+              parent.percent = totalArea > 0 ? (newArea / totalArea) * 100 : 0
+            } else {
+              parent.areaM2 = 0
+              parent.percent = 0
+            }
+          } else {
+            // Complètement superposés -> suppression de la pièce mère
+            parent.areaM2 = 0
+            parent.percent = 0
+          }
+        } catch {
+          /* ignore error on difference */
+        }
+      }
+    }
+  }
+
+  const finalPieces = sorted.filter((p) => p.areaM2 > 0.1)
+  finalPieces.sort((a, b) => b.areaM2 - a.areaM2)
+  return finalPieces
 }
 
 // ── Plan SVG (parcelle + affectations colorées), inspiré du plan topographique ──

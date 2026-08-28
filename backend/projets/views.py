@@ -825,6 +825,126 @@ def _is_non_definie_designation(designation: str) -> bool:
     return True
 
 
+def _is_child_affectation(code_a: str, code_b: str) -> bool:
+    """Retourne True si code_a est une affectation fille / plus spécifique que code_b (mère).
+    Ex: IN2 est fille de IN, B2 est fille de B, SB4 est fille de B ou SB, DS1 est fille de D.
+    """
+    ca = (code_a or '').strip().upper()
+    cb = (code_b or '').strip().upper()
+    if not ca or not cb or ca == cb:
+        return False
+    if ca.startswith(cb) and len(ca) > len(cb):
+        return True
+    if ca.startswith('SB') and cb == 'B':
+        return True
+    if ca.startswith('DS') and cb == 'D':
+        return True
+    return False
+
+
+def _resolve_overlapping_affectations(items: list) -> list:
+    """Résout les superpositions entre affectations constructibles.
+    Pour les affectations parent/enfant (ex: IN et IN2), conserve l'affectation fille IN2,
+    soustrait la surface d'intersection de l'affectation mère IN,
+    et si elles sont complètement superposées (surface restante <= 0.1 m²),
+    supprime complètement l'affectation mère.
+    """
+    if not items:
+        return []
+
+    from shapely.geometry import shape
+    from pyproj import Transformer
+    from shapely.ops import transform
+
+    transformer = Transformer.from_crs('EPSG:4326', 'EPSG:32629', always_xy=True)
+
+    constr = []
+    non_constr = []
+
+    for it in items:
+        raw_geojson = it.get('geojson')
+        if raw_geojson:
+            try:
+                g = shape(json.loads(raw_geojson))
+                it['geom'] = g
+            except Exception:
+                it['geom'] = None
+        else:
+            it['geom'] = None
+
+        if it['type'] == 'constructible' and it['geom'] is not None and not it['geom'].is_empty:
+            constr.append(it)
+        else:
+            non_constr.append(it)
+
+    if len(constr) <= 1:
+        for it in items:
+            it.pop('geom', None)
+            it.pop('geojson', None)
+        return [it for it in items if it['surface_m2'] > 0.1]
+
+    # Trier par spécificité décroissante (les filles en premier : chiffres, longueur de code)
+    def _spec_rank(it):
+        code = it['designation'].upper()
+        digits = sum(1 for c in code if c.isdigit())
+        return (digits > 0, len(code), it['surface_m2'])
+
+    constr_sorted = sorted(constr, key=_spec_rank, reverse=True)
+
+    active_pieces = []
+    for item in constr_sorted:
+        active_pieces.append({
+            'item': item,
+            'geom': item['geom'],
+            'code': item['designation'].upper(),
+        })
+
+    for i in range(len(active_pieces)):
+        p_child = active_pieces[i]
+        child_geom = p_child['geom']
+        if child_geom is None or child_geom.is_empty:
+            continue
+
+        # Soustraire cette géométrie fille de toutes les pièces parentes suivantes
+        for j in range(i + 1, len(active_pieces)):
+            p_parent = active_pieces[j]
+            if p_parent['geom'] is None or p_parent['geom'].is_empty:
+                continue
+
+            is_parent = _is_child_affectation(p_child['code'], p_parent['code']) or (
+                len(p_child['code']) > len(p_parent['code']) and p_parent['code'] in p_child['code']
+            )
+
+            if is_parent and p_parent['geom'].intersects(child_geom):
+                try:
+                    diff = p_parent['geom'].difference(child_geom)
+                    p_parent['geom'] = diff if (diff and not diff.is_empty) else None
+                except Exception:
+                    pass
+
+    resolved_constr = []
+    for p in active_pieces:
+        if p['geom'] is not None and not p['geom'].is_empty:
+            try:
+                geom_proj = transform(transformer.transform, p['geom'])
+                area_m2 = round(geom_proj.area, 2)
+            except Exception:
+                area_m2 = p['item']['surface_m2']
+
+            if area_m2 > 0.1:
+                p['item']['surface_m2'] = area_m2
+                resolved_constr.append(p['item'])
+
+    for it in resolved_constr:
+        it.pop('geom', None)
+        it.pop('geojson', None)
+    for it in non_constr:
+        it.pop('geom', None)
+        it.pop('geojson', None)
+
+    return resolved_constr + non_constr
+
+
 class SurfaceConstructibleView(APIView):
     authentication_classes = [JWTOptionalAuthentication]
     permission_classes = [AllowAny]
@@ -862,12 +982,19 @@ class SurfaceConstructibleView(APIView):
                 superficie = round(projected.area, 2)
             except Exception:
                 superficie = 0
+            return self._compute(geom.wkt, superficie)
         return self._compute(geom.wkt, superficie)
 
     @staticmethod
     def _compute(terrain_wkt: str, terrain_superficie: float):
         sql = """
             SELECT pa.designation, pa.type_construction, pa.cos, pa.cus, pa.hauteur_max, pa.largeur_min,
+                ST_AsGeoJSON(
+                    ST_Intersection(
+                        ST_SetSRID(ST_GeomFromText(%s), 4326),
+                        ST_SetSRID(ST_GeomFromGeoJSON(pa.geometry::text), 4326)
+                    )
+                ) as intersection_geojson,
                 ST_Area(
                     ST_Intersection(
                         ST_SetSRID(ST_GeomFromText(%s), 4326),
@@ -884,7 +1011,7 @@ class SurfaceConstructibleView(APIView):
 
         try:
             with connection.cursor() as cur:
-                cur.execute(sql, [terrain_wkt, terrain_wkt])
+                cur.execute(sql, [terrain_wkt, terrain_wkt, terrain_wkt])
                 rows = cur.fetchall()
         except Exception as exc:
             return Response(
@@ -892,9 +1019,8 @@ class SurfaceConstructibleView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        non_constr = 0.0
-        affectations = []
-        for designation, type_construction, cos_val, cus_val, h_max, l_min, area_m2 in rows:
+        raw_items = []
+        for designation, type_construction, cos_val, cus_val, h_max, l_min, geojson_str, area_m2 in rows:
             area = round(float(area_m2), 2)
             if area <= 0:
                 continue
@@ -909,7 +1035,7 @@ class SurfaceConstructibleView(APIView):
             if _is_non_definie_designation(raw_d):
                 continue
 
-            aff_item = {
+            raw_items.append({
                 'designation': raw_d,
                 'surface_m2': area,
                 'type': 'constructible' if _is_constructible_designation(raw_d) else 'non_constructible',
@@ -918,13 +1044,13 @@ class SurfaceConstructibleView(APIView):
                 'cus': cus_num,
                 'hauteur_max': h_max_str,
                 'largeur_min': l_min_str,
-            }
-            if _is_constructible_designation(raw_d):
-                affectations.append(aff_item)
-            else:
-                non_constr += area
-                affectations.append(aff_item)
+                'geojson': geojson_str,
+            })
 
+        # Résolution des superpositions parent / enfant
+        affectations = _resolve_overlapping_affectations(raw_items)
+
+        non_constr = sum(a['surface_m2'] for a in affectations if a['type'] != 'constructible')
         surface_constructible = max(0.0, terrain_superficie - non_constr)
         taux = round(surface_constructible / terrain_superficie * 100, 1) if terrain_superficie > 0 else 0.0
 
@@ -933,9 +1059,6 @@ class SurfaceConstructibleView(APIView):
             constr_affectations = [a for a in affectations if a['type'] == 'constructible']
             if constr_affectations:
                 def _dominant_key(a):
-                    # Trier par surface décroissante, puis par spécificité de la désignation :
-                    # une désignation plus longue (ex: B2) est considérée plus spécifique
-                    # qu'une désignation plus courte (ex: B), donc优先 en cas d'égalité.
                     return (a['surface_m2'], len(a['designation']))
                 dominant = max(constr_affectations, key=_dominant_key)
 
