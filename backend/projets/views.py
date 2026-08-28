@@ -708,7 +708,13 @@ class TerrainBulkImportView(APIView):
             except (TypeError, ValueError):
                 surface_val = 0
 
-            nom = f'Parcelle {num}' if num else f'Parcelle {i + 1}'
+            ind = (props.get('indice') or '').strip()
+            if num and ind and not num.endswith(f'/{ind}') and '/' not in num:
+                nom = f'Parcelle {num}/{ind}'
+            elif num:
+                nom = f'Parcelle {num}'
+            else:
+                nom = f'Parcelle {i + 1}'
 
             terrains.append(Terrain(
                 projet=projet,

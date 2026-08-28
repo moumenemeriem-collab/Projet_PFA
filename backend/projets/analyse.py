@@ -1314,14 +1314,26 @@ def extraire_donnees_ponderation(projet_pk: int, selections: dict) -> dict:
     # des terrains éventuellement enregistrés du projet), pour classer tout le cadastre.
     candidats = []
     for p in parcels_db:
+        p_num = (p.get('num') or '').strip()
+        p_ind = (p.get('indice') or '').strip()
+        if p_num and p_ind and not p_num.endswith(f'/{p_ind}') and '/' not in p_num:
+            nom_c = f'Parcelle {p_num}/{p_ind}'
+            ref_c = f'{p_num}/{p_ind}'
+        elif p_num:
+            nom_c = f'Parcelle {p_num}'
+            ref_c = p_num
+        else:
+            nom_c = f"Parcelle {p['id']}"
+            ref_c = ''
+
         candidats.append({
             'id': p['id'],
-            'nom': p.get('num') or f"Parcelle {p['id']}",
+            'nom': nom_c,
             'lat': float(p['lat']),
             'lng': float(p['lng']),
             'superficie': float(p.get('surface') or 0),
-            'reference_cadastrale': p.get('num') or '',
-            'indice': p.get('indice') or '',
+            'reference_cadastrale': ref_c,
+            'indice': p_ind,
             'consistance': p.get('Consistance') or '',
             'fid': p.get('fid'),
             'num_parcelle': p.get('num') or '',
