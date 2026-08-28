@@ -8,7 +8,7 @@
   },
   "hero": {
     "title": "Identifiez et classez vos opportunités foncières",
-    "description": "Analysez le potentiel des parcelles dans la région de Khémisset grâce à des outils géospatiaux avancés. Prenez des décisions d'investissement éclairées et sécurisées.",
+    "description": "Analysez le potentiel des parcelles grâce aux outils géospatiaux avancés de GEO INVEST. Prenez des décisions d'investissement éclairées et sécurisées.",
     "cta_signup": "S'inscrire gratuitement",
     "cta_login": "Se connecter",
     "slide_alt": "Diapositive",
@@ -40,7 +40,7 @@
   "benefits": {
     "securite": {
       "title": "Sécurité Juridique",
-      "description": "Appuyez vos décisions sur des données cadastrales et réglementaires fiables, actualisées pour la région de Khémisset."
+      "description": "Appuyez vos décisions sur des données cadastrales et réglementaires fiables et actualisées."
     },
     "optimisation": {
       "title": "Optimisation de Rendement",
@@ -87,7 +87,7 @@
       "benefit_3": "Rapports d'investissement PDF",
       "has_account": "Déjà membre de la communauté ?",
       "login_link": "Se connecter",
-      "instance_label": "Instance de production — Région",
+      "instance_label": "Instance de production : Région",
       "servers_status": "Serveurs SIG Opérationnels"
     },
     "header": {
@@ -663,7 +663,7 @@
     "search_ref_multi": "{n} parcelles trouvées",
     "no_terrains_found": "Aucun terrain trouvé.",
     "rang": "Rang",
-    "rentabilite_non_disponible": "Rentabilité non disponible — classement basé uniquement sur l'AMC",
+    "rentabilite_non_disponible": "Rentabilité non disponible : classement basé uniquement sur l'AMC",
     "save_classement": "Enregistrer le classement",
     "save_loading": "Enregistrement…",
     "analyse_saved": "Analyse enregistrée avec succès",
@@ -771,20 +771,20 @@
     "geo_cadastre_unavailable": "Couche cadastre indisponible. Utilisez l'import GeoJSON ou le dessin manuel.",
     "geo_cadastre_invalid": "La parcelle sélectionnée n'a pas de géométrie valide.",
     "geo_cadastre_notfound": "Aucune parcelle ne correspond à {q}. Essayez l'import GeoJSON (Mode 2) ou le dessin manuel (Mode 3).",
-    "geo_manual_warning": "Positionnement approximatif — pour une précision garantie, utilisez la sélection cadastrale ou importez un plan GeoJSON.",
+    "geo_manual_warning": "Positionnement approximatif : pour une précision garantie, utilisez la sélection cadastrale ou importez un plan GeoJSON.",
     "geo_manual_zoom_required": "Approchez-vous (zoom ≥ 17) avant de placer les points.",
     "geo_manual_draw_hint": "Cliquez sur la carte pour ajouter un sommet numéroté (1, 2, 3…). La ligne se construit au fur et à mesure.",
     "geo_manual_undo": "Annuler le dernier point",
     "geo_manual_finish": "Terminer le polygone",
     "geo_manual_restart": "Recommencer",
-    "geo_manual_closed_hint": "Polygone finalisé — faites glisser un sommet pour ajuster le contour.",
+    "geo_manual_closed_hint": "Polygone finalisé : faites glisser un sommet pour ajuster le contour.",
     "geo_min_points": "3 sommets minimum requis.",
     "geo_import_file": "Choisir un fichier",
     "geo_paste_geojson": "…ou collez le contenu GeoJSON (Polygon ou MultiPolygon) ici",
     "geo_import": "Importer",
     "geo_import_pasted": "GeoJSON collé",
     "geo_geojson_invalid": "GeoJSON invalide : un Polygon ou MultiPolygon (3 sommets minimum) est attendu.",
-    "geo_geojson_ok": "Polygone importé — superficie :",
+    "geo_geojson_ok": "Polygone importé : superficie :",
     "geo_area": "Superficie (polygone)",
     "price_per_m2": "Prix au m²",
     "surface_constructible": "Surface constructible potentielle",
@@ -793,7 +793,7 @@
   "about": {
     "hero": {
       "title": "La plateforme d'analyse foncière intelligente",
-      "subtitle": "GEO INVEST exploite les données géospatiales et cadastrales pour vous aider à identifier, analyser et classer les meilleures opportunités d'investissement dans la région de Khémisset.",
+      "subtitle": "GEO INVEST exploite les données géospatiales et cadastrales pour vous aider à identifier, analyser et classer les meilleures opportunités d'investissement foncier.",
       "cta": "Créer un compte",
       "explore": "Découvrir nos outils",
       "stat1": "Services SIG",

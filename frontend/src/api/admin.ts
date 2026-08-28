@@ -73,7 +73,7 @@ export function exportUsersCsv(users: Utilisateur[]): void {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = 'utilisateurs-websig.csv'
+  link.download = 'utilisateurs-geoinvest.csv'
   link.click()
   URL.revokeObjectURL(url)
 }

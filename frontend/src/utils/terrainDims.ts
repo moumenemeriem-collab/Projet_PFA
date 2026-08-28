@@ -64,14 +64,14 @@ export function polygonAreaM2(ring: number[][]): number {
 }
 
 export function formatMeters(d: number): string {
-  if (!Number.isFinite(d)) return '—'
+  if (!Number.isFinite(d)) return '0 m'
   if (d >= 10000) return `${(d / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km`
   const v = d >= 100 ? Math.round(d) : Math.round(d * 10) / 10
   return `${v.toLocaleString('fr-FR')} m`
 }
 
 function formatArea(m2: number): string {
-  if (!Number.isFinite(m2)) return '—'
+  if (!Number.isFinite(m2)) return '0 m²'
   if (m2 >= 10000) {
     return `${(m2 / 10000).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} ha`
   }

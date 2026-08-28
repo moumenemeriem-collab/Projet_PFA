@@ -27,6 +27,70 @@ const AFFECTATION_PALETTE = [
   '#808000', '#ffd8b1', '#000075', '#f0a3a3', '#1b3a6e', '#46f0a0',
 ]
 
+const NON_DEFINIE_PREFIXES = new Set(['AA', 'AAT', 'HA', 'MK', 'TA', 'SK', 'ME'])
+
+/**
+ * Détermine si une affectation est valide et doit être prise en compte / affichée
+ * (zonage, équipements publics/privés, voirie/voies, espaces verts).
+ * Masque UNIQUEMENT les affectations sans aucun rôle / non définies (null, vides, préfixes AA/HA/MK/TA...).
+ */
+export function isAffectationValide(designation: unknown, props?: Record<string, unknown>): boolean {
+  const raw = String(
+    designation ??
+    props?.designation ??
+    props?.Designation ??
+    props?.DESIGNATION ??
+    ''
+  ).trim()
+
+  const tc = String(
+    props?.type_construction ??
+    props?.Type_construction ??
+    props?.definition ??
+    props?.Definition ??
+    props?.libelle ??
+    ''
+  ).trim()
+
+  // Si ni désignation ni type_construction : entité vide / non définie -> exclure
+  if (!raw && !tc) return false
+
+  const code = raw.toUpperCase()
+  const clean = code.replace(/\s+/g, '')
+  if (
+    clean === 'NULL' ||
+    clean === 'UNDEFINED' ||
+    clean === 'NONE' ||
+    clean === '-' ||
+    clean === 'NONDÉFINIE' ||
+    clean === 'NONDEFINIE' ||
+    clean === 'AFFECTATIONNONDÉFINIE' ||
+    clean === 'AFFECTATIONNONDEFINIE' ||
+    clean === 'INCONNU' ||
+    NON_DEFINIE_PREFIXES.has(clean) ||
+    NON_DEFINIE_PREFIXES.has(code) ||
+    /^(AA|AAT|HA|MK|TA|SK|ME)($|[^0-9A-Z])/i.test(code)
+  ) {
+    return false
+  }
+
+  // Si type_construction est explicitement "non définie" sans code valide
+  if (!raw && tc) {
+    const tcUpper = tc.toUpperCase()
+    if (
+      tcUpper === 'NULL' ||
+      tcUpper === 'UNDEFINED' ||
+      tcUpper.includes('NON DÉFINIE') ||
+      tcUpper.includes('NON DEFINIE')
+    ) {
+      return false
+    }
+  }
+
+  // Toutes les autres affectations du plan d'aménagement sont valides et affichées
+  return true
+}
+
 // Couleur stable pour un même code d'affectation (déterminée par hachage).
 export function affectationColor(key: string): string {
   const s = key || ''
@@ -35,16 +99,15 @@ export function affectationColor(key: string): string {
   return AFFECTATION_PALETTE[h % AFFECTATION_PALETTE.length]
 }
 
-// Nom lisible d'une affectation : « Code — Description » (ex. « RB1 — Parc de stationnement »).
+// Nom lisible d'une affectation : « Code : Description » (ex. « RB1 : Parc de stationnement »).
 export function affectationLabel(props: Record<string, unknown>): string {
-  const code = String(props.designation ?? '').trim()
-  const desc = String(props.type_construction ?? '').trim()
-  const definition = String(props.definition ?? '').trim()
-  const description = desc || definition
-  if (code && description) return `${code} — ${description}`
+  const code = String(props.designation ?? props.Designation ?? '').trim()
+  if (!isAffectationValide(code, props)) return ''
+  const desc = String(props.type_construction ?? props.definition ?? props.libelle ?? '').trim()
+  if (code && desc) return `${code} : ${desc}`
   if (code) return code
-  if (description) return description
-  return 'Affectation non définie'
+  if (desc) return desc
+  return code || 'Affectation'
 }
 
 // Ordre et libellés préférés des attributs du plan d'aménagement.
@@ -126,13 +189,15 @@ export function stripZGeometry(geometry: unknown): { type: string; coordinates: 
 
 // Prépare une fois les polygones du plan d'aménagement (Z supprimé + bbox) pour accélérer les intersections.
 export function preparePAZones(features: { geometry: unknown; properties: Record<string, unknown> }[]): PreparedPAZone[] {
-  return features.map((f) => {
-    const geometry = stripZGeometry(f.geometry)
-    return {
-      feature: { type: 'Feature', properties: f.properties, geometry },
-      bbox: featureBBoxFromGeom(geometry),
-    }
-  })
+  return features
+    .filter((f) => isAffectationValide(f.properties?.designation, f.properties))
+    .map((f) => {
+      const geometry = stripZGeometry(f.geometry)
+      return {
+        feature: { type: 'Feature', properties: f.properties, geometry },
+        bbox: featureBBoxFromGeom(geometry),
+      }
+    })
 }
 
 function ringsFromGeometry(geometry: unknown): number[][][] {
@@ -157,7 +222,7 @@ export function geometryAreaM2(geometry: unknown): number {
 }
 
 export function formatAffArea(m2: number): string {
-  if (!Number.isFinite(m2)) return '—'
+  if (!Number.isFinite(m2)) return '0 m²'
   if (m2 >= 10000) {
     return `${(m2 / 10000).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} ha`
   }
@@ -189,11 +254,15 @@ export function computeParcelAffectations(
       const area = geometryAreaM2(res.geometry)
       if (area <= 0) continue
       const designation = String(props.designation ?? '').trim()
+      if (!isAffectationValide(designation, props)) continue
+      const label = affectationLabel(props)
+      if (!label) continue
+
       pieces.push({
         feature: res as AffectationPiece['feature'],
         properties: props,
         designation,
-        label: affectationLabel(props),
+        label,
         color: affectationColor(designation),
         areaM2: area,
         percent: totalArea > 0 ? (area / totalArea) * 100 : 0,
@@ -244,7 +313,7 @@ export function buildAffectationPlanSvg(terrainRing: number[][], pieces: Affecta
     .map((pc) =>
       ringsFromGeometry(pc.feature.geometry)
         .map((r) => {
-          const title = `<title>${escapeAffHtml(pc.label)} — ${escapeAffHtml(formatAffArea(pc.areaM2))} · ${pc.percent.toFixed(1)} %</title>`
+          const title = `<title>${escapeAffHtml(pc.label)} : ${escapeAffHtml(formatAffArea(pc.areaM2))} · ${pc.percent.toFixed(1)} %</title>`
           return `<polygon class="geo-aff-piece" fill="${pc.color}" points="${pts(r)}">${title}</polygon>`
         })
         .join('')
@@ -295,8 +364,8 @@ export function buildAffectationsModalHtml(title: string, terrainRing: number[][
         `<td class="geo-aff-cell-num">${escapeAffHtml(formatAffArea(pc.areaM2))}</td>` +
         `<td class="geo-aff-cell-num">${pc.percent.toFixed(1)} %</td>` +
         propCells +
-        `<td class="geo-aff-cell">${escapeAffHtml(code ? (getReglesPrincipales(code)?.conditions || '—') : '—')}</td>` +
-        `<td class="geo-aff-cell">${escapeAffHtml(code ? (getReglesPrincipales(code)?.typeOperation || '—') : '—')}</td>` +
+        `<td class="geo-aff-cell">${escapeAffHtml(code ? (getReglesPrincipales(code)?.conditions || 'Non spécifié') : 'Non spécifié')}</td>` +
+        `<td class="geo-aff-cell">${escapeAffHtml(code ? (getReglesPrincipales(code)?.typeOperation || 'Non spécifié') : 'Non spécifié')}</td>` +
         `</tr>`
       )
     })

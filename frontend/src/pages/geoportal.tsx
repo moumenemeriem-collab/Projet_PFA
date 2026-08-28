@@ -29,6 +29,7 @@ import {
 } from '../utils/terrainDims'
 import {
   computeParcelAffectations,
+  isAffectationValide,
   preparePAZones,
   showAffectationsModal,
   type AffectationPiece,
@@ -3454,7 +3455,7 @@ const bindPopupActionButtons = (popup: any): void => {
                               </thead>
                               <tbody>
                                 {rentaSurfaceConstructible.affectations
-                                  .filter((a) => a.surface_m2 > 0)
+                                  .filter((a) => a.surface_m2 > 0 && isAffectationValide(a.designation, a as unknown as Record<string, unknown>))
                                   .sort((a, b) => b.surface_m2 - a.surface_m2)
                                   .map((a, i) => {
                                     const pct = rentaParcelInfo?.superficie ? Math.round(a.surface_m2 / rentaParcelInfo.superficie * 10000) / 100 : 0
@@ -4025,6 +4026,7 @@ const bindPopupActionButtons = (popup: any): void => {
                       <section className="renta-detail-sec">
                         <h5>{t('projects.detail_surfaces')}</h5>
                         <CalcRow label="Surface brute (m²)" value={rentaResult.surfaces?.surface_brute} unit="m²" />
+                        <CalcRow label="Surface constructible (m²)" value={rentaResult.surfaces?.surface_constructible ?? rentaSurfaceConstructible?.surface_constructible ?? rentaResult.surfaces?.surface_brute} unit="m²" />
                         <CalcRow label="SHON (m²)" value={rentaResult.surfaces?.shon} unit="m²" />
                         <CalcRow label="SHOB (m²)" value={rentaResult.surfaces?.shob} unit="m²" />
                         <CalcRow label="Surface vendable (m²)" value={rentaResult.surfaces?.surface_vendable} unit="m²" />

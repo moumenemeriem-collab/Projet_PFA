@@ -165,7 +165,7 @@ function fitText(s: string, size: number, maxW: number, bold = false): string {
 }
 
 function fmtVal(v: number | undefined | null, maxDec = 0): string {
-  if (v == null || !Number.isFinite(Number(v))) return '—'
+  if (v == null || !Number.isFinite(Number(v))) return '0'
   const f = Number(Number(v).toFixed(maxDec))
   const neg = f < 0 ? '-' : ''
   const str = Math.abs(f).toFixed(maxDec)
@@ -425,8 +425,8 @@ function buildRentaPage1(data: RentaReportData, dateStr: string, hasImage: boole
   }
 
   // ── En-tête ──
-  txt('WebSIG FONCIER', 45, 805, 14, 'F2', NAVY)
-  txt('SIGMATOP — ÉTUDE DE POTENTIEL FONCIER & RENTABILITÉ FINANCIÈRE', 45, 792, 7, 'F2', GRAY)
+  txt('GEO INVEST', 45, 805, 14, 'F2', NAVY)
+  txt('ÉTUDE DE POTENTIEL FONCIER & RENTABILITÉ FINANCIÈRE', 45, 792, 7, 'F2', GRAY)
 
   txtR('RAPPORT D\'ÉTUDE DE RENTABILITÉ', AP - 45, 805, 11, 'F2', DARK)
   txtR(`Date d'édition : ${dateStr}`, AP - 45, 792, 7.5, 'F1', GRAY)
@@ -451,9 +451,9 @@ function buildRentaPage1(data: RentaReportData, dateStr: string, hasImage: boole
 
   const infoRows = [
     { label: 'Nom / Intitulé :', val: fitText(data.terrainNom, 8, 130, true) },
-    { label: 'Réf. Cadastrale :', val: data.reference || '—' },
+    { label: 'Réf. Cadastrale :', val: data.reference || 'Non renseignée' },
     { label: 'Superficie totale :', val: `${fmtVal(supM2)} m² (${supHa} ha)` },
-    { label: 'Coordonnées GPS :', val: data.lat && data.lng ? `${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}` : '—' },
+    { label: 'Coordonnées GPS :', val: data.lat && data.lng ? `${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}` : 'Non renseignées' },
     { label: 'Projet associé :', val: fitText(data.projectName || 'Projet Foncier', 8, 130) },
   ]
 
@@ -496,7 +496,7 @@ function buildRentaPage1(data: RentaReportData, dateStr: string, hasImage: boole
   const kpiW = (AP - 90 - 3 * 8) / 4
 
   const kpis = [
-    { label: 'TRI (Taux Interne)', val: rentaResult.tri != null ? `${rentaResult.tri}%` : '—', bg: BG_GREEN, fg: GREEN_TEXT },
+    { label: 'TRI (Taux Interne)', val: rentaResult.tri != null ? `${rentaResult.tri}%` : 'Non calculé', bg: BG_GREEN, fg: GREEN_TEXT },
     { label: 'Bénéfice Net Global', val: `${fmtVal(rentaResult.benefice_net)} DH`, bg: BG_GREEN, fg: GREEN_TEXT },
     { label: 'Chiffre d\'Affaires', val: `${fmtVal(rentaResult.ca?.ca_total)} DH`, bg: BG_BLUE, fg: BLUE_TEXT },
     { label: 'Coût Total Projet', val: `${fmtVal(rentaResult.cout_total_projet)} DH`, bg: BG_CARD, fg: DARK },
@@ -527,7 +527,7 @@ function buildRentaPage1(data: RentaReportData, dateStr: string, hasImage: boole
     { label: 'Prix foncier brut :', val: `${fmtVal(rentaResult.parametres?.prix_foncier_m2 ?? Number(rentaForm.prixFoncierM2))} DH/m²` },
     { label: 'Frais d\'acquisition :', val: `${rentaResult.parametres?.frais_acquisition_pct ?? rentaForm.fraisAcquisition ?? 0} %` },
     { label: 'Taux de chute :', val: `${rentaResult.parametres?.taux_chute_pct ?? rentaForm.tauxChute ?? 0} %` },
-    { label: 'COS / CUS :', val: `${rentaResult.parametres?.cos ?? rentaForm.cos ?? '—'} / ${rentaResult.parametres?.cus ?? rentaForm.cus ?? '—'}` },
+    { label: 'COS / CUS :', val: `${rentaResult.parametres?.cos ?? rentaForm.cos ?? 'N/A'} / ${rentaResult.parametres?.cus ?? rentaForm.cus ?? 'N/A'}` },
     { label: 'Études & Honoraires :', val: `${rentaResult.parametres?.taux_etudes_pct ?? rentaForm.tauxEtudes ?? 0} %` },
     { label: 'Imprévus :', val: `${rentaResult.parametres?.taux_imprevus_pct ?? rentaForm.tauxImprevus ?? 0} %` },
     { label: 'Frais de commercialisation :', val: `${rentaResult.parametres?.taux_commercialisation_pct ?? rentaForm.tauxCommercialisation ?? 0} %` },
@@ -553,6 +553,7 @@ function buildRentaPage1(data: RentaReportData, dateStr: string, hasImage: boole
 
   const surfRows = [
     { label: 'Surface brute :', val: `${fmtVal(rentaResult.surfaces?.surface_brute)} m²` },
+    { label: 'Surface constructible :', val: `${fmtVal(rentaResult.surfaces?.surface_constructible ?? rentaResult.surfaces?.surface_brute)} m²` },
     { label: 'SHON / SHOB :', val: `${fmtVal(rentaResult.surfaces?.shon)} / ${fmtVal(rentaResult.surfaces?.shob)} m²` },
     { label: 'Surface vendable :', val: `${fmtVal(rentaResult.surfaces?.surface_vendable)} m²` },
     { label: 'Appartements :', val: `${fmtVal(rentaResult.surfaces?.surface_appartements)} m²` },
@@ -599,7 +600,7 @@ function buildRentaPage1(data: RentaReportData, dateStr: string, hasImage: boole
 
   // ── Pied de page ──
   out.push(`${LINE} RG 0.5 w 45 48 m ${(AP - 45).toFixed(2)} 48 l S\n`)
-  txt('Plateforme WebSIG de Prospection & Analyse Foncière — SIGMATOP SARL', 45, 34, 7, 'F1', LIGHT_GRAY)
+  txt('GEO INVEST • Plateforme d\'Analyse & Prospection Foncière', 45, 34, 7, 'F1', LIGHT_GRAY)
   txtR('Page 1 / 2', AP - 45, 34, 7, 'F2', GRAY)
 
   return out.join('')
@@ -623,7 +624,7 @@ function buildRentaPage2(data: RentaReportData, dateStr: string): string {
   }
 
   // ── En-tête Page 2 ──
-  txt('WebSIG FONCIER', 45, 805, 14, 'F2', NAVY)
+  txt('GEO INVEST', 45, 805, 14, 'F2', NAVY)
   txt('TABLEAU PRÉVISIONNEL DES FLUX DE TRÉSORERIE (CASH FLOWS ANNUELS)', 45, 792, 7.5, 'F2', GRAY)
 
   txtR(`Terrain : ${fitText(data.terrainNom, 9, 200, true)}`, AP - 45, 805, 9, 'F2', DARK)
@@ -673,9 +674,9 @@ function buildRentaPage2(data: RentaReportData, dateStr: string): string {
       const yx = tX + colLabelW + i * colYearW
       if (v.val != null && v.val > 0) {
         const valStr = `${fmtVal(v.val)}${v.pct ? ` (${v.pct})` : ''}`
-        txtR(valStr, yx + colYearW - 8, curY - 12, 7, 'F1', DARK)
+        txtR(valStr, yx + colYearW - 8, curY - 14, 7.5, 'F1', DARK)
       } else {
-        txtR('—', yx + colYearW - 8, curY - 12, 7, 'F1', LIGHT_GRAY)
+        txtR('0 DH', yx + colYearW - 8, curY - 14, 7.5, 'F1', LIGHT_GRAY)
       }
     })
     curY -= rowH
@@ -771,44 +772,20 @@ function buildRentaPage2(data: RentaReportData, dateStr: string): string {
   )
 
   // 3. LIGNE TOTAL FLUX NET
-  const netH = 22
+  const netH = 26
   out.push(`${BG_GREEN} rg ${tX} ${(curY - netH).toFixed(2)} ${tW} ${netH} re f\n`)
   out.push(`0.09 0.55 0.24 RG 1.2 w ${tX} ${(curY - netH).toFixed(2)} ${tW} ${netH} re S\n`)
-  txt('FLUX NET DE TRÉSORERIE (DH)', tX + 8, curY - 14, 8, 'F2', GREEN_TEXT)
+  txt('FLUX NET DE TRÉSORERIE (DH)', tX + 8, curY - 16, 8.5, 'F2', GREEN_TEXT)
 
   fluxList.forEach((f, i) => {
     const yx = tX + colLabelW + i * colYearW
-    txtR(`${fmtVal(f.flux_net)} DH`, yx + colYearW - 8, curY - 14, 8, 'F2', GREEN_TEXT)
+    txtR(`${fmtVal(f.flux_net)} DH`, yx + colYearW - 8, curY - 16, 8.5, 'F2', GREEN_TEXT)
   })
   curY -= netH
 
-  // ── Bloc Récapitulatif des Indicateurs en bas de Page 2 ──
-  const noteTop = curY - 24
-  const noteH = 140
-  const noteBottom = noteTop - noteH
-
-  out.push(`${BG_CARD} rg ${tX} ${noteBottom} ${tW} ${noteH} re f\n`)
-  out.push(`${LINE} RG 0.8 w ${tX} ${noteBottom} ${tW} ${noteH} re S\n`)
-  txt('SYNTHÈSE DE LA PERFORMANCE & RÈGLES DE SIMULATION', tX + 12, noteTop - 15, 8, 'F2', NAVY)
-  out.push(`${LINE} RG 0.5 w ${tX + 12} ${noteTop - 20} m ${tX + tW - 12} ${noteTop - 20} l S\n`)
-
-  const notes = [
-    `• Taux de Rentabilité Interne (TRI) calculé : ${rentaResult.tri != null ? `${rentaResult.tri} %` : '—'}`,
-    `• Bénéfice Net Prévisionnel global après charges : ${fmtVal(rentaResult.benefice_net)} DH`,
-    `• Échelonnement des charges : Démarrent en Année 0 (Acquisition & Aménagement à 100%, Construction et charges échelonnées sur ${rentaResult.parametres?.duree_construction ?? data.rentaForm.dureeConstruction ?? 2} an(s)).`,
-    `• Échelonnement des recettes : Démarrent en Année 1 avec un décalage d'un an (Ventes étalées sur ${rentaResult.parametres?.duree_commercialisation ?? data.rentaForm.dureeCommercialisation ?? 3} an(s), Équipements perçus en Année 1).`,
-    `• Conformité urbanistique et données foncières extraites du système d'information géographique WebSIG Foncier.`,
-  ]
-
-  let ny = noteTop - 34
-  notes.forEach((nt) => {
-    txt(nt, tX + 12, ny, 7.5, 'F1', DARK)
-    ny -= 20
-  })
-
   // ── Pied de page ──
   out.push(`${LINE} RG 0.5 w 45 48 m ${(AP - 45).toFixed(2)} 48 l S\n`)
-  txt('Plateforme WebSIG de Prospection & Analyse Foncière — SIGMATOP SARL', 45, 34, 7, 'F1', LIGHT_GRAY)
+  txt('GEO INVEST • Plateforme d\'Analyse & Prospection Foncière', 45, 34, 7, 'F1', LIGHT_GRAY)
   txtR('Page 2 / 2', AP - 45, 34, 7, 'F2', GRAY)
 
   return out.join('')

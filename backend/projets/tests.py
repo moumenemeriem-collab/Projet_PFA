@@ -62,24 +62,23 @@ def _projet(**overrides):
 
 
 class TestSurfaceVendable(SimpleTestCase):
-    """Nouvelle formule de surface vendable conditionnée par la présence de voies ou espaces verts."""
+    """Formules de surface vendable et aménageable selon le PDF."""
 
     def test_formule_sans_voie_ni_espace_vert(self):
+        # Section 3.2 : SHON = COS * Sconstr * (1 - taux_chute/100)
+        # SHOB = SHON * 1.2 ; Svendable = SHON * 0.9 ; Samenager = Sconstr * taux_chute/100
         p = _projet(cos=1.0, surface_constructible=8000, taux_chute=30, surface_voie=0, surface_espace_vert=0)
         r = calculer_rentabilite_projet(p)
-        # SHON = 1.0 * 8000 = 8000, SHOB = 9600, Surface vendable = 8000 * 0.9 = 7200
-        self.assertAlmostEqual(r['surfaces']['shon'], 8000.0, places=2)
-        self.assertAlmostEqual(r['surfaces']['shob'], 9600.0, places=2)
-        self.assertAlmostEqual(r['surfaces']['surface_vendable'], 7200.0, places=2)
-        self.assertAlmostEqual(r['surfaces']['surface_a_amenager'], 0.0, places=2)
+        self.assertAlmostEqual(r['surfaces']['shon'], 5600.0, places=2)
+        self.assertAlmostEqual(r['surfaces']['shob'], 6720.0, places=2)
+        self.assertAlmostEqual(r['surfaces']['surface_vendable'], 5040.0, places=2)
+        self.assertAlmostEqual(r['surfaces']['surface_a_amenager'], 2400.0, places=2)
 
     def test_formule_avec_voie_ou_espace_vert(self):
+        # Section 3.1 : SHON = COS * Sconstr * (1 - taux_chute/100)
+        # Samenager = Svoie + Sev + (Sconstr * taux_chute/100)
         p = _projet(cos=1.0, surface_constructible=8000, taux_chute=30, surface_voie=1000, surface_espace_vert=500)
         r = calculer_rentabilite_projet(p)
-        # SHON = 1.0 * 8000 * (1 - 0.30) = 5600
-        # SHOB = 5600 * 1.2 = 6720
-        # Surface vendable = 5600 * 0.9 = 5040
-        # Surface à aménager = 1000 + 500 + 0.30 * 8000 = 3900
         self.assertAlmostEqual(r['surfaces']['shon'], 5600.0, places=2)
         self.assertAlmostEqual(r['surfaces']['shob'], 6720.0, places=2)
         self.assertAlmostEqual(r['surfaces']['surface_vendable'], 5040.0, places=2)
@@ -125,9 +124,11 @@ class TestChargeAmenagement(SimpleTestCase):
         for f in r['flux'][1:]:
             self.assertEqual(f['amenagement'], 0.0)
 
-    def test_charges_aucune_surface_est_nulle(self):
-        r = calculer_rentabilite_projet(_projet(surface_voie=0, surface_espace_vert=0))
-        self.assertEqual(r['charges']['amenagement'], 0.0)
+    def test_charges_sans_voie_avec_chute(self):
+        # surface_constructible=10000, surface_voie=0, surface_espace_vert=0, taux_chute=30
+        # surface_a_amenager = 0.30 * 10000 = 3000 -> cout = 600 * 3000 * 1.1 = 1980000
+        r = calculer_rentabilite_projet(_projet(surface_constructible=10000, surface_voie=0, surface_espace_vert=0, taux_chute=30))
+        self.assertAlmostEqual(r['charges']['amenagement'], 600 * 3000 * 1.1, places=2)
 
 
 class TestImpactAmenagementSurResultats(SimpleTestCase):
