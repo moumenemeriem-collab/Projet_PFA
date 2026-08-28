@@ -236,11 +236,6 @@ function RentaUnitCalcSection({
         <span className="geo-layers-popup-label" style={{ margin: 0 }}>
           Calcul du nombre d'unités par affectation
         </span>
-        <span style={{ fontSize: '0.73rem', color: '#64748b', fontStyle: 'italic' }}>
-          {totalNonConstrM2 > 0
-            ? `Surfaces nettes (hors voies & équipements : -${totalNonConstrM2.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m²) • S. plancher = S. vendable × (Nbr étages + 1)`
-            : `S. plancher = S. vendable × (Nbr étages + 1) • Nbr unités = S. plancher / S. unité`}
-        </span>
       </div>
 
       <div style={{ overflowX: 'auto', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px' }}>
