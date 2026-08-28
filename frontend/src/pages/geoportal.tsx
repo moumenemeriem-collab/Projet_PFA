@@ -86,20 +86,23 @@ interface RentaSavedInputs {
   unit_configs?: Record<string, { surface?: string; hauteur?: string; nombreEtages?: string; surfaceUnite?: string }>
 }
 
-function parseEtagesToNum(str: string | undefined | null): number {
-  if (!str) return 2
+function parseEtagesToNum(str: string | undefined | null): number | null {
+  if (!str || str === '—') return null
   const m = String(str).match(/R\+(\d+)/i)
   if (m) return parseInt(m[1], 10)
-  const val = parseFloat(String(str).replace(/[^\d.]/g, ''))
-  return isNaN(val) || val < 0 ? 2 : val
+  const clean = String(str).replace(/[^\d.]/g, '')
+  if (!clean) return null
+  const val = parseFloat(clean)
+  return isNaN(val) || val < 0 ? null : val
 }
 
-function parseHauteurToNum(str: string | number | undefined | null): number {
-  if (str === undefined || str === null || str === '') return 11.5
+function parseHauteurToNum(str: string | number | undefined | null): number | null {
+  if (str === undefined || str === null || str === '' || str === '—') return null
   if (typeof str === 'number') return str
   const clean = String(str).replace(',', '.').replace(/[^\d.]/g, '')
+  if (!clean) return null
   const val = parseFloat(clean)
-  return isNaN(val) || val <= 0 ? 11.5 : val
+  return isNaN(val) || val <= 0 ? null : val
 }
 
 interface RentaUnitCalcSectionProps {
@@ -157,7 +160,7 @@ function RentaUnitCalcSection({
     type: 'constructible' as const,
     cos: parseFloat(rentaForm.cos) || 1,
     cus: parseFloat(rentaForm.cus) || null,
-    hauteur_max: '11,50 m',
+    hauteur_max: null,
     largeur_min: null,
   }] : [])
 
@@ -185,18 +188,22 @@ function RentaUnitCalcSection({
 
     // Surface nette après déduction des voies et équipements
     const defaultSurface = a.net_surface_m2 ?? a.surface_m2 ?? 0
-    const defaultHauteurRaw = hauteurInfo.hauteurMax !== '—' ? hauteurInfo.hauteurMax : (a.hauteur_max || '11.5')
+    const defaultHauteurRaw = hauteurInfo.hauteurMax !== '—' ? hauteurInfo.hauteurMax : (a.hauteur_max || null)
     const defaultHauteurNum = parseHauteurToNum(defaultHauteurRaw)
-    const defaultEtagesNum = parseEtagesToNum(hauteurInfo.nombreEtages !== '—' ? hauteurInfo.nombreEtages : 'R+2')
+    const defaultEtagesNum = parseEtagesToNum(hauteurInfo.nombreEtages !== '—' ? hauteurInfo.nombreEtages : null)
 
     const userSurfaceStr = unitConfigs[key]?.surface
     const userSurface = userSurfaceStr !== undefined && userSurfaceStr !== '' ? (parseFloat(userSurfaceStr) || 0) : defaultSurface
 
     const userHauteurStr = unitConfigs[key]?.hauteur
-    const userHauteur = userHauteurStr !== undefined && userHauteurStr !== '' ? (parseFloat(String(userHauteurStr).replace(',', '.')) || 0) : defaultHauteurNum
+    const userHauteur = userHauteurStr !== undefined
+      ? (userHauteurStr !== '' ? (parseFloat(String(userHauteurStr).replace(',', '.')) || 0) : null)
+      : defaultHauteurNum
 
     const userEtagesStr = unitConfigs[key]?.nombreEtages
-    const userEtages = userEtagesStr !== undefined && userEtagesStr !== '' ? (parseFloat(userEtagesStr) || 0) : defaultEtagesNum
+    const userEtages = userEtagesStr !== undefined
+      ? (userEtagesStr !== '' ? (parseFloat(userEtagesStr) || 0) : null)
+      : defaultEtagesNum
 
     const cosToUse = a.cos != null && !isNaN(Number(a.cos)) ? Number(a.cos) : formCos
 
@@ -212,7 +219,8 @@ function RentaUnitCalcSection({
       : 0
 
     // 2. Surface plancher vendable = surface vendable * (nbr_etage + 1)
-    const surfacePlancherVendable = surfaceVendableSol * (userEtages + 1)
+    const nbrEtagesForCalc = userEtages !== null ? userEtages : 0
+    const surfacePlancherVendable = surfaceVendableSol * (nbrEtagesForCalc + 1)
 
     // 3. nombre des unités = Surface plancher vendable / surface d'unité (si surface d'unité renseignée)
     const nombreUnites = userSurfaceUnite > 0 ? (surfacePlancherVendable / userSurfaceUnite) : 0
@@ -307,13 +315,18 @@ function RentaUnitCalcSection({
                 {/* Hauteur max (m) */}
                 <td style={{ textAlign: 'center' }}>
                   {isViewMode ? (
-                    <span>{item.hauteur.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m</span>
+                    item.hauteur !== null ? (
+                      <span>{item.hauteur.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m</span>
+                    ) : (
+                      <span style={{ color: '#94a3b8' }}>—</span>
+                    )
                   ) : (
                     <input
                       type="number"
                       step="0.1"
                       min="0"
-                      value={unitConfigs[item.key]?.hauteur !== undefined ? unitConfigs[item.key].hauteur : item.hauteur}
+                      placeholder="—"
+                      value={unitConfigs[item.key]?.hauteur !== undefined ? unitConfigs[item.key].hauteur : (item.hauteur !== null ? item.hauteur : '')}
                       onChange={(e) => setUnitConfigs && setUnitConfigs((prev) => ({
                         ...prev,
                         [item.key]: { ...(prev[item.key] || {}), hauteur: e.target.value }
@@ -326,14 +339,19 @@ function RentaUnitCalcSection({
                 {/* Nombre d'étages */}
                 <td style={{ textAlign: 'center' }}>
                   {isViewMode ? (
-                    <strong style={{ color: '#1e293b' }}>R+{item.nombreEtages}</strong>
+                    item.nombreEtages !== null ? (
+                      <strong style={{ color: '#1e293b' }}>R+{item.nombreEtages}</strong>
+                    ) : (
+                      <span style={{ color: '#94a3b8' }}>—</span>
+                    )
                   ) : (
                     <input
                       type="number"
                       min="0"
                       max="50"
                       step="1"
-                      value={unitConfigs[item.key]?.nombreEtages !== undefined ? unitConfigs[item.key].nombreEtages : item.nombreEtages}
+                      placeholder="—"
+                      value={unitConfigs[item.key]?.nombreEtages !== undefined ? unitConfigs[item.key].nombreEtages : (item.nombreEtages !== null ? item.nombreEtages : '')}
                       onChange={(e) => setUnitConfigs && setUnitConfigs((prev) => ({
                         ...prev,
                         [item.key]: { ...(prev[item.key] || {}), nombreEtages: e.target.value }
