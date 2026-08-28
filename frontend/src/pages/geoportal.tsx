@@ -111,19 +111,35 @@ function RentaUnitCalcSection({
   setUnitConfigs,
   isViewMode,
 }: RentaUnitCalcSectionProps): React.JSX.Element {
+  const hasLoadedAffectations = affectations !== undefined
   const rawList = (affectations || [])
-    .filter((a) => a.surface_m2 > 0 && isAffectationValide(a.designation, a as unknown as Record<string, unknown>))
+    .filter((a) => a.type === 'constructible' && a.surface_m2 > 0 && isAffectationValide(a.designation, a as unknown as Record<string, unknown>))
 
-  const items = rawList.length > 0 ? rawList : (parcelInfo ? [{
-    designation: parcelInfo.ref || parcelInfo.nom || 'Terrain',
-    surface_m2: parcelInfo.superficie || 0,
-    type_construction: 'Logement collectif / Mixte',
-    type: 'constructible' as const,
-    cos: parseFloat(rentaForm.cos) || 1,
-    cus: parseFloat(rentaForm.cus) || null,
-    hauteur_max: '11,50 m',
-    largeur_min: null,
-  }] : [])
+  const items = rawList.length > 0
+    ? rawList
+    : (!hasLoadedAffectations && parcelInfo ? [{
+        designation: parcelInfo.ref || parcelInfo.nom || 'Terrain',
+        surface_m2: parcelInfo.superficie || 0,
+        type_construction: 'Logement collectif / Mixte',
+        type: 'constructible' as const,
+        cos: parseFloat(rentaForm.cos) || 1,
+        cus: parseFloat(rentaForm.cus) || null,
+        hauteur_max: '11,50 m',
+        largeur_min: null,
+      }] : [])
+
+  if (items.length === 0) {
+    return (
+      <div className={isViewMode ? 'renta-view-sec' : 'geo-card-form-section'} style={{ marginTop: isViewMode ? undefined : 12 }}>
+        <span className="geo-layers-popup-label" style={{ margin: 0 }}>
+          Calcul du nombre d'unités par affectation
+        </span>
+        <div style={{ fontSize: '0.8rem', color: '#64748b', fontStyle: 'italic', padding: '6px 0' }}>
+          Aucune affectation constructible d&eacute;tect&eacute;e sur ce terrain.
+        </div>
+      </div>
+    )
+  }
 
   const formCos = parseFloat(rentaForm.cos) || 1
   const formTauxChute = parseFloat(rentaForm.tauxChute) || 0
