@@ -493,7 +493,7 @@ export function GeoportalPage(): React.JSX.Element {
   const [equipTypes, setEquipTypes] = useState<CoucheType[]>([])
   const [typeToggles, setTypeToggles] = useState<Record<string, boolean>>({})
   const [coucheSectionsOpen, setCoucheSectionsOpen] = useState<Record<string, boolean>>({ routes: true, equipements: true })
-  const [cadastreEnabled, setCadastreEnabled] = useState(false)
+  const [cadastreEnabled, setCadastreEnabled] = useState(true)
   const [cadastreReady, setCadastreReady] = useState(false)
   const [cadastreFc, setCadastreFc] = useState<CoucheFeatureCollection | null>(null)
   const [paEnabled, setPaEnabled] = useState(false)
