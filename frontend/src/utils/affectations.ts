@@ -4,7 +4,7 @@
 import intersect from '@turf/intersect'
 import { extractRing, polygonAreaM2 } from './terrainDims'
 import { downloadAffectationsPdf } from './pdfPlan'
-import { getReglesPrincipales, getReglesDesignation } from './reglementationPA'
+import { getReglesPrincipales } from './reglementationPA'
 
 export interface AffectationPiece {
   feature: any
@@ -29,71 +29,66 @@ const AFFECTATION_PALETTE = [
 
 const NON_DEFINIE_PREFIXES = new Set(['AA', 'AAT', 'HA', 'MK', 'TA', 'SK', 'ME'])
 
-const ALLOWED_ZONING = new Set([
-  'B', 'B2', 'B3', 'B4', 'SB', 'SB2', 'SB4', 'SB6',
-  'C', 'C2', 'C4',
-  'ZPI', 'ZS',
-  'IN', 'IN2', 'IN3', 'INS',
-  'D', 'DS1', 'D1', 'D5',
-  'RB', 'RS',
-])
-
 /**
- * Détermine si une affectation a un rôle effectif dans l'analyse / le calcul de rentabilité
- * (zonage constructible, équipements publics/privés, voirie/voies, espaces verts).
- * Masque uniquement les affectations non définies (null, vides, préfixes caducs AA/HA/MK/TA...).
+ * Détermine si une affectation est valide et doit être prise en compte / affichée
+ * (zonage, équipements publics/privés, voirie/voies, espaces verts).
+ * Masque UNIQUEMENT les affectations sans aucun rôle / non définies (null, vides, préfixes AA/HA/MK/TA...).
  */
 export function isAffectationValide(designation: unknown, props?: Record<string, unknown>): boolean {
-  if (designation == null) return false
-  const raw = String(designation).trim()
-  if (!raw) return false
+  const raw = String(
+    designation ??
+    props?.designation ??
+    props?.Designation ??
+    props?.DESIGNATION ??
+    ''
+  ).trim()
+
+  const tc = String(
+    props?.type_construction ??
+    props?.Type_construction ??
+    props?.definition ??
+    props?.Definition ??
+    props?.libelle ??
+    ''
+  ).trim()
+
+  // Si ni désignation ni type_construction : entité vide / non définie -> exclure
+  if (!raw && !tc) return false
+
   const code = raw.toUpperCase()
+  const clean = code.replace(/\s+/g, '')
   if (
-    code === 'NULL' ||
-    code === 'UNDEFINED' ||
-    code === 'NONE' ||
-    code === '-' ||
-    code === 'NON DÉFINIE' ||
-    code === 'NON DEFINIE' ||
-    code === 'AFFECTATION NON DÉFINIE' ||
-    code === 'AFFECTATION NON DEFINIE' ||
-    NON_DEFINIE_PREFIXES.has(code)
+    clean === 'NULL' ||
+    clean === 'UNDEFINED' ||
+    clean === 'NONE' ||
+    clean === '-' ||
+    clean === 'NONDÉFINIE' ||
+    clean === 'NONDEFINIE' ||
+    clean === 'AFFECTATIONNONDÉFINIE' ||
+    clean === 'AFFECTATIONNONDEFINIE' ||
+    clean === 'INCONNU' ||
+    NON_DEFINIE_PREFIXES.has(clean) ||
+    NON_DEFINIE_PREFIXES.has(code) ||
+    /^(AA|AAT|HA|MK|TA|SK|ME)($|[^0-9A-Z])/i.test(code)
   ) {
     return false
   }
 
-  // 1. Zonage d'urbanisme constructible validé
-  if (ALLOWED_ZONING.has(code) || getReglesDesignation(code).length > 0) {
-    return true
-  }
-
-  // 2. Équipements publics ou privés (A, P, E, S, SP, M, C, G...)
-  if (/^(A|P|E|S|SP|M|C|G)\d+/i.test(code)) {
-    return true
-  }
-
-  // 3. Voirie / Voies d'aménagement (TE, CP, PS, PL, RP, RN, RR...)
-  if (/^(TE|CP|PS|PL|RP|RN|RR)\d*/i.test(code)) {
-    return true
-  }
-
-  // 4. Espaces verts (V...)
-  if (/^V\d*/i.test(code)) {
-    return true
-  }
-
-  // 5. Identification par le type de construction ou définition
-  const tc = String(props?.type_construction ?? props?.definition ?? '').toLowerCase()
-  if (tc) {
-    const isEq = /equipement|administration|enseignement|sante|santé|sport|culte|mosqu|police|protection civile|service public|crèche|creche|scolaire/i.test(tc)
-    const isVoie = /voie|voirie|rue|chemin|place|parking|stationnement|rond|pi[ée]ton|autoroute/i.test(tc)
-    const isEv = /espace vert|mail plant|square|jardin|parc/i.test(tc)
-    if (isEq || isVoie || isEv) {
-      return true
+  // Si type_construction est explicitement "non définie" sans code valide
+  if (!raw && tc) {
+    const tcUpper = tc.toUpperCase()
+    if (
+      tcUpper === 'NULL' ||
+      tcUpper === 'UNDEFINED' ||
+      tcUpper.includes('NON DÉFINIE') ||
+      tcUpper.includes('NON DEFINIE')
+    ) {
+      return false
     }
   }
 
-  return false
+  // Toutes les autres affectations du plan d'aménagement sont valides et affichées
+  return true
 }
 
 // Couleur stable pour un même code d'affectation (déterminée par hachage).
@@ -106,15 +101,13 @@ export function affectationColor(key: string): string {
 
 // Nom lisible d'une affectation : « Code : Description » (ex. « RB1 : Parc de stationnement »).
 export function affectationLabel(props: Record<string, unknown>): string {
-  const code = String(props.designation ?? '').trim()
+  const code = String(props.designation ?? props.Designation ?? '').trim()
   if (!isAffectationValide(code, props)) return ''
-  const desc = String(props.type_construction ?? '').trim()
-  const definition = String(props.definition ?? '').trim()
-  const description = desc || definition
-  if (code && description) return `${code} : ${description}`
+  const desc = String(props.type_construction ?? props.definition ?? props.libelle ?? '').trim()
+  if (code && desc) return `${code} : ${desc}`
   if (code) return code
-  if (description) return description
-  return code
+  if (desc) return desc
+  return code || 'Affectation'
 }
 
 // Ordre et libellés préférés des attributs du plan d'aménagement.
