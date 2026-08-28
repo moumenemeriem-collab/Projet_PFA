@@ -425,8 +425,8 @@ function buildRentaPage1(data: RentaReportData, dateStr: string, hasImage: boole
   }
 
   // ── En-tête ──
-  txt('WebSIG FONCIER', 45, 805, 14, 'F2', NAVY)
-  txt('SIGMATOP • ÉTUDE DE POTENTIEL FONCIER & RENTABILITÉ FINANCIÈRE', 45, 792, 7, 'F2', GRAY)
+  txt('GEO INVEST', 45, 805, 14, 'F2', NAVY)
+  txt('ÉTUDE DE POTENTIEL FONCIER & RENTABILITÉ FINANCIÈRE', 45, 792, 7, 'F2', GRAY)
 
   txtR('RAPPORT D\'ÉTUDE DE RENTABILITÉ', AP - 45, 805, 11, 'F2', DARK)
   txtR(`Date d'édition : ${dateStr}`, AP - 45, 792, 7.5, 'F1', GRAY)
@@ -599,7 +599,7 @@ function buildRentaPage1(data: RentaReportData, dateStr: string, hasImage: boole
 
   // ── Pied de page ──
   out.push(`${LINE} RG 0.5 w 45 48 m ${(AP - 45).toFixed(2)} 48 l S\n`)
-  txt('Plateforme WebSIG de Prospection & Analyse Foncière • SIGMATOP SARL', 45, 34, 7, 'F1', LIGHT_GRAY)
+  txt('GEO INVEST • Plateforme d\'Analyse & Prospection Foncière', 45, 34, 7, 'F1', LIGHT_GRAY)
   txtR('Page 1 / 2', AP - 45, 34, 7, 'F2', GRAY)
 
   return out.join('')
@@ -623,7 +623,7 @@ function buildRentaPage2(data: RentaReportData, dateStr: string): string {
   }
 
   // ── En-tête Page 2 ──
-  txt('WebSIG FONCIER', 45, 805, 14, 'F2', NAVY)
+  txt('GEO INVEST', 45, 805, 14, 'F2', NAVY)
   txt('TABLEAU PRÉVISIONNEL DES FLUX DE TRÉSORERIE (CASH FLOWS ANNUELS)', 45, 792, 7.5, 'F2', GRAY)
 
   txtR(`Terrain : ${fitText(data.terrainNom, 9, 200, true)}`, AP - 45, 805, 9, 'F2', DARK)
@@ -784,7 +784,7 @@ function buildRentaPage2(data: RentaReportData, dateStr: string): string {
 
   // ── Pied de page ──
   out.push(`${LINE} RG 0.5 w 45 48 m ${(AP - 45).toFixed(2)} 48 l S\n`)
-  txt('Plateforme WebSIG de Prospection & Analyse Foncière • SIGMATOP SARL', 45, 34, 7, 'F1', LIGHT_GRAY)
+  txt('GEO INVEST • Plateforme d\'Analyse & Prospection Foncière', 45, 34, 7, 'F1', LIGHT_GRAY)
   txtR('Page 2 / 2', AP - 45, 34, 7, 'F2', GRAY)
 
   return out.join('')

@@ -8,7 +8,7 @@
   },
   "hero": {
     "title": "Identify and rank your land opportunities",
-    "description": "Analyze the potential of parcels in the Khémisset region through advanced geospatial tools. Make informed and secure investment decisions.",
+    "description": "Analyze the potential of parcels through advanced geospatial tools on GEO INVEST. Make informed and secure investment decisions.",
     "cta_signup": "Sign up for free",
     "cta_login": "Log in",
     "slide_alt": "Slide",
@@ -40,7 +40,7 @@
   "benefits": {
     "securite": {
       "title": "Legal Security",
-      "description": "Support your decisions with reliable cadastral and regulatory data, updated for the Khémisset region."
+      "description": "Support your decisions with reliable and up-to-date cadastral and regulatory data."
     },
     "optimisation": {
       "title": "Yield Optimization",
@@ -792,7 +792,7 @@
   "about": {
     "hero": {
       "title": "The intelligent land analysis platform",
-      "subtitle": "GEO INVEST leverages geospatial and cadastral data to help you identify, analyze and rank the best investment opportunities in the Khemisset region.",
+      "subtitle": "GEO INVEST leverages geospatial and cadastral data to help you identify, analyze and rank the best land investment opportunities.",
       "cta": "Create an account",
       "explore": "Discover our tools",
       "stat1": "GIS Services",

@@ -22,7 +22,7 @@ export function ContactForm(): string {
                 <span class="contact-info-item-icon">${icons.mail}</span>
                 <div>
                   <span class="contact-info-item-label">Email</span>
-                  <span class="contact-info-item-value">contact@websig.ma</span>
+                  <span class="contact-info-item-value">contact@geoinvest.ma</span>
                 </div>
               </div>
               <div class="contact-info-item">

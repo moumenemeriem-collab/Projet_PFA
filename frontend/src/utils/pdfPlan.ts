@@ -299,7 +299,7 @@ function drawHeaderBanner(title: string, subtitle: string, badgeText: string, wi
     out.push(`${color} rg BT /${font} ${size} Tf 1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm (${esc(s)}) Tj ET\n`)
   }
 
-  txt('WEB-SIG FONCIER & ANALYSE SPATIALE', 36, bannerY + 48, 6.8, 'F2', '0.7 0.85 0.95')
+  txt('GEO INVEST • ANALYSE SPATIALE & FONCIÈRE', 36, bannerY + 48, 6.8, 'F2', '0.7 0.85 0.95')
   txt(title, 36, bannerY + 30, 14, 'F2', '1 1 1')
   txt(subtitle, 36, bannerY + 14, 8.5, 'F1', '0.85 0.92 0.98')
 
@@ -321,7 +321,7 @@ function drawFooter(pageIdx: number, totalPages: number, dateStr: string, width 
   }
 
   out.push(`${LINE} RG 0.8 w 36 34 m ${(width - 36).toFixed(2)} 34 l S\n`)
-  txt(`WebSIG Foncier • Système d'Information Géographique (EPSG:26191 Merchich/Sahara) • Généré le ${dateStr}`, 36, 22, 6.8, 'F1', GRAY)
+  txt(`GEO INVEST • Système d'Information Géographique • Généré le ${dateStr}`, 36, 22, 6.8, 'F1', GRAY)
 
   const rightText = `Page ${pageIdx} / ${totalPages}`
   const rw = textW(rightText, 6.8, true)

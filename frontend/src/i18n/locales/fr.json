@@ -8,7 +8,7 @@
   },
   "hero": {
     "title": "Identifiez et classez vos opportunités foncières",
-    "description": "Analysez le potentiel des parcelles dans la région de Khémisset grâce à des outils géospatiaux avancés. Prenez des décisions d'investissement éclairées et sécurisées.",
+    "description": "Analysez le potentiel des parcelles grâce aux outils géospatiaux avancés de GEO INVEST. Prenez des décisions d'investissement éclairées et sécurisées.",
     "cta_signup": "S'inscrire gratuitement",
     "cta_login": "Se connecter",
     "slide_alt": "Diapositive",
@@ -40,7 +40,7 @@
   "benefits": {
     "securite": {
       "title": "Sécurité Juridique",
-      "description": "Appuyez vos décisions sur des données cadastrales et réglementaires fiables, actualisées pour la région de Khémisset."
+      "description": "Appuyez vos décisions sur des données cadastrales et réglementaires fiables et actualisées."
     },
     "optimisation": {
       "title": "Optimisation de Rendement",
@@ -792,7 +792,7 @@
   "about": {
     "hero": {
       "title": "La plateforme d'analyse foncière intelligente",
-      "subtitle": "GEO INVEST exploite les données géospatiales et cadastrales pour vous aider à identifier, analyser et classer les meilleures opportunités d'investissement dans la région de Khémisset.",
+      "subtitle": "GEO INVEST exploite les données géospatiales et cadastrales pour vous aider à identifier, analyser et classer les meilleures opportunités d'investissement foncier.",
       "cta": "Créer un compte",
       "explore": "Découvrir nos outils",
       "stat1": "Services SIG",

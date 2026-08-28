@@ -53,7 +53,7 @@ export function getStaticProjects(): Project[] {
     },
     {
       id: 4,
-      title: 'Zone Industrielle Khemisset Sud',
+      title: 'Zone Industrielle Sud',
       typeKey: 'commercial',
       type: t('projects.type_commercial'),
       budget: '25.0M MAD',

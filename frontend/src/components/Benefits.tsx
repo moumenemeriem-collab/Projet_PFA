@@ -19,7 +19,7 @@ export function Benefits(): React.JSX.Element {
               <h2 className="mission-title">Notre <span className="mission-accent">mission</span></h2>
             </div>
             <p className="mission-intro">
-              Transformer la donnée géospatiale en décisions d'investissement fiables pour la région de Khemisset.
+              Transformer la donnée géospatiale en décisions d'investissement fiables et performantes.
             </p>
           </div>
           <div className="mission-content">
