@@ -4964,16 +4964,23 @@
 .geo-wizard-stepper {
   display: flex;
   align-items: flex-start;
-  padding: 12px 24px 16px;
+  justify-content: space-between;
+  padding: 16px 20px 16px;
   margin-bottom: 1.25rem;
   background: linear-gradient(180deg, #E8F0FB 0%, #f4f7fc 100%);
   border-bottom: 1px solid #e8ecf2;
+  box-sizing: border-box;
 }
 
 .geo-stepper-group {
   display: flex;
   align-items: flex-start;
   flex: 1;
+  min-width: 0;
+}
+
+.geo-stepper-group:last-child {
+  flex: 0 0 auto;
 }
 
 .geo-stepper-step {
@@ -4981,6 +4988,7 @@
   flex-direction: column;
   align-items: center;
   gap: 0.35rem;
+  width: 68px;
   flex-shrink: 0;
 }
 
@@ -5032,16 +5040,16 @@
 /* ── Étape active ── */
 
 .geo-stepper-step--active .geo-stepper-num {
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   background: linear-gradient(135deg, #2563EB, #1d4ed8);
   border: 2px solid transparent;
   color: #ffffff;
   font-weight: 700;
   font-size: 0.88rem;
   box-shadow:
-    0 0 0 5px rgba(37, 99, 235, 0.15),
-    0 0 16px rgba(37, 99, 235, 0.4);
+    0 0 0 4px rgba(37, 99, 235, 0.18),
+    0 0 14px rgba(37, 99, 235, 0.35);
   animation: wz-glow-pulse 2.5s ease-in-out infinite;
 }
 
@@ -5055,6 +5063,7 @@
 .geo-stepper-label {
   font-size: 0.65rem;
   white-space: normal;
+  width: 100%;
   max-width: 68px;
   text-align: center;
   line-height: 1.2;
@@ -5068,9 +5077,10 @@
   flex: 1;
   height: 2px;
   background: #E2E8F0;
-  margin-top: 18px;
+  margin-top: 17px;
   border-radius: 1px;
   overflow: hidden;
+  min-width: 12px;
 }
 
 .geo-stepper-connector--filled {
@@ -5079,8 +5089,11 @@
 
 /* ── CritereSelectionStep dans la sidebar ── */
 
-.geo-sidebar-scroll--ponderation .critere-step {
-  padding: 0;
+.geo-sidebar-scroll--ponderation .critere-step,
+.geo-sidebar-scroll--ponderation .ahp-step,
+.geo-sidebar-scroll--ponderation .roc-step,
+.geo-sidebar-scroll--ponderation .resultats-step {
+  padding: 0 20px 1.25rem;
   background: transparent;
   border: none;
   border-radius: 0;
@@ -5104,7 +5117,7 @@
   border: 1px solid #e8ecf2;
   border-radius: 16px;
   padding: 1.15rem 1.25rem;
-  margin: 0 20px 0.85rem;
+  margin: 0 0 0.85rem;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.025);
   transition: box-shadow 0.2s, border-color 0.2s;
 }

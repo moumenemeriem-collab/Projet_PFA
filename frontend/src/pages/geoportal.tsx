@@ -3489,13 +3489,13 @@ const bindPopupActionButtons = (popup: any): void => {
               </div>
 
               {analyseSaveSuccess && (
-                <div className="form-alert form-alert--success" style={{ margin: '0 0 0.75rem', fontSize: '0.8rem' }}>
+                <div className="form-alert form-alert--success" style={{ margin: '0 20px 0.85rem', fontSize: '0.8rem' }}>
                   {analyseSaveSuccess}
                 </div>
               )}
 
               {wizardError && (
-                <div className="form-alert form-alert--error" style={{ margin: '0 0 0.75rem', fontSize: '0.8rem' }}>{wizardError}</div>
+                <div className="form-alert form-alert--error" style={{ margin: '0 20px 0.85rem', fontSize: '0.8rem' }}>{wizardError}</div>
               )}
 
               {wizardLoading && (
