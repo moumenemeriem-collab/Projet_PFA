@@ -2602,6 +2602,94 @@ const bindPopupActionButtons = (popup: any): void => {
   }, [projet])
 
   useEffect(() => {
+    if (!projet) return
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('analyse')) return
+    const parcelle = params.get('parcelle')
+    if (!parcelle) return
+    let cancelled = false
+    setCardMode('loading')
+    setCardHidden(false)
+    setCadastreEnabled(true)
+    fetchTerrains(projetId, { page_size: 100 })
+      .then((data) => {
+        if (cancelled) return
+        const ref = String(parcelle)
+        const found = data.results.find(
+          (t) =>
+            String(t.num_titre_foncier ?? '') === ref ||
+            String(t.num_parcelle ?? '') === ref ||
+            String(t.nom ?? '') === ref,
+        )
+        if (!found) {
+          setCardMode('empty')
+          return
+        }
+        let geom: Record<string, unknown> | null = null
+        if (found.geometry) {
+          try {
+            const g = JSON.parse(found.geometry) as Record<string, unknown>
+            if (g && (g.type === 'Polygon' || g.type === 'MultiPolygon')) geom = g
+          } catch { /* ignore */ }
+        }
+        const obj = {
+          id: found.id,
+          nom: found.nom,
+          superficie: Number(found.superficie) || 0,
+          lat: Number(found.lat) || 0,
+          lng: Number(found.lng) || 0,
+          score_global: 0,
+          score_final: 0,
+          score_amc: 0,
+          score_accessibilite: null,
+          score_positionnement: null,
+          score_topographie: null,
+          score_superficie: null,
+          roi: null,
+          marge: null,
+          benefice_net: null,
+          score_rentabilite: null,
+          type_rentabilite: 'indisponible' as const,
+          prix_terrain: null,
+          infos_generales: {
+            reference_cadastrale: found.num_titre_foncier || found.num_parcelle || found.nom,
+            commune: '—',
+            province: '—',
+            region: '—',
+            superficie: `${Number(found.superficie).toFixed(2)} m²`,
+            perimetre: '—',
+            latitude: Number(found.lat) || 0,
+            longitude: Number(found.lng) || 0,
+            zone_amenagement: '—',
+          },
+          criteres: [],
+          criteres_satisfaits: 0,
+          criteres_total: 0,
+          classement: 0,
+          points_forts: [],
+          points_faibles: [],
+          geom,
+          fid: found.fid ?? null,
+          num_parcelle: found.num_parcelle ?? '',
+        } as AnalyseResultat
+        analyseResultatsRef.current = [obj]
+        selectedTerrainIdRef.current = obj.id
+        focusParcelleRef.current = obj.id
+        setSelectedTerrain(obj)
+        showTerrainBuffer(obj)
+        focusTerrainOnMap(obj)
+        setCardMode('results')
+      })
+      .catch(() => {
+        if (!cancelled) setCardMode('search')
+      })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projet])
+
+  useEffect(() => {
     if (!showSavedBanner) return
     const timer = setTimeout(() => setShowSavedBanner(false), 3000)
     return () => clearTimeout(timer)

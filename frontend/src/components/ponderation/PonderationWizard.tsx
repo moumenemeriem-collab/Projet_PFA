@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { t } from '../../i18n/index'
 import { CritereSelectionStep } from './CritereSelectionStep'
 import { AhpStep } from './AhpStep'
@@ -40,6 +41,7 @@ const CATEGORIE_LABELS: Record<string, string> = {
 }
 
 export function PonderationWizard({ projetId }: PonderationWizardProps): React.JSX.Element {
+  const navigate = useNavigate()
   const [step, setStep] = useState<Step>('selection')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -186,6 +188,17 @@ export function PonderationWizard({ projetId }: PonderationWizardProps): React.J
 
   return (
     <div className="ponderation-wizard">
+      <button
+        type="button"
+        className="ponderation-back"
+        onClick={() => navigate(-1)}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M19 12H5" />
+          <path d="M12 19l-7-7 7-7" />
+        </svg>
+        {t('ponderation.back')}
+      </button>
       <div className="ponderation-header">
         <div className="ponderation-header-badge">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

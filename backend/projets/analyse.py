@@ -25,6 +25,11 @@ from django.db import connection
 
 LAT_M = 111320.0  # mètres par degré de latitude
 
+# Rayon (m) du buffer « centre ville » autour du centroïde de la limite communale.
+# Un terrain dont le centroïde est à moins de LOCALISATION_BUFFER_M du centroïde
+# communal est classé 'centre_ville' ; au-delà, il est 'periurbaine'.
+LOCALISATION_BUFFER_M = 2500.0
+
 
 def _coslat(lat: float) -> float:
     return max(0.0, math.cos(math.radians(lat)))
@@ -195,10 +200,22 @@ def _load_commune_limite():
     return features[0].get('geometry')
 
 
+def _in_centre_ville_buffer(lat, lng, commune_centroid):
+    """Vrai si (lat, lng) se trouve dans le buffer « centre ville » autour du
+    centroïde communal (distance ≤ LOCALISATION_BUFFER_M). Retourne None si le
+    centroïde communal est indisponible."""
+    if not commune_centroid:
+        return None
+    clat, clng = commune_centroid
+    return haversine(lat, lng, clat, clng) <= LOCALISATION_BUFFER_M
+
+
 def determiner_localisation(terrain_geom, limite_commune):
     """Retourne la catégorie de localisation du terrain ('centre_ville' ou
-    'periurbaine') en testant le centroïde du terrain contre la limite
-    administrative de la commune de Témara (point dans polygone).
+    'periurbaine') par distance au centroïde de la limite communale de Témara :
+    à moins de LOCALISATION_BUFFER_M du centroïde → 'centre_ville', sinon
+    'periurbaine'. Le buffer couvre le centre et l'extension urbaine forte,
+    indépendamment du tracé exact de la limite.
 
     Si la géométrie du terrain est invalide, retourne None (score 0).
     """
@@ -208,9 +225,11 @@ def determiner_localisation(terrain_geom, limite_commune):
     if centroid is None:
         return None
     lat, lng = centroid
-    if point_in_polygon(lat, lng, limite_commune):
-        return 'centre_ville'
-    return 'periurbaine'
+    commune_centroid = polygon_centroid(limite_commune)
+    inside = _in_centre_ville_buffer(lat, lng, commune_centroid)
+    if inside is None:
+        return None
+    return 'centre_ville' if inside else 'periurbaine'
 
 
 def _seg_distances_m(plat: float, plon: float,
@@ -322,6 +341,33 @@ class MNTAltitudeIndex:
         res_lat_m = LAT_M / px_per_deg_lat
         res_lng_m = (LAT_M * _coslat(lat)) / px_per_deg_lng
         return res_lat_m, res_lng_m
+
+
+def _load_mnt_index():
+    """Charge l'index MNT (altitudes) depuis la couche 'mnt'.
+
+    Priorité : le fichier référencé dans la table ``couche`` (sous MEDIA_ROOT),
+    puis repli sur le fichier livré ``backend/projets/data/MNT.gpkg``.
+    Retourne ``None`` si aucun fichier exploitable n'est trouvé.
+    """
+    chemins = []
+    with connection.cursor() as cur:
+        cur.execute("SELECT fichier FROM couche WHERE nom='mnt'")
+        row = cur.fetchone()
+        if row and row[0]:
+            chemins.append(os.path.join(settings.MEDIA_ROOT, row[0]))
+    chemins.append(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'MNT.gpkg'),
+    )
+
+    for path in chemins:
+        if not path or not os.path.exists(path):
+            continue
+        try:
+            return MNTAltitudeIndex(path)
+        except Exception:
+            continue
+    return None
 
 
 def determiner_altitude(terrain_geom, mnt_index, max_points=250):
@@ -839,20 +885,8 @@ def analyser_parcelles(projet_pk: int, filtres: dict) -> dict:
     projet = _charger_criteres_projet(projet_pk)
     surface_souhaitee = projet.get('surface_souhaitee') or 0
 
-    # chemin du fichier MNT stocké sur la couche 'mnt'
-    mnt_path = None
-    with connection.cursor() as cur:
-        cur.execute("SELECT fichier FROM couche WHERE nom='mnt'")
-        row = cur.fetchone()
-        if row and row[0]:
-            mnt_path = os.path.join(settings.MEDIA_ROOT, row[0])
-
-    mnt_index = None
-    if mnt_path and os.path.exists(mnt_path):
-        try:
-            mnt_index = MNTAltitudeIndex(mnt_path)
-        except Exception:
-            mnt_index = None
+    # index des altitudes du MNT (couche 'mnt' ou repli sur projets/data)
+    mnt_index = _load_mnt_index()
 
     limite_commune = _load_commune_limite()
 
@@ -1284,22 +1318,11 @@ def extraire_donnees_ponderation(projet_pk: int, selections: dict) -> dict:
         'administration': 'services',
     }
 
-    # Charger le MNT
-    mnt_path = None
-    with connection.cursor() as cur:
-        cur.execute("SELECT fichier FROM couche WHERE nom='mnt'")
-        row = cur.fetchone()
-        if row and row[0]:
-            mnt_path = os.path.join(settings.MEDIA_ROOT, row[0])
-
-    mnt_index = None
-    if mnt_path and os.path.exists(mnt_path):
-        try:
-            mnt_index = MNTAltitudeIndex(mnt_path)
-        except Exception:
-            mnt_index = None
+    # Charger le MNT (couche 'mnt' ou repli sur projets/data)
+    mnt_index = _load_mnt_index()
 
     limite_commune = _load_commune_limite()
+    commune_centroid = polygon_centroid(limite_commune) if limite_commune else None
 
     coslat_ref = _coslat(33.88)
     equip_lat = np.array([e['lat'] for e in equipments], dtype='f8') if equipments else np.array([], dtype='f8')
@@ -1386,10 +1409,9 @@ def extraire_donnees_ponderation(projet_pk: int, selections: dict) -> dict:
             zone = determiner_localisation(cand.get('geometry'), limite_commune)
         if zone is None and cand.get('lat') is not None and cand.get('lng') is not None:
             # Repli : terrain sans polygone mais avec un centroïde (lat/lng)
-            if point_in_polygon(float(cand['lat']), float(cand['lng']), limite_commune):
-                zone = 'centre_ville'
-            else:
-                zone = 'periurbaine'
+            inside = _in_centre_ville_buffer(float(cand['lat']), float(cand['lng']), commune_centroid)
+            if inside is not None:
+                zone = 'centre_ville' if inside else 'periurbaine'
 
         # --- Altitude (MNT) ---
         altitude = None

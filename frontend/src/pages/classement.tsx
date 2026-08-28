@@ -64,6 +64,13 @@ function renderTerrainRow(t_: Terrain, onDelete: (id: number) => void): React.JS
       <td>{hasCoords ? `${Number(t_.lat).toFixed(4)}, ${Number(t_.lng).toFixed(4)}` : t('ranking.no_coords')}</td>
       <td>
         <div className="classement-table-actions">
+          <Link
+            to={`/projets/${t_.projet}/classement/ajouter?parcelle=${encodeURIComponent(t_.num_titre_foncier || t_.num_parcelle || t_.nom)}`}
+            className="table-action-btn"
+            title={t('ranking.view_map')}
+          >
+            {icons.mapPin}
+          </Link>
           <button type="button" className="table-action-btn table-action-btn--danger" data-action="delete" data-terrain-id={t_.id} title={t('common.delete')} onClick={() => onDelete(t_.id)}>{icons.trash}</button>
         </div>
       </td>

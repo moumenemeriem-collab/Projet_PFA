@@ -7,8 +7,8 @@ from django.core.management.base import BaseCommand
 from django.db import connection
 
 from projets.analyse import (
-    MNTAltitudeIndex,
     _load_commune_limite,
+    _load_mnt_index,
     determiner_altitude,
     determiner_localisation,
 )
@@ -26,17 +26,7 @@ class Command(BaseCommand):
         terrains = Terrain.objects.exclude(geometry__isnull=True)
         limite_commune = _load_commune_limite()
 
-        mnt_index = None
-        with connection.cursor() as cur:
-            cur.execute("SELECT fichier FROM couche WHERE nom='mnt'")
-            row = cur.fetchone()
-        if row and row[0]:
-            mnt_path = os.path.join(settings.MEDIA_ROOT, row[0])
-            if os.path.exists(mnt_path):
-                try:
-                    mnt_index = MNTAltitudeIndex(mnt_path)
-                except Exception:
-                    mnt_index = None
+        mnt_index = _load_mnt_index()
 
         now = datetime.datetime.now()
         count = 0

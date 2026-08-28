@@ -55,6 +55,27 @@
   padding: 0 var(--wz-space-md);
 }
 
+.ponderation-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.25rem 0 1rem;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--wz-primary, #4A7FE0);
+  background: var(--wz-primary-light, #f0f5fd);
+  border: 1px solid rgba(74, 127, 224, 0.2);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.ponderation-back:hover {
+  background: #e0eaff;
+  border-color: rgba(74, 127, 224, 0.35);
+}
+
 .ponderation-header {
   text-align: center;
   margin-bottom: var(--wz-space-lg);
