@@ -15,7 +15,7 @@ export interface AhpResult {
  */
 export function calculerPoidsAHP(
   intensites: [number, number],
-  ordre: [string, string, string] = ['accessibilite', 'positionnement', 'topographie'],
+  ordre: [string, string, string] = ['positionnement', 'accessibilite', 'topographie'],
 ): AhpResult {
   const [a12, a23] = intensites
   const a13 = a12 * a23

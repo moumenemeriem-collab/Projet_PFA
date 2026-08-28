@@ -131,6 +131,8 @@ export interface AnalyseResultat {
   points_faibles: string[]
   /** Géométrie réelle du terrain (polygone GeoJSON) si disponible. */
   geom?: Record<string, unknown> | null
+  fid?: number | null
+  num_parcelle?: string
 }
 
 export interface CritereConformite {

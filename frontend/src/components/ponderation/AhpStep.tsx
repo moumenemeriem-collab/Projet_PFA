@@ -12,8 +12,8 @@ interface AhpStepProps {
 }
 
 const CATEGORIES = [
-  { key: 'accessibilite', label: 'Accessibilité' },
   { key: 'positionnement', label: 'Positionnement' },
+  { key: 'accessibilite', label: 'Accessibilité' },
   { key: 'topographie', label: 'Topographie' },
 ]
 

@@ -670,87 +670,51 @@ export function GeoportalPage(): React.JSX.Element {
     setWizardError(null)
   }
 
+  const mapPondereToAnalyseResultat = (tp: TerrainPondere): AnalyseResultat => ({
+    id: tp.id,
+    nom: tp.nom,
+    superficie: tp.superficie,
+    lat: tp.lat,
+    lng: tp.lng,
+    score_global: tp.score_final,
+    score_final: tp.score_final,
+    score_amc: 0,
+    score_accessibilite: null,
+    score_positionnement: null,
+    score_topographie: null,
+    score_superficie: null,
+    roi: null,
+    marge: null,
+    benefice_net: null,
+    score_rentabilite: null,
+    type_rentabilite: 'indisponible',
+    prix_terrain: null,
+    infos_generales: {
+      reference_cadastrale: tp.reference_cadastrale || tp.nom,
+      commune: '—',
+      province: '—',
+      region: '—',
+      superficie: `${tp.superficie.toFixed(2)} m²`,
+      perimetre: '—',
+      latitude: tp.lat,
+      longitude: tp.lng,
+      zone_amenagement: '—',
+    },
+    criteres: [],
+    criteres_satisfaits: 0,
+    criteres_total: 0,
+    criteres_conformite: [],
+    classement: tp.rang,
+    points_forts: [],
+    points_faibles: [],
+    geom: (tp.geometry ?? null) as Record<string, unknown> | null,
+    fid: tp.fid ?? null,
+    num_parcelle: tp.num_parcelle ?? '',
+  })
+
   const handleWizardViewOnMap = useCallback((terrain: TerrainPondere): void => {
-    // Convertir le terrain pondéré en AnalyseResultat pour le système existant
-    const result: AnalyseResultat = {
-      id: terrain.id,
-      nom: terrain.nom,
-      superficie: terrain.superficie,
-      lat: terrain.lat,
-      lng: terrain.lng,
-      score_global: terrain.score_final,
-      score_final: terrain.score_final,
-      score_amc: 0,
-      score_accessibilite: null,
-      score_positionnement: null,
-      score_topographie: null,
-      score_superficie: null,
-      roi: null,
-      marge: null,
-      benefice_net: null,
-      score_rentabilite: null,
-      type_rentabilite: 'indisponible',
-      prix_terrain: null,
-      infos_generales: {
-        reference_cadastrale: terrain.reference_cadastrale || terrain.nom,
-        commune: '—',
-        province: '—',
-        region: '—',
-        superficie: `${terrain.superficie.toFixed(2)} m²`,
-        perimetre: '—',
-        latitude: terrain.lat,
-        longitude: terrain.lng,
-        zone_amenagement: '—',
-      },
-      criteres: [],
-      criteres_satisfaits: 0,
-      criteres_total: 0,
-      criteres_conformite: [],
-      classement: terrain.rang,
-      points_forts: [],
-      points_faibles: [],
-    }
-    // Ajouter aux résultats de l'analyse pour que la carte puisse les afficher
-    analyseResultatsRef.current = wizardResultats!.resultats.map((tp) => ({
-      id: tp.id,
-      nom: tp.nom,
-      superficie: tp.superficie,
-      lat: tp.lat,
-      lng: tp.lng,
-      score_global: tp.score_final,
-      score_final: tp.score_final,
-      score_amc: 0,
-      score_accessibilite: null,
-      score_positionnement: null,
-      score_topographie: null,
-      score_superficie: null,
-      roi: null,
-      marge: null,
-      benefice_net: null,
-      score_rentabilite: null,
-      type_rentabilite: 'indisponible' as const,
-      prix_terrain: null,
-      infos_generales: {
-        reference_cadastrale: tp.reference_cadastrale || tp.nom,
-        commune: '—',
-        province: '—',
-        region: '—',
-        superficie: `${tp.superficie.toFixed(2)} m²`,
-        perimetre: '—',
-        latitude: tp.lat,
-        longitude: tp.lng,
-        zone_amenagement: '—',
-      },
-      criteres: [],
-      criteres_satisfaits: 0,
-      criteres_total: 0,
-      criteres_conformite: [],
-      classement: tp.rang,
-      points_forts: [],
-      points_faibles: [],
-      geom: (tp as any).geom ?? (tp as any).geometry ?? null,
-    }))
-    selectTerrain(result.id)
+    analyseResultatsRef.current = wizardResultats!.resultats.map(mapPondereToAnalyseResultat)
+    selectTerrain(terrain.id)
     setCadastreEnabled(true)
   }, [wizardResultats])
 
@@ -758,45 +722,7 @@ export function GeoportalPage(): React.JSX.Element {
   // géométrique (clic dans la liste) sans recharge ni requête supplémentaire.
   useEffect(() => {
     if (!wizardResultats) return
-    analyseResultatsRef.current = wizardResultats.resultats.map((tp) => ({
-      id: tp.id,
-      nom: tp.nom,
-      superficie: tp.superficie,
-      lat: tp.lat,
-      lng: tp.lng,
-      score_global: tp.score_final,
-      score_final: tp.score_final,
-      score_amc: 0,
-      score_accessibilite: null,
-      score_positionnement: null,
-      score_topographie: null,
-      score_superficie: null,
-      roi: null,
-      marge: null,
-      benefice_net: null,
-      score_rentabilite: null,
-      type_rentabilite: 'indisponible' as const,
-      prix_terrain: null,
-      infos_generales: {
-        reference_cadastrale: tp.reference_cadastrale || tp.nom,
-        commune: '—',
-        province: '—',
-        region: '—',
-        superficie: `${tp.superficie.toFixed(2)} m²`,
-        perimetre: '—',
-        latitude: tp.lat,
-        longitude: tp.lng,
-        zone_amenagement: '—',
-      },
-      criteres: [],
-      criteres_satisfaits: 0,
-      criteres_total: 0,
-      criteres_conformite: [],
-      classement: tp.rang,
-      points_forts: [],
-      points_faibles: [],
-      geom: (tp as any).geom ?? (tp as any).geometry ?? null,
-    }))
+    analyseResultatsRef.current = wizardResultats.resultats.map(mapPondereToAnalyseResultat)
   }, [wizardResultats])
 
   const handleWizardOpenRentabilite = useCallback((terrain: TerrainPondere): void => {
@@ -1028,9 +954,28 @@ export function GeoportalPage(): React.JSX.Element {
         return
       }
       let cancelled = false
+      // Repli affichage : un terrain issu du classement multicritère peut ne pas
+      // exister dans la table « terrains » du projet (parcelle cadastrale
+      // candidate). Le fetch par id renvoie alors 404 ; on retombe sur le calcul
+      // par géométrie (ring du popup) pour que le taux de constructibilité
+      // s'affiche comme pour les autres terrains.
+      const computeConstructibleFromRing = (): void => {
+        if (rentaRing.length < 3) {
+          if (!cancelled) { setRentaSurfaceConstructible(null); setRentaSurfaceLoading(false) }
+          return
+        }
+        const closedRing = closeRing(rentaRing)
+        const geom = { type: 'Polygon', coordinates: [closedRing] }
+        const surf = rentaParcelInfo?.superficie && rentaParcelInfo.superficie > 0
+          ? rentaParcelInfo.superficie
+          : Math.round(ringAreaM2(rentaRing))
+        void computeSurfaceConstructible(projetId, geom, surf)
+          .then((data) => { if (!cancelled) { setRentaSurfaceConstructible(data); setRentaSurfaceLoading(false) } })
+          .catch(() => { if (!cancelled) { setRentaSurfaceConstructible(null); setRentaSurfaceLoading(false) } })
+      }
       void fetchSurfaceConstructible(projetId, rentaTerrainId)
         .then((data) => { if (!cancelled) { setRentaSurfaceConstructible(data); setRentaSurfaceLoading(false) } })
-        .catch(() => { if (!cancelled) { setRentaSurfaceConstructible(null); setRentaSurfaceLoading(false) } })
+        .catch(() => { if (!cancelled) computeConstructibleFromRing() })
       return () => { cancelled = true }
     }
     if (rentaRing.length >= 3) {
@@ -1057,9 +1002,26 @@ export function GeoportalPage(): React.JSX.Element {
         return
       }
       let cancelled = false
+      // Même repli que pour la surface constructible : si le terrain n'est pas
+      // enregistré en BDD (parcelle du classement), on calcule par géométrie
+      // afin que les surfaces d'équipement s'affichent aussi.
+      const computeEquipementFromRing = (): void => {
+        if (rentaRing.length < 3) {
+          if (!cancelled) setRentaSurfaceEquipement(null)
+          return
+        }
+        const closedRing = closeRing(rentaRing)
+        const geom = { type: 'Polygon', coordinates: [closedRing] }
+        const surf = rentaParcelInfo?.superficie && rentaParcelInfo.superficie > 0
+          ? rentaParcelInfo.superficie
+          : Math.round(ringAreaM2(rentaRing))
+        void computeSurfaceEquipement(projetId, geom, surf)
+          .then((data) => { if (!cancelled) setRentaSurfaceEquipement(data) })
+          .catch(() => { if (!cancelled) setRentaSurfaceEquipement(null) })
+      }
       void fetchSurfaceEquipement(projetId, rentaTerrainId)
         .then((data) => { if (!cancelled) setRentaSurfaceEquipement(data) })
-        .catch(() => { if (!cancelled) setRentaSurfaceEquipement(null) })
+        .catch(() => { if (!cancelled) computeEquipementFromRing() })
       return () => { cancelled = true }
     }
     if (rentaRing.length >= 3) {
@@ -2071,6 +2033,18 @@ const bindPopupActionButtons = (popup: any): void => {
     }).addTo(map)
   }
 
+  const cadastreKeysForTerrain = (tr: AnalyseResultat): string[] => {
+    const keys = [
+      tr.infos_generales?.reference_cadastrale,
+      tr.num_parcelle,
+      tr.fid != null ? String(tr.fid) : '',
+    ]
+    return [...new Set(keys.map((v) => String(v ?? '').trim()).filter((v) => v !== ''))]
+  }
+
+  const findResultatByCadastreNum = (idP: string): AnalyseResultat | undefined =>
+    analyseResultatsRef.current.find((tr) => cadastreKeysForTerrain(tr).includes(String(idP)))
+
   const buildCadastreLayer = (map: any, fc: CoucheFeatureCollection): any =>
     L.geoJSON(validFeatures(fc), {
       style: CADASTRE_STYLE,
@@ -2081,11 +2055,7 @@ const bindPopupActionButtons = (popup: any): void => {
           if (idP != null && affectationsResultRef.current && affectationsResultRef.current.terrainNum !== String(idP)) {
             clearAffectations()
           }
-          const tr = idP != null
-            ? analyseResultatsRef.current.find(
-                (r) => String(r.infos_generales?.reference_cadastrale) === String(idP)
-              )
-            : undefined
+          const tr = idP != null ? findResultatByCadastreNum(String(idP)) : undefined
           if (tr) {
             selectTerrain(tr.id)
             highlightCadastreParcelle(String(idP))
@@ -2149,8 +2119,19 @@ const bindPopupActionButtons = (popup: any): void => {
           ${(tr.criteres_conformite ?? []).map(c => `<div class="geoportal-popup-row"><span>${escapeHtml(c.label)}</span><strong>${c.pct >= 50 ? '✓' : '✗'}</strong></div>`).join('')}
         </div>
         <div class="geoportal-popup-coords">${propsToHtml(p, CADASTRE_ATTRIBUTE_LABELS, ['fid', 'num'])}</div>
-        ${buildPopupActions(center.lat, center.lng, ring, title, affOpts, { terrainId, nom: tr.nom, superficie: tr.superficie, lat: center.lat, lng: center.lng, ref: String(p.num ?? '') })}
+        ${buildPopupActions(center.lat, center.lng, ring, title, affOpts, { terrainId: terrainId ?? tr.id, nom: tr.nom, superficie: tr.superficie, lat: Number.isFinite(center.lat) ? center.lat : tr.lat, lng: Number.isFinite(center.lng) ? center.lng : tr.lng, ref: String(p.num ?? tr.num_parcelle ?? ''), ring: ring ?? undefined })}
       </div>`
+  }
+
+  const attachTerrainActionsPopup = (layer: any, tr: AnalyseResultat, geometry?: unknown): void => {
+    const geom = geometry ?? tr.geom ?? layer.feature?.geometry
+    const ring = extractRing(geom)
+    const num = tr.num_parcelle || tr.infos_generales?.reference_cadastrale || ''
+    const props: Record<string, unknown> = {
+      ...(num ? { num } : {}),
+      surface: tr.superficie,
+    }
+    layer.bindPopup(buildParcellePopup(tr, props, ring, tr.id), { autoPan: false })
   }
 
   const colorCadastreParcels = (selectedId?: number): void => {
@@ -2158,8 +2139,7 @@ const bindPopupActionButtons = (popup: any): void => {
     if (!layer) return
     const byId = new Map<string, AnalyseResultat>()
     analyseResultatsRef.current.forEach((tr) => {
-      const ref = tr.infos_generales?.reference_cadastrale
-      if (ref) byId.set(String(ref), tr)
+      cadastreKeysForTerrain(tr).forEach((k) => byId.set(k, tr))
     })
     layer.eachLayer((l: any) => {
       const props = l.feature?.properties as Record<string, unknown> | undefined
@@ -2192,7 +2172,7 @@ const bindPopupActionButtons = (popup: any): void => {
         })
         el?.classList.remove('geo-cadastre-selected')
       }
-      l.bindPopup(buildParcellePopup(tr, props, extractRing(l.feature?.geometry), undefined), { autoPan: false })
+      l.bindPopup(buildParcellePopup(tr, props, extractRing(l.feature?.geometry), tr.id), { autoPan: false })
     })
   }
 
@@ -2218,13 +2198,22 @@ const bindPopupActionButtons = (popup: any): void => {
 
   const findCadastreLayerByRef = (ref: string | null | undefined): any | null => {
     const layer = cadastreLayerRef.current
-    if (!layer || ref == null) return null
+    if (!layer || ref == null || String(ref) === '') return null
     let found: any = null
     layer.eachLayer((l: any) => {
       const idP = l.feature?.properties?.num
-      if (idP != null && String(idP) === String(ref)) found = l
+      const fid = l.feature?.properties?.fid
+      if ((idP != null && String(idP) === String(ref)) || (fid != null && String(fid) === String(ref))) found = l
     })
     return found
+  }
+
+  const findCadastreLayerForTerrain = (tr: AnalyseResultat): any | null => {
+    for (const key of cadastreKeysForTerrain(tr)) {
+      const found = findCadastreLayerByRef(key)
+      if (found) return found
+    }
+    return null
   }
 
   const clearSelectedMarker = (): void => {
@@ -2255,6 +2244,7 @@ const bindPopupActionButtons = (popup: any): void => {
     if (isPoly) {
       clearSelectedGeom()
       selectedGeomLayerRef.current = L.geoJSON(geom, {
+        interactive: true,
         style: {
           color: '#ea580c',
           weight: 6,
@@ -2264,13 +2254,17 @@ const bindPopupActionButtons = (popup: any): void => {
           dashArray: '10 6',
         },
       }).addTo(map)
+      let popupLayer: any = null
       selectedGeomLayerRef.current.eachLayer((l: any) => {
         const el = l.getElement?.() as SVGElement | null
         el?.classList.add('geo-cadastre-selected')
+        attachTerrainActionsPopup(l, tr, geom)
+        if (!popupLayer) popupLayer = l
       })
       selectedGeomLayerRef.current.bringToFront?.()
       colorCadastreParcels(undefined)
       setGeomMissing(false)
+      popupLayer?.openPopup()
       if (map) {
         const b = selectedGeomLayerRef.current.getBounds()
         overlayFlyToBounds(map, b.pad(0.25), { duration: 0.8, easeLinearity: 0.25, maxZoom: 18 })
@@ -2281,9 +2275,11 @@ const bindPopupActionButtons = (popup: any): void => {
       return
     }
     // Repli : parcelle cadastre correspondante (si la référence matche)
-    const layer = findCadastreLayerByRef(tr.infos_generales?.reference_cadastrale)
+    const layer = findCadastreLayerForTerrain(tr)
     if (layer) {
       colorCadastreParcels(tr.id)
+      attachTerrainActionsPopup(layer, tr, layer.feature?.geometry)
+      layer.openPopup()
       if (map) overlayFlyToBounds(map, layer.getBounds().pad(0.25), { duration: 0.8, easeLinearity: 0.25, maxZoom: 18 })
       setGeomMissing(false)
       return
@@ -2350,9 +2346,7 @@ const bindPopupActionButtons = (popup: any): void => {
   }
 
   const focusSearchParcelle = (idParcelle: string): void => {
-    const tr = analyseResultatsRef.current.find(
-      (r) => String(r.infos_generales?.reference_cadastrale) === idParcelle
-    )
+    const tr = findResultatByCadastreNum(idParcelle)
     if (tr) {
       selectedTerrainIdRef.current = tr.id
       showTerrainBuffer(tr)
@@ -2636,8 +2630,10 @@ const bindPopupActionButtons = (popup: any): void => {
     // Cadrage sur la géométrie réelle du terrain + mise en évidence (si la parcelle est connue)
     const match = analyseResultatsRef.current.find(
       (tr) =>
+        tr.id === terrain.id ||
         (terrain.reference_cadastrale != null &&
           String(tr.infos_generales?.reference_cadastrale) === String(terrain.reference_cadastrale)) ||
+        (terrain.num_parcelle != null && String(tr.num_parcelle) === String(terrain.num_parcelle)) ||
         tr.nom === terrain.nom,
     )
     if (match) {

@@ -110,6 +110,9 @@ export interface TerrainPondere {
   distances: Record<string, number | null>
   zone_localisation: string
   altitude: number | null
+  geometry?: Record<string, unknown> | null
+  fid?: number | null
+  num_parcelle?: string
 }
 
 export interface PonderationResponse {

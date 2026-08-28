@@ -41,7 +41,7 @@ def calculer_poids_ahp(
                     (rang1 vs rang2, rang2 vs rang3).
         ordre: optionnel, liste des clés de catégories dans l'ordre choisi
                [rang1, rang2, rang3]. Si non fourni, utilise l'ordre par défaut
-               [accessibilite, positionnement, topographie].
+               [positionnement, accessibilite, topographie].
 
     Returns:
         {
@@ -58,7 +58,7 @@ def calculer_poids_ahp(
             raise ValueError(f"Intensité invalide : {c}. Les valeurs doivent être > 0.")
 
     if ordre is None:
-        ordre = ["accessibilite", "positionnement", "topographie"]
+        ordre = ["positionnement", "accessibilite", "topographie"]
 
     if len(ordre) != 3:
         raise ValueError("L'ordre doit contenir exactement 3 catégories.")

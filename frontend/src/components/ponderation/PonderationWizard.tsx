@@ -73,7 +73,7 @@ export function PonderationWizard({ projetId }: PonderationWizardProps): React.J
       setOrdresRoc(prefs.ordres_roc)
       const ordre = (Array.isArray(prefs.ordre_categories) && prefs.ordre_categories.length === 3
         ? prefs.ordre_categories
-        : ['accessibilite', 'positionnement', 'topographie']) as [string, string, string]
+        : ['positionnement', 'accessibilite', 'topographie']) as [string, string, string]
       setAhpResult(calculerPoidsAHP(
         [rawMatrix[0], rawMatrix[1]],
         ordre,
