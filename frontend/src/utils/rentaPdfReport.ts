@@ -165,7 +165,7 @@ function fitText(s: string, size: number, maxW: number, bold = false): string {
 }
 
 function fmtVal(v: number | undefined | null, maxDec = 0): string {
-  if (v == null || !Number.isFinite(Number(v))) return '—'
+  if (v == null || !Number.isFinite(Number(v))) return '0'
   const f = Number(Number(v).toFixed(maxDec))
   const neg = f < 0 ? '-' : ''
   const str = Math.abs(f).toFixed(maxDec)

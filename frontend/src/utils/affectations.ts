@@ -41,7 +41,7 @@ export function affectationLabel(props: Record<string, unknown>): string {
   const desc = String(props.type_construction ?? '').trim()
   const definition = String(props.definition ?? '').trim()
   const description = desc || definition
-  if (code && description) return `${code} — ${description}`
+  if (code && description) return `${code} : ${description}`
   if (code) return code
   if (description) return description
   return 'Affectation non définie'
@@ -157,7 +157,7 @@ export function geometryAreaM2(geometry: unknown): number {
 }
 
 export function formatAffArea(m2: number): string {
-  if (!Number.isFinite(m2)) return '—'
+  if (!Number.isFinite(m2)) return '0 m²'
   if (m2 >= 10000) {
     return `${(m2 / 10000).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} ha`
   }
@@ -244,7 +244,7 @@ export function buildAffectationPlanSvg(terrainRing: number[][], pieces: Affecta
     .map((pc) =>
       ringsFromGeometry(pc.feature.geometry)
         .map((r) => {
-          const title = `<title>${escapeAffHtml(pc.label)} — ${escapeAffHtml(formatAffArea(pc.areaM2))} · ${pc.percent.toFixed(1)} %</title>`
+          const title = `<title>${escapeAffHtml(pc.label)} : ${escapeAffHtml(formatAffArea(pc.areaM2))} · ${pc.percent.toFixed(1)} %</title>`
           return `<polygon class="geo-aff-piece" fill="${pc.color}" points="${pts(r)}">${title}</polygon>`
         })
         .join('')
@@ -295,8 +295,8 @@ export function buildAffectationsModalHtml(title: string, terrainRing: number[][
         `<td class="geo-aff-cell-num">${escapeAffHtml(formatAffArea(pc.areaM2))}</td>` +
         `<td class="geo-aff-cell-num">${pc.percent.toFixed(1)} %</td>` +
         propCells +
-        `<td class="geo-aff-cell">${escapeAffHtml(code ? (getReglesPrincipales(code)?.conditions || '—') : '—')}</td>` +
-        `<td class="geo-aff-cell">${escapeAffHtml(code ? (getReglesPrincipales(code)?.typeOperation || '—') : '—')}</td>` +
+        `<td class="geo-aff-cell">${escapeAffHtml(code ? (getReglesPrincipales(code)?.conditions || 'Non spécifié') : 'Non spécifié')}</td>` +
+        `<td class="geo-aff-cell">${escapeAffHtml(code ? (getReglesPrincipales(code)?.typeOperation || 'Non spécifié') : 'Non spécifié')}</td>` +
         `</tr>`
       )
     })
