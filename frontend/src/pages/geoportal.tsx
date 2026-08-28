@@ -188,7 +188,6 @@ function RentaUnitCalcSection({
     const defaultHauteurRaw = hauteurInfo.hauteurMax !== '—' ? hauteurInfo.hauteurMax : (a.hauteur_max || '11.5')
     const defaultHauteurNum = parseHauteurToNum(defaultHauteurRaw)
     const defaultEtagesNum = parseEtagesToNum(hauteurInfo.nombreEtages !== '—' ? hauteurInfo.nombreEtages : 'R+2')
-    const defaultSurfaceUnite = 80
 
     const userSurfaceStr = unitConfigs[key]?.surface
     const userSurface = userSurfaceStr !== undefined && userSurfaceStr !== '' ? (parseFloat(userSurfaceStr) || 0) : defaultSurface
@@ -199,19 +198,23 @@ function RentaUnitCalcSection({
     const userEtagesStr = unitConfigs[key]?.nombreEtages
     const userEtages = userEtagesStr !== undefined && userEtagesStr !== '' ? (parseFloat(userEtagesStr) || 0) : defaultEtagesNum
 
-    const userSurfaceUniteStr = unitConfigs[key]?.surfaceUnite
-    const userSurfaceUnite = userSurfaceUniteStr !== undefined && userSurfaceUniteStr !== '' ? (parseFloat(userSurfaceUniteStr) || 0) : defaultSurfaceUnite
-
     const cosToUse = a.cos != null && !isNaN(Number(a.cos)) ? Number(a.cos) : formCos
 
     // Formules demandées :
     // 1. surface vendable (de l'affectation) = COS * Surface de l'affectation * (1 - chute/100) * 0.9
     const surfaceVendableSol = cosToUse * userSurface * (1 - formTauxChute / 100) * 0.9
+    const maxSurfaceUnite = Math.max(0, Math.round(surfaceVendableSol * 100) / 100)
+
+    // Surface unité vide par défaut, plafonnée à S. vendable sol
+    const userSurfaceUniteStr = unitConfigs[key]?.surfaceUnite
+    const userSurfaceUnite = userSurfaceUniteStr !== undefined && userSurfaceUniteStr !== ''
+      ? Math.min(maxSurfaceUnite > 0 ? maxSurfaceUnite : Infinity, Math.max(0, parseFloat(userSurfaceUniteStr) || 0))
+      : 0
 
     // 2. Surface plancher vendable = surface vendable * (nbr_etage + 1)
     const surfacePlancherVendable = surfaceVendableSol * (userEtages + 1)
 
-    // 3. nombre des unités = Surface plancher vendable / surface d'unité
+    // 3. nombre des unités = Surface plancher vendable / surface d'unité (si surface d'unité renseignée)
     const nombreUnites = userSurfaceUnite > 0 ? (surfacePlancherVendable / userSurfaceUnite) : 0
     const nombreUnitesArrondi = Math.floor(nombreUnites)
 
@@ -224,6 +227,8 @@ function RentaUnitCalcSection({
       hauteur: userHauteur,
       nombreEtages: userEtages,
       surfaceUnite: userSurfaceUnite,
+      surfaceUniteRaw: userSurfaceUniteStr,
+      maxSurfaceUnite,
       cos: cosToUse,
       surfaceVendableSol,
       surfacePlancherVendable,
@@ -338,20 +343,39 @@ function RentaUnitCalcSection({
                   )}
                 </td>
 
-                {/* Surface d'unité (input) */}
+                {/* Surface d'unité (input vide par défaut, plafonné à S. vendable sol) */}
                 <td style={{ textAlign: 'center' }}>
                   {isViewMode ? (
-                    <span style={{ fontVariantNumeric: 'tabular-nums' }}>{item.surfaceUnite} m&sup2;</span>
+                    item.surfaceUnite > 0 ? (
+                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{item.surfaceUnite} m&sup2;</span>
+                    ) : (
+                      <span style={{ color: '#94a3b8' }}>—</span>
+                    )
                   ) : (
                     <input
                       type="number"
                       min="1"
+                      max={item.maxSurfaceUnite > 0 ? item.maxSurfaceUnite : undefined}
                       step="1"
-                      value={unitConfigs[item.key]?.surfaceUnite !== undefined ? unitConfigs[item.key].surfaceUnite : item.surfaceUnite}
-                      onChange={(e) => setUnitConfigs && setUnitConfigs((prev) => ({
-                        ...prev,
-                        [item.key]: { ...(prev[item.key] || {}), surfaceUnite: e.target.value }
-                      }))}
+                      placeholder="—"
+                      value={unitConfigs[item.key]?.surfaceUnite !== undefined ? unitConfigs[item.key].surfaceUnite : ''}
+                      onChange={(e) => {
+                        if (!setUnitConfigs) return
+                        let val = e.target.value
+                        if (val !== '') {
+                          const num = parseFloat(val)
+                          if (!isNaN(num)) {
+                            if (num < 0) val = '0'
+                            else if (item.maxSurfaceUnite > 0 && num > item.maxSurfaceUnite) {
+                              val = String(item.maxSurfaceUnite)
+                            }
+                          }
+                        }
+                        setUnitConfigs((prev) => ({
+                          ...prev,
+                          [item.key]: { ...(prev[item.key] || {}), surfaceUnite: val }
+                        }))
+                      }}
                       style={{ width: 75, padding: '4px 8px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#ffffff', fontSize: '0.78rem', textAlign: 'center' }}
                     />
                   )}
@@ -369,13 +393,17 @@ function RentaUnitCalcSection({
 
                 {/* Nombre d'unités */}
                 <td style={{ textAlign: 'center' }}>
-                  <span style={{
-                    display: 'inline-block', padding: '3px 10px', borderRadius: 999,
-                    background: '#0284c7', color: '#fff', fontWeight: 700, fontSize: '0.8rem',
-                    fontVariantNumeric: 'tabular-nums'
-                  }}>
-                    {item.nombreUnitesArrondi} <span style={{ fontSize: '0.68rem', fontWeight: 400, opacity: 0.9 }}>({item.nombreUnites.toFixed(1)})</span>
-                  </span>
+                  {item.surfaceUnite > 0 ? (
+                    <span style={{
+                      display: 'inline-block', padding: '3px 10px', borderRadius: 999,
+                      background: '#0284c7', color: '#fff', fontWeight: 700, fontSize: '0.8rem',
+                      fontVariantNumeric: 'tabular-nums'
+                    }}>
+                      {item.nombreUnitesArrondi} <span style={{ fontSize: '0.68rem', fontWeight: 400, opacity: 0.9 }}>({item.nombreUnites.toFixed(1)})</span>
+                    </span>
+                  ) : (
+                    <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>—</span>
+                  )}
                 </td>
               </tr>
             ))}
@@ -395,12 +423,16 @@ function RentaUnitCalcSection({
               </td>
               <td style={{ textAlign: 'center', background: '#ffffff' }}>
                 <span className="renta-flux-net">
-                  <span style={{
-                    display: 'inline-block', padding: '4px 12px', borderRadius: 999,
-                    background: '#16a34a', color: '#fff', fontWeight: 700, fontSize: '0.82rem'
-                  }}>
-                    {totalUnites} unit&eacute;s
-                  </span>
+                  {totalUnites > 0 ? (
+                    <span style={{
+                      display: 'inline-block', padding: '4px 12px', borderRadius: 999,
+                      background: '#16a34a', color: '#fff', fontWeight: 700, fontSize: '0.82rem'
+                    }}>
+                      {totalUnites} unit&eacute;s
+                    </span>
+                  ) : (
+                    <span style={{ color: '#94a3b8', fontWeight: 600 }}>—</span>
+                  )}
                 </span>
               </td>
             </tr>
