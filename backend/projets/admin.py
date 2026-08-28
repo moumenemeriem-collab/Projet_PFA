@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Couche, ImportCouche, Projet, Terrain, TypeProjet
+from .models import Couche, ImportCouche, ParametreAffectation, Projet, Terrain, TypeProjet
 
 
 @admin.register(TypeProjet)
@@ -38,3 +38,10 @@ class CoucheAdmin(admin.ModelAdmin):
 class ImportCoucheAdmin(admin.ModelAdmin):
     list_display = ('couche', 'statut', 'nb_enregistrements', 'date_import')
     list_filter = ('statut',)
+
+
+@admin.register(ParametreAffectation)
+class ParametreAffectationAdmin(admin.ModelAdmin):
+    list_display = ('code', 'zone', 'categorie', 'type_operation', 'hauteur_max', 'nombre_etages', 'cos', 'cus')
+    list_filter = ('zone', 'categorie')
+    search_fields = ('code', 'type_operation', 'type_construction', 'conditions')
