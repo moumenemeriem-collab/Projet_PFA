@@ -341,7 +341,7 @@ function RentaUnitCalcSection({
                 {/* Surface d'unité (input) */}
                 <td style={{ textAlign: 'center' }}>
                   {isViewMode ? (
-                    <strong style={{ color: '#1d4ed8' }}>{item.surfaceUnite} m&sup2;</strong>
+                    <span style={{ fontVariantNumeric: 'tabular-nums' }}>{item.surfaceUnite} m&sup2;</span>
                   ) : (
                     <input
                       type="number"
@@ -352,7 +352,7 @@ function RentaUnitCalcSection({
                         ...prev,
                         [item.key]: { ...(prev[item.key] || {}), surfaceUnite: e.target.value }
                       }))}
-                      style={{ width: 75, padding: '4px 8px', borderRadius: 6, border: '1.5px solid #3b82f6', background: '#eff6ff', fontSize: '0.78rem', textAlign: 'center', fontWeight: 700, color: '#1d4ed8' }}
+                      style={{ width: 75, padding: '4px 8px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#ffffff', fontSize: '0.78rem', textAlign: 'center' }}
                     />
                   )}
                 </td>
