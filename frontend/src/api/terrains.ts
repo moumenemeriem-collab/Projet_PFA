@@ -194,6 +194,8 @@ export interface AffectationSurface {
   type_construction: string | null
   cos: number | null
   cus: number | null
+  hauteur_max?: string | null
+  largeur_min?: string | null
 }
 
 export interface SurfaceConstructibleResponse {

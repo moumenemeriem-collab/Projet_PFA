@@ -11,7 +11,7 @@ import { fetchAnalyseDetail, type AnalyseDetail, type ResultatAnalyse } from '..
 import { createAnalysePondere, type PonderationResponse, type TerrainPondere } from '../api/analyses'
 import { fetchCouches, fetchCoucheGeoJSON, type Couche, type CoucheFeature, type CoucheFeatureCollection } from '../api/couches'
 import { attributeLabel, CADASTRE_ATTRIBUTE_LABELS, PLAN_AMENAGEMENT_ATTRIBUTE_LABELS, formatParcelleRef, formatParcelleTitle } from '../utils/attributeLabels'
-import { getReglesPrincipales } from '../utils/reglementationPA'
+import { getReglesPrincipales, getHauteurEtEtages } from '../utils/reglementationPA'
 import { CritereSelectionStep } from '../components/ponderation/CritereSelectionStep'
 import { AhpStep } from '../components/ponderation/AhpStep'
 import { RocStep } from '../components/ponderation/RocStep'
@@ -3540,17 +3540,22 @@ const bindPopupActionButtons = (popup: any): void => {
                           D&eacute;tail des affectations
                         </button>
                         {rentaAffectationsOpen && (
-                          <div style={{ marginTop: 6, background: '#f9fafb', borderRadius: 6, padding: '6px 0', fontSize: '0.8rem', maxHeight: 220, overflowY: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                          <div style={{ marginTop: 6, background: '#f9fafb', borderRadius: 6, padding: '6px 0', fontSize: '0.8rem', maxHeight: 250, overflowY: 'auto', overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
                               <thead>
-                                <tr style={{ color: '#6b7280', fontWeight: 500, borderBottom: '1px solid #e5e7eb' }}>
+                                <tr style={{ color: '#6b7280', fontWeight: 500, borderBottom: '1px solid #e5e7eb', fontSize: '0.75rem' }}>
                                   <td style={{ padding: '4px 10px' }}>Désignation</td>
                                   <td style={{ padding: '4px 10px' }}>Type de construction</td>
-                                  <td style={{ padding: '4px 10px', textAlign: 'right' }}>Type</td>
+                                  <td style={{ padding: '4px 10px', textAlign: 'center' }}>Type</td>
                                   <td style={{ padding: '4px 10px', textAlign: 'right' }}>Surface</td>
                                   <td style={{ padding: '4px 10px', textAlign: 'right' }}>% terrain</td>
+                                  <td style={{ padding: '4px 10px', textAlign: 'center' }}>COS</td>
+                                  <td style={{ padding: '4px 10px', textAlign: 'center' }}>CUS</td>
+                                  <td style={{ padding: '4px 10px', textAlign: 'center' }}>Hauteur max</td>
+                                  <td style={{ padding: '4px 10px', textAlign: 'center' }}>Largeur min</td>
+                                  <td style={{ padding: '4px 10px', textAlign: 'center' }}>Nombre d'étages</td>
+                                  <td style={{ padding: '4px 10px' }}>Type d'opération</td>
                                   <td style={{ padding: '4px 10px' }}>Conditions</td>
-                                  <td style={{ padding: '4px 10px' }}>Type d'op&eacute;ration</td>
                                 </tr>
                               </thead>
                               <tbody>
@@ -3559,13 +3564,23 @@ const bindPopupActionButtons = (popup: any): void => {
                                   .sort((a, b) => b.surface_m2 - a.surface_m2)
                                   .map((a, i) => {
                                     const pct = rentaParcelInfo?.superficie ? Math.round(a.surface_m2 / rentaParcelInfo.superficie * 10000) / 100 : 0
+                                    const regle = a.designation ? getReglesPrincipales(a.designation) : null
+                                    const hauteurInfo = getHauteurEtEtages(a.designation || '', a as unknown as Record<string, unknown>)
+                                    const cosVal = a.cos != null ? String(a.cos) : (regle?.cos || '—')
+                                    const cusVal = a.cus != null ? String(a.cus) : (regle?.ces || '—')
+                                    const hauteurMaxVal = hauteurInfo.hauteurMax !== '—' ? hauteurInfo.hauteurMax : (a.hauteur_max ? (String(a.hauteur_max).endsWith('m') ? a.hauteur_max : `${a.hauteur_max} m`) : '—')
+                                    const largeurMinVal = a.largeur_min ? (String(a.largeur_min).endsWith('m') ? a.largeur_min : `${a.largeur_min} m`) : (regle?.largeurMin || '—')
+                                    const nombreEtagesVal = hauteurInfo.nombreEtages
+                                    const typeOpVal = regle?.typeOperation || '—'
+                                    const condVal = regle?.conditions || '—'
+
                                     return (
                                       <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
                                         <td style={{ padding: '4px 10px', fontWeight: 500 }}>{a.designation || '—'}</td>
                                         <td style={{ padding: '4px 10px', fontSize: '0.78rem', color: '#6b7280' }}>
                                           {a.type_construction || '—'}
                                         </td>
-                                        <td style={{ padding: '4px 10px', textAlign: 'right' }}>
+                                        <td style={{ padding: '4px 10px', textAlign: 'center' }}>
                                           <span style={{
                                             fontSize: '0.72rem', padding: '1px 6px', borderRadius: 4,
                                             background: a.type === 'constructible' ? '#dcfce7' : '#fee2e2',
@@ -3580,11 +3595,26 @@ const bindPopupActionButtons = (popup: any): void => {
                                         <td style={{ padding: '4px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                                           {pct.toLocaleString('fr-FR', { maximumFractionDigits: 2 })}%
                                         </td>
-                                        <td style={{ padding: '4px 10px', fontSize: '0.75rem', color: '#6b7280', maxWidth: 160 }}>
-                                          {a.designation ? (getReglesPrincipales(a.designation)?.conditions || '—') : '—'}
+                                        <td style={{ padding: '4px 10px', textAlign: 'center', fontSize: '0.78rem' }}>
+                                          {cosVal}
                                         </td>
-                                        <td style={{ padding: '4px 10px', fontSize: '0.75rem', color: '#6b7280', maxWidth: 160 }}>
-                                          {a.designation ? (getReglesPrincipales(a.designation)?.typeOperation || '—') : '—'}
+                                        <td style={{ padding: '4px 10px', textAlign: 'center', fontSize: '0.78rem' }}>
+                                          {cusVal}
+                                        </td>
+                                        <td style={{ padding: '4px 10px', textAlign: 'center', fontSize: '0.78rem' }}>
+                                          {hauteurMaxVal}
+                                        </td>
+                                        <td style={{ padding: '4px 10px', textAlign: 'center', fontSize: '0.78rem' }}>
+                                          {largeurMinVal}
+                                        </td>
+                                        <td style={{ padding: '4px 10px', textAlign: 'center', fontSize: '0.78rem', fontWeight: nombreEtagesVal !== '—' ? 600 : 400 }}>
+                                          {nombreEtagesVal}
+                                        </td>
+                                        <td style={{ padding: '4px 10px', fontSize: '0.75rem', color: '#6b7280', maxWidth: 160, whiteSpace: 'normal' }}>
+                                          {typeOpVal}
+                                        </td>
+                                        <td style={{ padding: '4px 10px', fontSize: '0.75rem', color: '#6b7280', maxWidth: 180, whiteSpace: 'normal' }}>
+                                          {condVal}
                                         </td>
                                       </tr>
                                     )

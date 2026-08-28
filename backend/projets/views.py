@@ -867,7 +867,7 @@ class SurfaceConstructibleView(APIView):
     @staticmethod
     def _compute(terrain_wkt: str, terrain_superficie: float):
         sql = """
-            SELECT pa.designation, pa.type_construction, pa.cos, pa.cus,
+            SELECT pa.designation, pa.type_construction, pa.cos, pa.cus, pa.hauteur_max, pa.largeur_min,
                 ST_Area(
                     ST_Intersection(
                         ST_SetSRID(ST_GeomFromText(%s), 4326),
@@ -894,7 +894,7 @@ class SurfaceConstructibleView(APIView):
 
         non_constr = 0.0
         affectations = []
-        for designation, type_construction, cos_val, cus_val, area_m2 in rows:
+        for designation, type_construction, cos_val, cus_val, h_max, l_min, area_m2 in rows:
             area = round(float(area_m2), 2)
             if area <= 0:
                 continue
@@ -902,16 +902,28 @@ class SurfaceConstructibleView(APIView):
             raw_tc = (type_construction or '').strip() or None
             cos_num = None if cos_val is None else float(cos_val)
             cus_num = None if cus_val is None else float(cus_val)
+            h_max_str = str(h_max).strip() if h_max is not None else None
+            l_min_str = str(l_min).strip() if l_min is not None else None
             if cus_num is None and _is_constructible_designation(raw_d):
                 cus_num = _cus_fallback(raw_d, raw_tc)
             if _is_non_definie_designation(raw_d):
                 continue
 
+            aff_item = {
+                'designation': raw_d,
+                'surface_m2': area,
+                'type': 'constructible' if _is_constructible_designation(raw_d) else 'non_constructible',
+                'type_construction': raw_tc,
+                'cos': cos_num,
+                'cus': cus_num,
+                'hauteur_max': h_max_str,
+                'largeur_min': l_min_str,
+            }
             if _is_constructible_designation(raw_d):
-                affectations.append({'designation': raw_d, 'surface_m2': area, 'type': 'constructible', 'type_construction': raw_tc, 'cos': cos_num, 'cus': cus_num})
+                affectations.append(aff_item)
             else:
                 non_constr += area
-                affectations.append({'designation': raw_d, 'surface_m2': area, 'type': 'non_constructible', 'type_construction': raw_tc, 'cos': cos_num, 'cus': cus_num})
+                affectations.append(aff_item)
 
         surface_constructible = max(0.0, terrain_superficie - non_constr)
         taux = round(surface_constructible / terrain_superficie * 100, 1) if terrain_superficie > 0 else 0.0

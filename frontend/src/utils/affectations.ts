@@ -4,7 +4,7 @@
 import intersect from '@turf/intersect'
 import { extractRing, polygonAreaM2 } from './terrainDims'
 import { downloadAffectationsPdf } from './pdfPlan'
-import { getReglesPrincipales } from './reglementationPA'
+import { getReglesPrincipales, getHauteurEtEtages } from './reglementationPA'
 
 export interface AffectationPiece {
   feature: any
@@ -340,32 +340,46 @@ export function escapeAffHtml(value: unknown): string {
 export function buildAffectationsModalHtml(title: string, terrainRing: number[][], pieces: AffectationPiece[]): string {
   const terrainArea = polygonAreaM2(terrainRing)
   const piecesArea = pieces.reduce((sum, p) => sum + p.areaM2, 0)
-  const columns = collectAffectationColumns(pieces).filter(([k]) => k !== 'designation')
-  const numCols = columns.length + 4
+  const numCols = 15
   const rows = pieces
     .map((pc) => {
       const code = pc.designation || ''
+      const regle = getReglesPrincipales(code)
+      const hauteurInfo = getHauteurEtEtages(code, pc.properties)
       const desc = String(pc.properties.type_construction ?? pc.properties.definition ?? '').trim()
-      const propCells = columns
-        .filter(([key]) => key !== 'designation')
-        .map(([key]) => {
-          const v = pc.properties[key]
-          const val = v === null || v === undefined || v === '' ? '' : String(v)
-          return `<td class="geo-aff-cell${key === 'definition' ? ' geo-aff-cell--wide' : ''}">${escapeAffHtml(val)}</td>`
-        })
-        .join('')
       const nameContent = code
         ? `<span class="geo-aff-badge">${escapeAffHtml(code)}</span>` + (desc ? `<span class="geo-aff-desc" title="${escapeAffHtml(desc)}">${escapeAffHtml(desc)}</span>` : '')
         : `<span title="${escapeAffHtml(desc || 'Affectation non définie')}">${escapeAffHtml(desc || 'Affectation non définie')}</span>`
+
+      const typeConstVal = String(pc.properties.type_construction ?? '') || '—'
+      const defVal = String(pc.properties.definition ?? '') || '—'
+      const cosVal = pc.properties.cos != null && String(pc.properties.cos).trim() !== '' ? String(pc.properties.cos) : (regle?.cos || '—')
+      const cusVal = pc.properties.cus != null && String(pc.properties.cus).trim() !== '' ? String(pc.properties.cus) : (regle?.ces || '—')
+      const hauteurMaxVal = hauteurInfo.hauteurMax !== '—' ? hauteurInfo.hauteurMax : (pc.properties.hauteur_max != null && String(pc.properties.hauteur_max).trim() !== '' ? (String(pc.properties.hauteur_max).endsWith('m') ? String(pc.properties.hauteur_max) : `${pc.properties.hauteur_max} m`) : '—')
+      const largeurMinVal = pc.properties.largeur_min != null && String(pc.properties.largeur_min).trim() !== '' ? (String(pc.properties.largeur_min).endsWith('m') ? String(pc.properties.largeur_min) : `${pc.properties.largeur_min} m`) : (regle?.largeurMin || '—')
+      const nombreEtagesVal = hauteurInfo.nombreEtages
+      const communeVal = String(pc.properties.ville ?? '') || '—'
+      const surfaceMinVal = pc.properties.surface_min != null && String(pc.properties.surface_min).trim() !== '' ? (String(pc.properties.surface_min).includes('m') ? String(pc.properties.surface_min) : `${pc.properties.surface_min} m²`) : (regle?.surfaceMin || '—')
+      const typeOpVal = regle?.typeOperation || '—'
+      const condVal = regle?.conditions || '—'
+
       return (
         `<tr class="geo-aff-row">` +
         `<td class="geo-aff-cell-swatch"><span class="geo-aff-swatch" style="background:${pc.color}"></span></td>` +
         `<td class="geo-aff-cell-main"><div class="geo-aff-name">${nameContent}</div></td>` +
         `<td class="geo-aff-cell-num">${escapeAffHtml(formatAffArea(pc.areaM2))}</td>` +
         `<td class="geo-aff-cell-num">${pc.percent.toFixed(1)} %</td>` +
-        propCells +
-        `<td class="geo-aff-cell">${escapeAffHtml(code ? (getReglesPrincipales(code)?.conditions || 'Non spécifié') : 'Non spécifié')}</td>` +
-        `<td class="geo-aff-cell">${escapeAffHtml(code ? (getReglesPrincipales(code)?.typeOperation || 'Non spécifié') : 'Non spécifié')}</td>` +
+        `<td class="geo-aff-cell">${escapeAffHtml(typeConstVal)}</td>` +
+        `<td class="geo-aff-cell geo-aff-cell--wide">${escapeAffHtml(defVal)}</td>` +
+        `<td class="geo-aff-cell">${escapeAffHtml(cosVal)}</td>` +
+        `<td class="geo-aff-cell">${escapeAffHtml(cusVal)}</td>` +
+        `<td class="geo-aff-cell">${escapeAffHtml(hauteurMaxVal)}</td>` +
+        `<td class="geo-aff-cell">${escapeAffHtml(largeurMinVal)}</td>` +
+        `<td class="geo-aff-cell">${escapeAffHtml(nombreEtagesVal)}</td>` +
+        `<td class="geo-aff-cell">${escapeAffHtml(communeVal)}</td>` +
+        `<td class="geo-aff-cell">${escapeAffHtml(surfaceMinVal)}</td>` +
+        `<td class="geo-aff-cell">${escapeAffHtml(typeOpVal)}</td>` +
+        `<td class="geo-aff-cell">${escapeAffHtml(condVal)}</td>` +
         `</tr>`
       )
     })
@@ -405,16 +419,17 @@ export function buildAffectationsModalHtml(title: string, terrainRing: number[][
     `<table class="geo-dims-table geo-aff-table">` +
     `<thead><tr>` +
     `<th></th><th>Affectation</th><th>Superficie</th><th>Part</th>` +
-    columns.map(([key, label]) => `<th class="geo-aff-cell${key === 'definition' ? ' geo-aff-cell--wide' : ''}">${escapeAffHtml(label)}</th>`).join('') +
-    `<th>Conditions</th><th>Type d'op&eacute;ration</th>` +
+    `<th>Type de construction</th><th class="geo-aff-cell--wide">Définition</th>` +
+    `<th>COS</th><th>CUS</th><th>Hauteur max</th><th>Largeur min</th><th>Nombre d'étages</th>` +
+    `<th>Commune</th><th>Surface min</th><th>Type d'op&eacute;ration</th><th>Conditions</th>` +
     `</tr></thead>` +
     `<tbody>` +
     rows +
     emptyRows +
     `<tr class="geo-dims-total"><td></td><td>Total parcelles intersectées</td><td>${escapeAffHtml(formatAffArea(piecesArea))}</td><td></td>` +
-    `<td colspan="${columns.length + 2}"></td></tr>` +
+    `<td colspan="11"></td></tr>` +
     `<tr class="geo-dims-total"><td></td><td>Superficie totale du terrain</td><td>${escapeAffHtml(formatAffArea(terrainArea))}</td><td></td>` +
-    `<td colspan="${columns.length + 2}"></td></tr>` +
+    `<td colspan="11"></td></tr>` +
     `</tbody>` +
     `</table>` +
     `</div>` +

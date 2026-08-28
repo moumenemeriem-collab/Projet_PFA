@@ -66,3 +66,50 @@ export function isCusEditable(cus: string | null): boolean {
   const c = cus.toLowerCase().trim()
   return c === '' || c === 'libre' || c === 'non fixé' || c === 'non fixe' || c === 'selon projet/cahier des charges'
 }
+
+export interface HauteurEtEtages {
+  hauteurMax: string
+  nombreEtages: string
+}
+
+export function getHauteurEtEtages(code: string, fallbackProps?: Record<string, unknown>): HauteurEtEtages {
+  const cleanCode = (code || '').toUpperCase().trim()
+
+  if (cleanCode === 'B2') return { hauteurMax: '11,50 m', nombreEtages: 'R+2' }
+  if (cleanCode === 'B3') return { hauteurMax: '14,50 m', nombreEtages: 'R+3' }
+  if (cleanCode === 'B4') return { hauteurMax: '17,50 m', nombreEtages: 'R+4' }
+  if (cleanCode === 'SB2') return { hauteurMax: '11,50 m', nombreEtages: 'R+2' }
+  if (cleanCode === 'SB4') return { hauteurMax: '17,50 m', nombreEtages: 'R+4' }
+  if (cleanCode === 'SB6') return { hauteurMax: '25 m', nombreEtages: 'R+6' }
+  if (cleanCode === 'C2') return { hauteurMax: '11,50 m', nombreEtages: 'R+2' }
+  if (cleanCode === 'C4') return { hauteurMax: '17,50 m', nombreEtages: 'R+4' }
+  if (cleanCode === 'D1') return { hauteurMax: '8,5 m', nombreEtages: 'R+1' }
+  if (cleanCode === 'DS1' || cleanCode.startsWith('DS1')) return { hauteurMax: '8,5 m', nombreEtages: 'R+1' }
+  if (cleanCode === 'D5') return { hauteurMax: '8,5 m', nombreEtages: 'R+1' }
+  if (cleanCode === 'IN2') return { hauteurMax: '14 m', nombreEtages: '—' }
+  if (cleanCode === 'IN3') return { hauteurMax: '11,5 m', nombreEtages: 'R+2' }
+  if (cleanCode === 'INS') return { hauteurMax: '14 m', nombreEtages: '—' }
+  if (cleanCode === 'ZPI') return { hauteurMax: '25 m', nombreEtages: 'R+6' }
+  if (cleanCode === 'ZS') return { hauteurMax: 'Selon plans de masse', nombreEtages: 'Selon plans de masse' }
+  if (cleanCode.toLowerCase().includes('restructur') || cleanCode === 'SR') {
+    return { hauteurMax: '11,50 m', nombreEtages: 'R+2 max' }
+  }
+  if (cleanCode === 'RB' || cleanCode === 'RS') return { hauteurMax: '—', nombreEtages: '—' }
+
+  const rule = getReglesPrincipales(cleanCode)
+  if (rule?.hauteurMax) {
+    if (rule.hauteurMax.includes('/')) {
+      const parts = rule.hauteurMax.split('/')
+      return { nombreEtages: parts[0].trim(), hauteurMax: parts[1].trim() }
+    }
+    return { hauteurMax: rule.hauteurMax, nombreEtages: '—' }
+  }
+
+  const hProp = fallbackProps?.hauteur_max ?? fallbackProps?.hauteurMax
+  if (hProp != null && String(hProp).trim() !== '' && String(hProp).trim() !== '—') {
+    const hStr = String(hProp).trim()
+    return { hauteurMax: hStr.endsWith('m') ? hStr : `${hStr} m`, nombreEtages: '—' }
+  }
+
+  return { hauteurMax: '—', nombreEtages: '—' }
+}
