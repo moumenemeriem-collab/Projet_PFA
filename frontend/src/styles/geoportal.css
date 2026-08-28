@@ -4035,10 +4035,11 @@
 
 .renta-flux-table th,
 .renta-flux-table td {
-  padding: 10px 14px;
+  padding: 13px 16px;
   text-align: right;
   color: #334155;
   border-bottom: 1px solid #f1f5f9;
+  line-height: 1.4;
 }
 
 .renta-flux-table thead th {
@@ -4049,6 +4050,7 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   border-bottom: 2px solid #cbd5e1;
+  padding: 12px 16px;
 }
 
 .renta-flux-table thead th:first-child {
@@ -4070,7 +4072,7 @@
   font-weight: 800;
   font-size: 0.74rem;
   text-align: left !important;
-  padding: 8px 14px;
+  padding: 10px 16px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   border-top: 1px solid #e2e8f0;
@@ -4112,7 +4114,7 @@
   background: #f8fafc !important;
   border-top: 2px solid #3b82f6 !important;
   border-bottom: none !important;
-  padding: 12px 14px !important;
+  padding: 14px 16px !important;
 }
 
 .renta-flux-net-row td:first-child {
