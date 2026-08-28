@@ -212,6 +212,7 @@
     "field_name_label": "اسم المشروع",
     "field_name_placeholder": "مثال: تجزئة الأمل 2",
     "field_type_label": "نوع المشروع",
+    "field_type_placeholder": "اختر نوع المشروع",
     "field_description_label": "الوصف",
     "field_description_placeholder": "صف أهداف استثمارك...",
     "section_land": "مواصفات الأراضي",

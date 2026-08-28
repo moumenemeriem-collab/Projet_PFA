@@ -382,18 +382,18 @@ function RentaUnitCalcSection({
           </tbody>
           <tfoot>
             <tr className="renta-flux-net-row">
-              <td className="renta-flux-row-label">Total estimé</td>
-              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 800 }}>
+              <td className="renta-flux-row-label" style={{ background: '#ffffff' }}>Total estimé</td>
+              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 800, background: '#ffffff' }}>
                 {totalSurface.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m&sup2;
               </td>
-              <td colSpan={3}></td>
-              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#475569', fontWeight: 600 }}>
+              <td colSpan={3} style={{ background: '#ffffff' }}></td>
+              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#475569', fontWeight: 600, background: '#ffffff' }}>
                 {totalVendableSol.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m&sup2;
               </td>
-              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#0f172a', fontWeight: 800 }}>
+              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#0f172a', fontWeight: 800, background: '#ffffff' }}>
                 {totalPlancherVendable.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m&sup2;
               </td>
-              <td style={{ textAlign: 'center' }}>
+              <td style={{ textAlign: 'center', background: '#ffffff' }}>
                 <span className="renta-flux-net">
                   <span style={{
                     display: 'inline-block', padding: '4px 12px', borderRadius: 999,
