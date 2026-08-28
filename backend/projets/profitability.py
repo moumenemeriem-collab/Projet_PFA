@@ -89,33 +89,31 @@ def calculer_rentabilite_projet(projet) -> dict:
     if surface_constructible <= 0:
         surface_constructible = surface_brute
 
-    has_voie_ou_espace_vert = (surface_voie > 0 or surface_espace_vert > 0)
-    if has_voie_ou_espace_vert:
-        shon = cos * surface_constructible * (1.0 - taux_chute_pct)
-        shob = shon * 1.2
-        surface_vendable = shon * 0.9
-        surface_a_amenager = surface_voie + surface_espace_vert + (taux_chute_pct * surface_constructible)
-    else:
-        shon = cos * surface_constructible
-        shob = shon * 1.2
-        surface_vendable = shon * 0.9
-        surface_a_amenager = 0.0
+    # Formules Étape 1 :
+    # SHON = COS * Sconstr * (1 - taux_chute/100)
+    # SHOB = SHON * 1.2
+    # Svendable = SHON * 0.9
+    # Samenager = Svoie + Sev + (Sconstr * taux_chute/100)
+    shon = cos * surface_constructible * (1.0 - taux_chute_pct)
+    shob = shon * 1.2
+    surface_vendable = shon * 0.9
+    surface_a_amenager = surface_voie + surface_espace_vert + (surface_constructible * taux_chute_pct)
 
-    # ── 3. Répartition par destination ──
+    # ── 3. Répartition par destination (Étape 2) ──
     qp_apt = _d(p.quote_part_appartement) / 100.0
     qp_com = _d(p.quote_part_commerce) / 100.0
     qp_bur = _d(p.quote_part_bureau) / 100.0
 
-    # La surface vendable est réservée exclusivement aux appartements, commerces et bureaux
+    # La surface vendable est répartie entre appartements, commerces et bureaux
     surf_apt = surface_vendable * qp_apt
     surf_com = surface_vendable * qp_com
     surf_bur = surface_vendable * qp_bur
 
-    # Les équipements ont une surface définie propre et ne prennent pas de la surface vendable
+    # Les équipements ont une surface définie propre
     surf_eq = _d(getattr(p, 'surface_equipement', None))
     surf_eq_prive = _d(getattr(p, 'surface_equipement_prive', None))
 
-    # ── 4. Chiffre d'affaires ──
+    # ── 4. Chiffre d'affaires prévisionnel (Étape 3) ──
     px_vente_apt = _d(p.prix_vente_appartement)
     px_vente_com = _d(p.prix_vente_commerce)
     px_vente_bur = _d(p.prix_vente_bureau)
@@ -129,13 +127,14 @@ def calculer_rentabilite_projet(projet) -> dict:
     ca_eq_prive = surf_eq_prive * px_vente_eq_prive
     ca_hors_eq = ca_apt + ca_com + ca_bur
 
-    # Les frais de commercialisation s'ajoutent au CA (ne sont pas des charges)
-    taux_comm = _d(p.taux_commercialisation) / 100.0
-    frais_commercialisation = (ca_hors_eq + ca_eq + ca_eq_prive) * taux_comm
-    ca_total = ca_hors_eq + ca_eq + ca_eq_prive + frais_commercialisation
+    # CA total = CA hors-eq + CA eqpub + CA eqpriv
+    ca_total = ca_hors_eq + ca_eq + ca_eq_prive
 
-    # ── 5. Coûts de construction ──
-    # Les équipements n'ont pas de coût de construction
+    # Frais de commercialisation = CA_total * taux_comm / 100
+    taux_comm = _d(p.taux_commercialisation) / 100.0
+    frais_commercialisation = ca_total * taux_comm
+
+    # ── 5. Coûts de construction (Étape 4.1) ──
     cout_apt = surf_apt * _d(p.cout_construction_appartement)
     cout_com = surf_com * _d(p.cout_construction_commerce)
     cout_bur = surf_bur * _d(p.cout_construction_bureau)
@@ -143,25 +142,24 @@ def calculer_rentabilite_projet(projet) -> dict:
     cout_eq_prive = 0.0
     cout_construction_total = cout_apt + cout_com + cout_bur
 
-    # ── 6. Charges ──
+    # ── 6. Charges d'études, imprévus et aménagement (Étape 4.2, 4.3, 6.4) ──
     taux_etudes = _d(p.taux_etudes_honoraires) / 100.0
     taux_imprevus = _d(p.taux_imprevus) / 100.0
 
     frais_etudes = cout_construction_total * taux_etudes
     imprevus = cout_construction_total * taux_imprevus
-
-    # ── 6bis. Charge d'aménagement (échelonnement aménagement) ──
     cout_amenagement = 600 * surface_a_amenager * 1.1
 
-    # ── 7. Prix d'acquisition foncier ──
-    # Prix / m² * surface brute du foncier * (1 + frais d'acquisition)
-    # surface_brute = surface totale réelle du projet issue de la parcelle
+    # ── 7. Coût d'acquisition du foncier (Étape 5) ──
+    # Pfoncier_brut = Pfoncier * Sbrute
+    # Facquisition = Pfoncier_brut * taux_acq / 100
+    # Cacquisition = Pfoncier_brut + Facquisition
     prix_foncier = prix_m2 * surface_brute
     frais_acquisition_montant = prix_foncier * frais_acq_pct
     cout_acquisition = prix_foncier + frais_acquisition_montant
 
-    # ── 8. Coût total du projet ──
-    # Les frais de commercialisation ne sont pas inclus dans les charges
+    # ── 8. Coût total du projet (Étape 6) ──
+    # Ctotal = Cacquisition + Cconstruction + Fetudes + Fimprevus + Camenagement
     cout_total_projet = (
         cout_acquisition
         + cout_construction_total
@@ -170,18 +168,18 @@ def calculer_rentabilite_projet(projet) -> dict:
         + cout_amenagement
     )
 
-    # ── 9. Paramètres temporels ──
+    # ── 9. Paramètres temporels (Étape 7) ──
     duree_cons = max(int(p.duree_construction), 1)
     duree_comm = max(int(p.duree_commercialisation), 2)
 
-    # La construction et charges associées s'étalent sur au moins 2 années (50% An 0, 50% An 1 si duree <= 2)
+    # Durée effective pour l'échelonnement construction (min 2 ans pour 50% An 0 / 50% An 1)
     duree_cons_effective = max(duree_cons, 2) if duree_cons <= 2 else duree_cons
 
     # La commercialisation démarre toujours avec un décalage d'1 an (en année 1).
-    # nb_annees couvre l'horizon maximal entre fin des charges et fin de la commercialisation.
     nb_annees = max(duree_cons_effective, 1 + duree_comm)
 
-    # ── 10. Échelonnement construction (50/50 pour <= 2 ans, uniforme sinon) ──
+    # ── 10. Répartition des charges dans le temps (Étape 10) ──
+    # Construction, études et imprévus : 50/50 si Dcons <= 2, 1/Dcons uniforme sinon
     rep_cons = p.repartition_construction
     if not rep_cons or not isinstance(rep_cons, list) or len(rep_cons) != duree_cons_effective:
         if duree_cons_effective == 2:
@@ -192,7 +190,8 @@ def calculer_rentabilite_projet(projet) -> dict:
             if abs(diff) > 0.001:
                 rep_cons[-1] = round(rep_cons[-1] + diff, 2)
 
-    # ── 11. Échelonnement ventes (hors équipement, démarre en Année 1) ──
+    # ── 11. Répartition des recettes dans le temps (Étape 11) ──
+    # Démarre en Année 1
     rep_ventes = p.repartition_ventes
     if not rep_ventes or not isinstance(rep_ventes, list) or len(rep_ventes) != duree_comm:
         if duree_comm == 2:
@@ -207,7 +206,7 @@ def calculer_rentabilite_projet(projet) -> dict:
             if abs(diff) > 0.001:
                 rep_ventes[-1] = round(rep_ventes[-1] + diff, 2)
 
-    # ── 11bis. Échelonnement CA équipement (100% en Année 1) ──
+    # Équipements publics et privés : 100% en Année 1 (première année de commercialisation)
     rep_ventes_eq = getattr(p, 'repartition_ventes_equipement', None)
     if not rep_ventes_eq or not isinstance(rep_ventes_eq, list) or len(rep_ventes_eq) != duree_comm:
         rep_ventes_eq = [0.0] * duree_comm
@@ -218,37 +217,30 @@ def calculer_rentabilite_projet(projet) -> dict:
         rep_ventes_eq_prive = [0.0] * duree_comm
         rep_ventes_eq_prive[0] = 100.0
 
-    # ── 12. Tableau des flux ──
+    # ── 12. Calcul des flux de trésorerie annuels (Étape 12) ──
     flux = []
     for annee in range(nb_annees):
         idx_comm = annee - 1
 
-        # CA hors équipement
+        # Recettes de l'année (CA hors-eq + CA eqpub + CA eqpriv)
         ca_hors_eq_annee = 0.0
         if 0 <= idx_comm < duree_comm:
             ca_hors_eq_annee = ca_hors_eq * rep_ventes[idx_comm] / 100.0
 
-        # CA équipement public (100% en Année 1)
         ca_eq_annee = 0.0
         if 0 <= idx_comm < duree_comm:
             ca_eq_annee = ca_eq * rep_ventes_eq[idx_comm] / 100.0
 
-        # CA équipement privé (100% en Année 1)
         ca_eq_prive_annee = 0.0
         if 0 <= idx_comm < duree_comm:
             ca_eq_prive_annee = ca_eq_prive * rep_ventes_eq_prive[idx_comm] / 100.0
 
-        # Commercialisation (s'ajoute au CA)
-        comm_annee = 0.0
-        if 0 <= idx_comm < duree_comm:
-            comm_annee = frais_commercialisation * rep_ventes[idx_comm] / 100.0
+        recettes_annee = ca_hors_eq_annee + ca_eq_annee + ca_eq_prive_annee
 
-        ca_annee = ca_hors_eq_annee + ca_eq_annee + ca_eq_prive_annee + comm_annee
-
-        # Acquisition foncier (Année 0 uniquement)
+        # Charges de l'année (Acquisition + Aménagement + Construction + Études + Imprévus)
         acq_annee = cout_acquisition if annee == 0 else 0.0
+        amenagement_annee = cout_amenagement if annee == 0 else 0.0
 
-        # Construction & charges associées (réparties sur duree_cons_effective à partir de l'année 0)
         cons_annee = 0.0
         etudes_annee = 0.0
         imp_annee = 0.0
@@ -258,15 +250,18 @@ def calculer_rentabilite_projet(projet) -> dict:
             etudes_annee = frais_etudes * pct_cons
             imp_annee = imprevus * pct_cons
 
-        # Aménagement (100% en Année 0)
-        amenagement_annee = cout_amenagement if annee == 0 else 0.0
+        charges_annee = acq_annee + amenagement_annee + cons_annee + etudes_annee + imp_annee
 
-        # Total des charges (SANS frais de commercialisation)
-        total_charges_annee = acq_annee + amenagement_annee + cons_annee + etudes_annee + imp_annee
-        flux_net = ca_annee - total_charges_annee
+        # Flux net annuel : CF = Recettes - Charges
+        flux_net = recettes_annee - charges_annee
 
         cons_imp_etudes_annee = cons_annee + etudes_annee + imp_annee
         ca_eq_total_annee = ca_eq_annee + ca_eq_prive_annee
+
+        # Frais de commercialisation de l'année (à titre indicatif)
+        comm_annee = 0.0
+        if 0 <= idx_comm < duree_comm:
+            comm_annee = frais_commercialisation * rep_ventes[idx_comm] / 100.0
 
         flux.append({
             'annee': annee,
@@ -275,8 +270,8 @@ def calculer_rentabilite_projet(projet) -> dict:
             'ca_equipement_prive': round(ca_eq_prive_annee, 2),
             'ca_equipements': round(ca_eq_total_annee, 2),
             'frais_commercialisation': round(comm_annee, 2),
-            'ca_total': round(ca_annee, 2),
-            'ca': round(ca_annee, 2),
+            'ca_total': round(recettes_annee, 2),
+            'ca': round(recettes_annee, 2),
             'acquisition': round(acq_annee, 2),
             'construction': round(cons_annee, 2),
             'etudes_honoraires': round(etudes_annee, 2),
@@ -284,17 +279,19 @@ def calculer_rentabilite_projet(projet) -> dict:
             'autre_charge': round(cons_imp_etudes_annee, 2),
             'commercialisation': 0.0,
             'amenagement': round(amenagement_annee, 2),
-            'total_charges': round(total_charges_annee, 2),
+            'total_charges': round(charges_annee, 2),
             'flux_net': round(flux_net, 2),
         })
 
-    # ── 13. VAN, TRI, ROI ──
+    # ── 13. Calcul du TRI par Newton-Raphson (Étape 8) ──
     flux_nets = [f['flux_net'] for f in flux]
     taux_actualisation = _d(p.taux_actualisation)
     van = _van(flux_nets, taux_actualisation)
     tri = _irr(flux_nets)
 
-    benefice_net = sum(flux_nets)
+    # ── 14. Calcul du bénéfice net (Étape 9) ──
+    # Bénéfice net = CAtotal - Ctotal + Fcomm
+    benefice_net = ca_total - cout_total_projet + frais_commercialisation
     roi = (benefice_net / cout_total_projet * 100) if cout_total_projet > 0 else None
 
     return {
