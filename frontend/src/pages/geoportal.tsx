@@ -94,6 +94,14 @@ function parseEtagesToNum(str: string | undefined | null): number {
   return isNaN(val) || val < 0 ? 2 : val
 }
 
+function parseHauteurToNum(str: string | number | undefined | null): number {
+  if (str === undefined || str === null || str === '') return 11.5
+  if (typeof str === 'number') return str
+  const clean = String(str).replace(',', '.').replace(/[^\d.]/g, '')
+  const val = parseFloat(clean)
+  return isNaN(val) || val <= 0 ? 11.5 : val
+}
+
 interface RentaUnitCalcSectionProps {
   affectations: AffectationSurface[] | undefined
   parcelInfo: { nom?: string; superficie?: number; ref?: string } | null
@@ -177,7 +185,8 @@ function RentaUnitCalcSection({
 
     // Surface nette après déduction des voies et équipements
     const defaultSurface = a.net_surface_m2 ?? a.surface_m2 ?? 0
-    const defaultHauteur = hauteurInfo.hauteurMax !== '—' ? hauteurInfo.hauteurMax : (a.hauteur_max ? (String(a.hauteur_max).endsWith('m') ? String(a.hauteur_max) : `${a.hauteur_max} m`) : '11,50 m')
+    const defaultHauteurRaw = hauteurInfo.hauteurMax !== '—' ? hauteurInfo.hauteurMax : (a.hauteur_max || '11.5')
+    const defaultHauteurNum = parseHauteurToNum(defaultHauteurRaw)
     const defaultEtagesNum = parseEtagesToNum(hauteurInfo.nombreEtages !== '—' ? hauteurInfo.nombreEtages : 'R+2')
     const defaultSurfaceUnite = 80
 
@@ -185,7 +194,7 @@ function RentaUnitCalcSection({
     const userSurface = userSurfaceStr !== undefined && userSurfaceStr !== '' ? (parseFloat(userSurfaceStr) || 0) : defaultSurface
 
     const userHauteurStr = unitConfigs[key]?.hauteur
-    const userHauteur = userHauteurStr !== undefined ? userHauteurStr : defaultHauteur
+    const userHauteur = userHauteurStr !== undefined && userHauteurStr !== '' ? (parseFloat(String(userHauteurStr).replace(',', '.')) || 0) : defaultHauteurNum
 
     const userEtagesStr = unitConfigs[key]?.nombreEtages
     const userEtages = userEtagesStr !== undefined && userEtagesStr !== '' ? (parseFloat(userEtagesStr) || 0) : defaultEtagesNum
@@ -244,7 +253,7 @@ function RentaUnitCalcSection({
             <tr>
               <th style={{ textAlign: 'left' }}>Affectation</th>
               <th style={{ textAlign: 'right' }}>Surface (m&sup2;)</th>
-              <th style={{ textAlign: 'center' }}>Hauteur max</th>
+              <th style={{ textAlign: 'center' }}>Hauteur max (m)</th>
               <th style={{ textAlign: 'center' }}>Nbr &eacute;tages</th>
               <th style={{ textAlign: 'center' }}>Surface unit&eacute; (m&sup2;)</th>
               <th style={{ textAlign: 'right' }}>S. vendable sol (m&sup2;)</th>
@@ -290,19 +299,21 @@ function RentaUnitCalcSection({
                   )}
                 </td>
 
-                {/* Hauteur max */}
+                {/* Hauteur max (m) */}
                 <td style={{ textAlign: 'center' }}>
                   {isViewMode ? (
-                    <span>{item.hauteur}</span>
+                    <span>{item.hauteur.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m</span>
                   ) : (
                     <input
-                      type="text"
+                      type="number"
+                      step="0.1"
+                      min="0"
                       value={unitConfigs[item.key]?.hauteur !== undefined ? unitConfigs[item.key].hauteur : item.hauteur}
                       onChange={(e) => setUnitConfigs && setUnitConfigs((prev) => ({
                         ...prev,
                         [item.key]: { ...(prev[item.key] || {}), hauteur: e.target.value }
                       }))}
-                      style={{ width: 75, padding: '4px 6px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: '0.78rem', textAlign: 'center' }}
+                      style={{ width: 70, padding: '4px 6px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: '0.78rem', textAlign: 'center' }}
                     />
                   )}
                 </td>
