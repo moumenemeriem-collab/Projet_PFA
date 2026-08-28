@@ -1559,6 +1559,44 @@ class AnalysePondereeView(APIView):
             except Exception:
                 pass
 
+            # 6bis. Sauvegarder l'analyse pondérée dans l'historique (modèle Analyse)
+            try:
+                from .models import Analyse, ResultatAnalyse
+                analyse = Analyse.objects.create(
+                    projet=projet,
+                    filtres={
+                        'matrice_ahp': matrice_ahp,
+                        'ordre_categories': ordre_categories,
+                        'ordres_roc': ordres_roc,
+                        'selections_criteres': selections,
+                        'preferences_localisation': prefs_loc,
+                        'preferences_altitude': plages_altitude,
+                        'seuil': seuil,
+                    },
+                    poids_amc=1.0,
+                    poids_rentabilite=0.0,
+                    nombre_parcelles=len(resultats),
+                    statut='complete',
+                )
+                ResultatAnalyse.objects.bulk_create([
+                    ResultatAnalyse(
+                        analyse=analyse,
+                        id_parcelle=str(r.get('id')) if r.get('id') is not None else r.get('num_parcelle', ''),
+                        reference_cadastrale=r.get('reference_cadastrale', '') or '',
+                        nom=r.get('nom', '') or '',
+                        superficie=r.get('superficie'),
+                        lat=r.get('lat'),
+                        lng=r.get('lng'),
+                        score_amc=r.get('score_final'),
+                        score_final=r.get('score_final'),
+                        rang=r.get('rang'),
+                        criteres_conformite=r.get('contributions'),
+                    )
+                    for r in resultats
+                ])
+            except Exception:
+                pass
+
             return Response({
                 'total': len(resultats),
                 'resultats': resultats,

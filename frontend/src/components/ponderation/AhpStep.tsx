@@ -9,6 +9,7 @@ interface AhpStepProps {
   /** Ordre des catégories sauvegardé [rang1, rang2, rang3] */
   initialOrder?: string[]
   onComplete: (intensites: [number, number], ordre: string[], resultat: AhpResult) => void
+  onBack?: () => void
 }
 
 const CATEGORIES = [
@@ -56,7 +57,7 @@ function getCatLabel(key: string): string {
 
 type AhpSubStep = 'ranking' | 'intensity'
 
-export function AhpStep({ initial, initialOrder, onComplete }: AhpStepProps): React.JSX.Element {
+export function AhpStep({ initial, initialOrder, onComplete, onBack }: AhpStepProps): React.JSX.Element {
   const defaultOrder = CATEGORIES.map(c => c.key)
 
   const [subStep, setSubStep] = useState<AhpSubStep>(() => {
@@ -190,6 +191,11 @@ export function AhpStep({ initial, initialOrder, onComplete }: AhpStepProps): Re
           </div>
 
           <div className="step-actions">
+            {onBack && (
+              <WizardNextButton variant="secondary" onClick={onBack}>
+                {t('ponderation.previous')}
+              </WizardNextButton>
+            )}
             <WizardNextButton onClick={handleValidateRanking}>
               Définir l'intensité
             </WizardNextButton>
