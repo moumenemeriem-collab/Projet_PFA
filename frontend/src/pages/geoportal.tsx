@@ -238,41 +238,41 @@ function RentaUnitCalcSection({
         </span>
       </div>
 
-      <div style={{ overflowX: 'auto', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
+      <div className="renta-flux-table-wrap">
+        <table className="renta-flux-table">
           <thead>
-            <tr style={{ background: '#f1f5f9', color: '#475569', fontWeight: 600, borderBottom: '1px solid #cbd5e1' }}>
-              <th style={{ padding: '6px 10px', textAlign: 'left' }}>Affectation</th>
-              <th style={{ padding: '6px 8px', textAlign: 'right' }}>Surface (m&sup2;)</th>
-              <th style={{ padding: '6px 8px', textAlign: 'center' }}>Hauteur max</th>
-              <th style={{ padding: '6px 8px', textAlign: 'center' }}>Nbr &eacute;tages</th>
-              <th style={{ padding: '6px 8px', textAlign: 'center', background: '#eff6ff', color: '#1d4ed8' }}>Surface unit&eacute; (m&sup2;)</th>
-              <th style={{ padding: '6px 8px', textAlign: 'right' }}>S. vendable sol (m&sup2;)</th>
-              <th style={{ padding: '6px 8px', textAlign: 'right' }}>S. plancher vendable (m&sup2;)</th>
-              <th style={{ padding: '6px 10px', textAlign: 'center', background: '#e0f2fe', color: '#0369a1' }}>Nombre d'unit&eacute;s</th>
+            <tr>
+              <th style={{ textAlign: 'left' }}>Affectation</th>
+              <th style={{ textAlign: 'right' }}>Surface (m&sup2;)</th>
+              <th style={{ textAlign: 'center' }}>Hauteur max</th>
+              <th style={{ textAlign: 'center' }}>Nbr &eacute;tages</th>
+              <th style={{ textAlign: 'center' }}>Surface unit&eacute; (m&sup2;)</th>
+              <th style={{ textAlign: 'right' }}>S. vendable sol (m&sup2;)</th>
+              <th style={{ textAlign: 'right' }}>S. plancher vendable (m&sup2;)</th>
+              <th style={{ textAlign: 'center' }}>Nombre d'unit&eacute;s</th>
             </tr>
           </thead>
           <tbody>
             {calculatedRows.map((item) => (
-              <tr key={item.key} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                <td style={{ padding: '6px 10px', fontWeight: 600, color: '#1e293b' }}>
+              <tr key={item.key}>
+                <td className="renta-flux-row-label" style={{ minWidth: 130 }}>
                   <span style={{
-                    display: 'inline-block', padding: '2px 7px', borderRadius: 4,
-                    background: '#e2e8f0', color: '#334155', fontSize: '0.75rem', fontWeight: 700
+                    display: 'inline-block', padding: '2px 8px', borderRadius: 4,
+                    background: '#e2e8f0', color: '#1e293b', fontSize: '0.75rem', fontWeight: 700
                   }}>
                     {item.designation}
                   </span>
                   {item.type_construction && item.type_construction !== '—' && (
-                    <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 400, marginTop: 2, maxWidth: 140, whiteSpace: 'normal', lineHeight: 1.2 }}>
+                    <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 400, marginTop: 2, maxWidth: 160, whiteSpace: 'normal', lineHeight: 1.2 }}>
                       {item.type_construction}
                     </div>
                   )}
                 </td>
 
                 {/* Surface */}
-                <td style={{ padding: '6px 8px', textAlign: 'right' }}>
+                <td style={{ textAlign: 'right' }}>
                   {isViewMode ? (
-                    <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                    <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
                       {item.surface.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m&sup2;
                     </span>
                   ) : (
@@ -285,13 +285,13 @@ function RentaUnitCalcSection({
                         ...prev,
                         [item.key]: { ...(prev[item.key] || {}), surface: e.target.value }
                       }))}
-                      style={{ width: 80, padding: '3px 6px', borderRadius: 4, border: '1px solid #cbd5e1', fontSize: '0.78rem', textAlign: 'right' }}
+                      style={{ width: 85, padding: '4px 8px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: '0.78rem', textAlign: 'right' }}
                     />
                   )}
                 </td>
 
                 {/* Hauteur max */}
-                <td style={{ padding: '6px 8px', textAlign: 'center' }}>
+                <td style={{ textAlign: 'center' }}>
                   {isViewMode ? (
                     <span>{item.hauteur}</span>
                   ) : (
@@ -302,13 +302,13 @@ function RentaUnitCalcSection({
                         ...prev,
                         [item.key]: { ...(prev[item.key] || {}), hauteur: e.target.value }
                       }))}
-                      style={{ width: 75, padding: '3px 6px', borderRadius: 4, border: '1px solid #cbd5e1', fontSize: '0.78rem', textAlign: 'center' }}
+                      style={{ width: 75, padding: '4px 6px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: '0.78rem', textAlign: 'center' }}
                     />
                   )}
                 </td>
 
                 {/* Nombre d'étages */}
-                <td style={{ padding: '6px 8px', textAlign: 'center' }}>
+                <td style={{ textAlign: 'center' }}>
                   {isViewMode ? (
                     <strong style={{ color: '#1e293b' }}>R+{item.nombreEtages}</strong>
                   ) : (
@@ -322,13 +322,13 @@ function RentaUnitCalcSection({
                         ...prev,
                         [item.key]: { ...(prev[item.key] || {}), nombreEtages: e.target.value }
                       }))}
-                      style={{ width: 55, padding: '3px 6px', borderRadius: 4, border: '1px solid #cbd5e1', fontSize: '0.78rem', textAlign: 'center', fontWeight: 600 }}
+                      style={{ width: 60, padding: '4px 6px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: '0.78rem', textAlign: 'center', fontWeight: 600 }}
                     />
                   )}
                 </td>
 
                 {/* Surface d'unité (input) */}
-                <td style={{ padding: '6px 8px', textAlign: 'center', background: '#eff6ff' }}>
+                <td style={{ textAlign: 'center' }}>
                   {isViewMode ? (
                     <strong style={{ color: '#1d4ed8' }}>{item.surfaceUnite} m&sup2;</strong>
                   ) : (
@@ -341,26 +341,26 @@ function RentaUnitCalcSection({
                         ...prev,
                         [item.key]: { ...(prev[item.key] || {}), surfaceUnite: e.target.value }
                       }))}
-                      style={{ width: 70, padding: '3px 6px', borderRadius: 4, border: '1.5px solid #3b82f6', background: '#fff', fontSize: '0.78rem', textAlign: 'center', fontWeight: 700, color: '#1d4ed8' }}
+                      style={{ width: 75, padding: '4px 8px', borderRadius: 6, border: '1.5px solid #3b82f6', background: '#eff6ff', fontSize: '0.78rem', textAlign: 'center', fontWeight: 700, color: '#1d4ed8' }}
                     />
                   )}
                 </td>
 
                 {/* Surface vendable au sol */}
-                <td style={{ padding: '6px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#475569' }}>
+                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#475569' }}>
                   {item.surfaceVendableSol.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m&sup2;
                 </td>
 
                 {/* Surface plancher vendable */}
-                <td style={{ padding: '6px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: '#0f172a' }}>
+                <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: '#0f172a' }}>
                   {item.surfacePlancherVendable.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m&sup2;
                 </td>
 
                 {/* Nombre d'unités */}
-                <td style={{ padding: '6px 10px', textAlign: 'center', background: '#e0f2fe' }}>
+                <td style={{ textAlign: 'center' }}>
                   <span style={{
-                    display: 'inline-block', padding: '3px 8px', borderRadius: 6,
-                    background: '#0284c7', color: '#fff', fontWeight: 700, fontSize: '0.82rem',
+                    display: 'inline-block', padding: '3px 10px', borderRadius: 999,
+                    background: '#0284c7', color: '#fff', fontWeight: 700, fontSize: '0.8rem',
                     fontVariantNumeric: 'tabular-nums'
                   }}>
                     {item.nombreUnitesArrondi} <span style={{ fontSize: '0.68rem', fontWeight: 400, opacity: 0.9 }}>({item.nombreUnites.toFixed(1)})</span>
@@ -370,24 +370,26 @@ function RentaUnitCalcSection({
             ))}
           </tbody>
           <tfoot>
-            <tr style={{ background: '#f8fafc', borderTop: '2px solid #cbd5e1', fontWeight: 700 }}>
-              <td style={{ padding: '8px 10px', color: '#1e293b' }}>Total estimé</td>
-              <td style={{ padding: '8px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+            <tr className="renta-flux-net-row">
+              <td className="renta-flux-row-label">Total estimé</td>
+              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 800 }}>
                 {totalSurface.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m&sup2;
               </td>
               <td colSpan={3}></td>
-              <td style={{ padding: '8px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#475569' }}>
+              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#475569', fontWeight: 600 }}>
                 {totalVendableSol.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m&sup2;
               </td>
-              <td style={{ padding: '8px 8px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#0f172a' }}>
+              <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#0f172a', fontWeight: 800 }}>
                 {totalPlancherVendable.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} m&sup2;
               </td>
-              <td style={{ padding: '8px 10px', textAlign: 'center', background: '#dbeafe' }}>
-                <span style={{
-                  display: 'inline-block', padding: '4px 10px', borderRadius: 6,
-                  background: '#16a34a', color: '#fff', fontWeight: 700, fontSize: '0.85rem'
-                }}>
-                  {totalUnites} unit&eacute;s
+              <td style={{ textAlign: 'center' }}>
+                <span className="renta-flux-net">
+                  <span style={{
+                    display: 'inline-block', padding: '4px 12px', borderRadius: 999,
+                    background: '#16a34a', color: '#fff', fontWeight: 700, fontSize: '0.82rem'
+                  }}>
+                    {totalUnites} unit&eacute;s
+                  </span>
                 </span>
               </td>
             </tr>
