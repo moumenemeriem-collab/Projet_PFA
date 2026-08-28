@@ -4,7 +4,7 @@
 // Structure : Page 1 portrait (fiche d'identité + métriques + tableau des sommets/côtés),
 // Page 2 paysage (plan topographique vectoriel avec cartouche, échelle et coordonnées).
 
-import type { AffectationPiece } from './affectations'
+import { isAffectationValide, type AffectationPiece } from './affectations'
 
 interface Pt {
   x: number
@@ -927,8 +927,9 @@ function hexToRgb(hex: string): string {
   return `${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)}`
 }
 
-export function buildAffectationsPdf(title: string, terrainRing: number[][], pieces: AffectationPiece[]): Uint8Array {
+export function buildAffectationsPdf(title: string, terrainRing: number[][], rawPieces: AffectationPiece[]): Uint8Array {
   const dateStr = formatDateFr(new Date())
+  const pieces = rawPieces.filter((pc) => isAffectationValide(pc.designation, pc.properties))
 
   const terrainPts = terrainRing.map(([lng, lat]) => projectSahara(lat, lng))
   const terrainSides = terrainPts.map((p, i) => {

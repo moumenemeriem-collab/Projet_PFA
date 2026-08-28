@@ -29,6 +29,7 @@ import {
 } from '../utils/terrainDims'
 import {
   computeParcelAffectations,
+  isAffectationValide,
   preparePAZones,
   showAffectationsModal,
   type AffectationPiece,
@@ -3437,7 +3438,7 @@ const bindPopupActionButtons = (popup: any): void => {
                               </thead>
                               <tbody>
                                 {rentaSurfaceConstructible.affectations
-                                  .filter((a) => a.surface_m2 > 0)
+                                  .filter((a) => a.surface_m2 > 0 && isAffectationValide(a.designation, a as unknown as Record<string, unknown>))
                                   .sort((a, b) => b.surface_m2 - a.surface_m2)
                                   .map((a, i) => {
                                     const pct = rentaParcelInfo?.superficie ? Math.round(a.surface_m2 / rentaParcelInfo.superficie * 10000) / 100 : 0

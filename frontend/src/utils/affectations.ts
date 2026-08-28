@@ -4,7 +4,7 @@
 import intersect from '@turf/intersect'
 import { extractRing, polygonAreaM2 } from './terrainDims'
 import { downloadAffectationsPdf } from './pdfPlan'
-import { getReglesPrincipales } from './reglementationPA'
+import { getReglesPrincipales, getReglesDesignation } from './reglementationPA'
 
 export interface AffectationPiece {
   feature: any
@@ -27,6 +27,30 @@ const AFFECTATION_PALETTE = [
   '#808000', '#ffd8b1', '#000075', '#f0a3a3', '#1b3a6e', '#46f0a0',
 ]
 
+/**
+ * Détermine si une affectation / désignation est valide et prise en compte dans
+ * la réglementation urbaine ou le calcul de rentabilité (exclut les valeurs nulles,
+ * non définies, ou hors cadre de rentabilité/constructibilité).
+ */
+export function isAffectationValide(designation: unknown, props?: Record<string, unknown>): boolean {
+  if (designation == null) return false
+  const code = String(designation).trim().toUpperCase()
+  if (
+    !code ||
+    code === 'NULL' ||
+    code === 'UNDEFINED' ||
+    code === 'NON DÉFINIE' ||
+    code === 'NON DEFINIE' ||
+    code === 'AFFECTATION NON DÉFINIE'
+  ) {
+    return false
+  }
+  // Vérifie si l'affectation est dans la réglementation PA ou correspond à un équipement
+  const hasRegle = getReglesDesignation(code).length > 0
+  const isEq = /^[AES][0-9]/.test(code) || /equipement|administration|enseignement|sante|culte|sport/i.test(String(props?.type_construction ?? props?.definition ?? ''))
+  return hasRegle || isEq
+}
+
 // Couleur stable pour un même code d'affectation (déterminée par hachage).
 export function affectationColor(key: string): string {
   const s = key || ''
@@ -35,16 +59,17 @@ export function affectationColor(key: string): string {
   return AFFECTATION_PALETTE[h % AFFECTATION_PALETTE.length]
 }
 
-// Nom lisible d'une affectation : « Code — Description » (ex. « RB1 — Parc de stationnement »).
+// Nom lisible d'une affectation : « Code : Description » (ex. « RB1 : Parc de stationnement »).
 export function affectationLabel(props: Record<string, unknown>): string {
   const code = String(props.designation ?? '').trim()
+  if (!isAffectationValide(code, props)) return ''
   const desc = String(props.type_construction ?? '').trim()
   const definition = String(props.definition ?? '').trim()
   const description = desc || definition
   if (code && description) return `${code} : ${description}`
   if (code) return code
   if (description) return description
-  return 'Affectation non définie'
+  return ''
 }
 
 // Ordre et libellés préférés des attributs du plan d'aménagement.
@@ -126,13 +151,15 @@ export function stripZGeometry(geometry: unknown): { type: string; coordinates: 
 
 // Prépare une fois les polygones du plan d'aménagement (Z supprimé + bbox) pour accélérer les intersections.
 export function preparePAZones(features: { geometry: unknown; properties: Record<string, unknown> }[]): PreparedPAZone[] {
-  return features.map((f) => {
-    const geometry = stripZGeometry(f.geometry)
-    return {
-      feature: { type: 'Feature', properties: f.properties, geometry },
-      bbox: featureBBoxFromGeom(geometry),
-    }
-  })
+  return features
+    .filter((f) => isAffectationValide(f.properties?.designation, f.properties))
+    .map((f) => {
+      const geometry = stripZGeometry(f.geometry)
+      return {
+        feature: { type: 'Feature', properties: f.properties, geometry },
+        bbox: featureBBoxFromGeom(geometry),
+      }
+    })
 }
 
 function ringsFromGeometry(geometry: unknown): number[][][] {
@@ -189,11 +216,15 @@ export function computeParcelAffectations(
       const area = geometryAreaM2(res.geometry)
       if (area <= 0) continue
       const designation = String(props.designation ?? '').trim()
+      if (!isAffectationValide(designation, props)) continue
+      const label = affectationLabel(props)
+      if (!label) continue
+
       pieces.push({
         feature: res as AffectationPiece['feature'],
         properties: props,
         designation,
-        label: affectationLabel(props),
+        label,
         color: affectationColor(designation),
         areaM2: area,
         percent: totalArea > 0 ? (area / totalArea) * 100 : 0,
