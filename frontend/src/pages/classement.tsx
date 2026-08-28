@@ -729,8 +729,8 @@ export function ClassementPage(): React.JSX.Element {
             ) : null}
           </>
         ) : tab === 'rentabilite' ? (
-          analyse && analyse.resultats.length > 0 ? (
-            <>
+          <>
+            {analyse && (
               <div className="classement-summary-bar">
                 <span className="classement-summary-item">
                   {t('ranking.last_analysis')} : <strong>{formatDate(analyse.date_creation)}</strong>
@@ -742,19 +742,21 @@ export function ClassementPage(): React.JSX.Element {
                   {t('ranking.col_conformite')} : <strong>{statusLabel(analyse.statut)}</strong>
                 </span>
               </div>
+            )}
 
-              <div className="classement-table-wrapper">
-                <table className="classement-table">
-                  <thead>
-                    <tr>
-                      <th>{t('ranking.col_rang')}</th>
-                      <th>{t('ranking.col_parcelle')}</th>
-                      <th>{t('ranking.col_surface')}</th>
-                      <th>{t('ranking.col_actions')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {resultatsPagines.map((r) => (
+            <div className="classement-table-wrapper">
+              <table className="classement-table">
+                <thead>
+                  <tr>
+                    <th>{t('ranking.col_rang')}</th>
+                    <th>{t('ranking.col_parcelle')}</th>
+                    <th>{t('ranking.col_surface')}</th>
+                    <th>{t('ranking.col_actions')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {resultatsPagines.length > 0 ? (
+                    resultatsPagines.map((r) => (
                       <tr key={r.id}>
                         <td><span className="classement-rank">#{r.rang}</span></td>
                         <td>
@@ -768,18 +770,22 @@ export function ClassementPage(): React.JSX.Element {
                           <div className="classement-table-actions">
                             <button type="button" className="table-action-btn" title={t('ranking.view_details')} onClick={() => setDetail(r)}>{icons.eye}</button>
                             <Link
-                              to={`/projets/${projet.id}/classement/ajouter?analyse=${analyse.id}&parcelle=${encodeURIComponent(r.reference_cadastrale || r.id_parcelle)}`}
+                              to={`/projets/${projet.id}/classement/ajouter?analyse=${analyse?.id ?? ''}&parcelle=${encodeURIComponent(r.reference_cadastrale || r.id_parcelle)}`}
                               className="table-action-btn"
                               title={t('ranking.view_map')}
                             >{icons.mapPin}</Link>
                           </div>
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    ))
+                  ) : (
+                    <tr><td colSpan={4} className="classement-table-empty">{t('ranking.empty')}</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
 
+            {parcellesTotalPages > 1 && (
               <div className="users-pagination">
                 <span className="pagination-info">
                   {t('messages.pagination_showing')} {parcellesStart}-{parcellesEnd} {t('messages.pagination_on')} {parcellesTotal}{' '}
@@ -811,17 +817,8 @@ export function ClassementPage(): React.JSX.Element {
                   </button>
                 </div>
               </div>
-            </>
-          ) : (
-            <div className="classement-empty">
-              <div className="classement-empty-icon">{icons.layers}</div>
-              <h3 className="classement-empty-title">{t('ranking.no_classement_title')}</h3>
-              <p className="classement-empty-desc">{t('ranking.no_classement_desc')}</p>
-              <Link to={`/projets/${projet.id}/classement/ajouter`} className="btn btn-primary">
-                {icons.plus} {t('ranking.launch_analysis')}
-              </Link>
-            </div>
-          )
+            )}
+          </>
         ) : null}
       </div>
 
