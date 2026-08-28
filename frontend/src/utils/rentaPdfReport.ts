@@ -109,50 +109,51 @@ function esc(s: string): string {
   return r
 }
 
-// Métriques Helvetica
-const HELV_W: Record<number, number> = {
-  32: 278, 33: 278, 34: 355, 35: 556, 36: 556, 37: 889, 38: 667, 39: 191,
-  40: 333, 41: 333, 42: 389, 43: 584, 44: 278, 45: 333, 46: 278, 47: 278,
-  48: 556, 49: 556, 50: 556, 51: 556, 52: 556, 53: 556, 54: 556, 55: 556, 56: 556, 57: 556,
-  58: 278, 59: 278, 60: 584, 61: 584, 62: 584, 63: 556, 64: 1015,
-  65: 667, 66: 667, 67: 722, 68: 722, 69: 667, 70: 611, 71: 778, 72: 722, 73: 278,
-  74: 500, 75: 667, 76: 556, 77: 833, 78: 722, 79: 778, 80: 667, 81: 778, 82: 722,
-  83: 667, 84: 611, 85: 722, 86: 667, 87: 944, 88: 667, 89: 667, 90: 611,
-  91: 278, 92: 278, 93: 278, 94: 469, 95: 556, 96: 333,
-  97: 556, 98: 556, 99: 500, 100: 556, 101: 556, 102: 278, 103: 556, 104: 556,
-  105: 222, 106: 222, 107: 500, 108: 222, 109: 833, 110: 556, 111: 556, 112: 556,
-  113: 556, 114: 333, 115: 500, 116: 278, 117: 556, 118: 500, 119: 722, 120: 500,
-  121: 500, 122: 500, 123: 334, 124: 260, 125: 334, 126: 584,
-  0x96: 556, 0x97: 1000, 0x91: 222, 0x92: 222, 0x93: 400, 0x94: 400, 0x85: 1000,
-  0xb2: 333, 0xb0: 400,
+// Métriques Times-Roman
+const TIMES_W: Record<number, number> = {
+  32: 250, 33: 333, 34: 408, 35: 500, 36: 500, 37: 833, 38: 778, 39: 180,
+  40: 333, 41: 333, 42: 500, 43: 564, 44: 250, 45: 333, 46: 250, 47: 278,
+  48: 500, 49: 500, 50: 500, 51: 500, 52: 500, 53: 500, 54: 500, 55: 500, 56: 500, 57: 500,
+  58: 278, 59: 278, 60: 564, 61: 564, 62: 564, 63: 444, 64: 921,
+  65: 722, 66: 667, 67: 667, 68: 722, 69: 611, 70: 556, 71: 722, 72: 722, 73: 333,
+  74: 389, 75: 722, 76: 611, 77: 889, 78: 722, 79: 722, 80: 556, 81: 722, 82: 667,
+  83: 556, 84: 611, 85: 722, 86: 667, 87: 889, 88: 667, 89: 667, 90: 611,
+  91: 333, 92: 278, 93: 333, 94: 469, 95: 500, 96: 333,
+  97: 444, 98: 500, 99: 444, 100: 500, 101: 444, 102: 278, 103: 500, 104: 500,
+  105: 278, 106: 278, 107: 444, 108: 278, 109: 778, 110: 500, 111: 500, 112: 500,
+  113: 500, 114: 333, 115: 389, 116: 278, 117: 500, 118: 500, 119: 722, 120: 500,
+  121: 500, 122: 444, 123: 400, 124: 275, 125: 400, 126: 541,
+  0x96: 500, 0x97: 1000, 0x91: 250, 0x92: 250, 0x93: 450, 0x94: 450, 0x85: 1000,
+  0xb2: 300, 0xb0: 400, 0xb7: 250,
 }
 
-const HELV_BOLD_W: Record<number, number> = {
-  32: 278, 33: 333, 34: 474, 35: 556, 36: 556, 37: 889, 38: 722, 39: 238,
-  40: 333, 41: 333, 42: 389, 43: 584, 44: 278, 45: 333, 46: 278, 47: 278,
-  48: 556, 49: 556, 50: 556, 51: 556, 52: 556, 53: 556, 54: 556, 55: 556, 56: 556, 57: 556,
-  58: 333, 59: 333, 60: 584, 61: 584, 62: 584, 63: 611, 64: 975,
-  65: 722, 66: 722, 67: 722, 68: 722, 69: 667, 70: 611, 71: 778, 72: 722, 73: 278,
-  74: 556, 75: 722, 76: 611, 77: 833, 78: 722, 79: 778, 80: 667, 81: 778, 82: 722,
-  83: 667, 84: 611, 85: 722, 86: 667, 87: 944, 88: 667, 89: 667, 90: 611,
-  91: 333, 92: 278, 93: 333, 94: 584, 95: 556, 96: 333,
-  97: 556, 98: 611, 99: 556, 100: 611, 101: 556, 102: 333, 103: 611, 104: 611,
-  105: 278, 106: 278, 107: 556, 108: 278, 109: 889, 110: 611, 111: 611, 112: 611,
-  113: 611, 114: 389, 115: 556, 116: 333, 117: 611, 118: 556, 119: 778, 120: 556,
-  121: 556, 122: 500, 123: 389, 124: 280, 125: 389, 126: 584,
-  0x96: 556, 0x97: 1000, 0x91: 278, 0x92: 278, 0x93: 500, 0x94: 500, 0x85: 1000,
-  0xb2: 333, 0xb0: 400,
+// Métriques Times-Bold
+const TIMES_BOLD_W: Record<number, number> = {
+  32: 250, 33: 333, 34: 555, 35: 500, 36: 500, 37: 1000, 38: 833, 39: 278,
+  40: 333, 41: 333, 42: 500, 43: 570, 44: 250, 45: 333, 46: 250, 47: 278,
+  48: 500, 49: 500, 50: 500, 51: 500, 52: 500, 53: 500, 54: 500, 55: 500, 56: 500, 57: 500,
+  58: 333, 59: 333, 60: 570, 61: 570, 62: 570, 63: 500, 64: 930,
+  65: 722, 66: 667, 67: 722, 68: 722, 69: 667, 70: 611, 71: 778, 72: 778, 73: 389,
+  74: 500, 75: 778, 76: 667, 77: 944, 78: 722, 79: 778, 80: 611, 81: 778, 82: 722,
+  83: 556, 84: 667, 85: 722, 86: 722, 87: 1000, 88: 722, 89: 722, 90: 667,
+  91: 333, 92: 278, 93: 333, 94: 581, 95: 500, 96: 333,
+  97: 500, 98: 556, 99: 444, 100: 556, 101: 444, 102: 333, 103: 500, 104: 556,
+  105: 278, 106: 333, 107: 556, 108: 278, 109: 833, 110: 556, 111: 500, 112: 556,
+  113: 556, 114: 444, 115: 389, 116: 333, 117: 556, 118: 500, 119: 722, 120: 500,
+  121: 500, 122: 444, 123: 394, 124: 220, 125: 394, 126: 520,
+  0x96: 500, 0x97: 1000, 0x91: 300, 0x92: 300, 0x93: 555, 0x94: 555, 0x85: 1000,
+  0xb2: 300, 0xb0: 400, 0xb7: 250,
 }
 
 function textW(s: string, size: number, bold = false): number {
-  const table = bold ? HELV_BOLD_W : HELV_W
+  const table = bold ? TIMES_BOLD_W : TIMES_W
   let u = 0
   for (const ch of s) {
     const code = ch.codePointAt(0) ?? 0
     const byte = WIN_ANSI[ch]
     if (byte != null && table[byte] != null) u += table[byte]
     else if (table[code] != null) u += table[code]
-    else u += 556
+    else u += 500
   }
   return (u * size) / 1000
 }
@@ -425,51 +426,48 @@ function buildRentaPage1(data: RentaReportData, dateStr: string, hasImage: boole
   }
 
   // ── En-tête ──
-  txt('WebSIG FONCIER', 45, 805, 14, 'F2', NAVY)
-  txt('SIGMATOP • ÉTUDE DE POTENTIEL FONCIER & RENTABILITÉ FINANCIÈRE', 45, 792, 7, 'F2', GRAY)
+  txt('RAPPORT D\'ÉTUDE DE RENTABILITÉ FINANCIÈRE', 45, 806, 16, 'F2', NAVY)
+  txt(`WebSIG Foncier • SIGMATOP SARL • Édition : ${dateStr}`, 45, 788, 12, 'F1', GRAY)
 
-  txtR('RAPPORT D\'ÉTUDE DE RENTABILITÉ', AP - 45, 805, 11, 'F2', DARK)
-  txtR(`Date d'édition : ${dateStr}`, AP - 45, 792, 7.5, 'F1', GRAY)
-
-  out.push(`${BLUE_ACCENT} RG 1.5 w 45 780 m ${(AP - 45).toFixed(2)} 780 l S\n`)
+  out.push(`${BLUE_ACCENT} RG 1.5 w 45 776 m ${(AP - 45).toFixed(2)} 776 l S\n`)
 
   // ── Haut Gauche : Fiche d'identification du Terrain ──
   const c1X = 45
   const c1W = 245
-  const c1Top = 768
-  const c1H = 135
+  const c1Top = 762
+  const c1H = 146
   const c1Bottom = c1Top - c1H
 
   out.push(`${BG_CARD} rg ${c1X} ${c1Bottom} ${c1W} ${c1H} re f\n`)
   out.push(`${LINE} RG 0.8 w ${c1X} ${c1Bottom} ${c1W} ${c1H} re S\n`)
 
-  txt('IDENTIFICATION DU TERRAIN', c1X + 10, c1Top - 15, 8.5, 'F2', NAVY)
-  out.push(`${LINE} RG 0.5 w ${c1X + 10} ${c1Top - 20} m ${c1X + c1W - 10} ${c1Top - 20} l S\n`)
+  txt('IDENTIFICATION DU TERRAIN', c1X + 10, c1Top - 18, 14, 'F2', NAVY)
+  out.push(`${LINE} RG 0.5 w ${c1X + 10} ${c1Top - 24} m ${c1X + c1W - 10} ${c1Top - 24} l S\n`)
 
   const supM2 = data.superficie || rentaResult.surfaces?.surface_brute || 0
   const supHa = supM2 > 0 ? (supM2 / 10000).toFixed(2) : '0'
 
   const infoRows = [
-    { label: 'Nom / Intitulé :', val: fitText(data.terrainNom, 8, 130, true) },
+    { label: 'Nom / Intitulé :', val: fitText(data.terrainNom, 12, 125, true) },
     { label: 'Réf. Cadastrale :', val: data.reference || 'Non renseignée' },
     { label: 'Superficie totale :', val: `${fmtVal(supM2)} m² (${supHa} ha)` },
     { label: 'Coordonnées GPS :', val: data.lat && data.lng ? `${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}` : 'Non renseignées' },
-    { label: 'Projet associé :', val: fitText(data.projectName || 'Projet Foncier', 8, 130) },
+    { label: 'Projet associé :', val: fitText(data.projectName || 'Projet Foncier', 12, 125) },
   ]
 
-  let iy = c1Top - 34
+  let iy = c1Top - 42
   infoRows.forEach((r) => {
-    txt(r.label, c1X + 10, iy, 7.5, 'F1', GRAY)
-    txtR(r.val, c1X + c1W - 10, iy, 7.5, 'F2', DARK)
-    out.push(`${LINE} RG 0.4 w ${c1X + 10} ${(iy - 3).toFixed(2)} m ${c1X + c1W - 10} ${(iy - 3).toFixed(2)} l S\n`)
-    iy -= 19
+    txt(r.label, c1X + 10, iy, 12, 'F1', GRAY)
+    txtR(r.val, c1X + c1W - 10, iy, 12, 'F2', DARK)
+    out.push(`${LINE} RG 0.4 w ${c1X + 10} ${(iy - 4).toFixed(2)} m ${c1X + c1W - 10} ${(iy - 4).toFixed(2)} l S\n`)
+    iy -= 22
   })
 
   // ── Haut Droite : Image Satellite avec Tracé ──
   const c2X = 300
   const c2W = AP - 45 - c2X
-  const c2Top = 768
-  const c2H = 135
+  const c2Top = 762
+  const c2H = 146
   const c2Bottom = c2Top - c2H
 
   out.push(`0.06 0.09 0.16 rg ${c2X} ${c2Bottom} ${c2W} ${c2H} re f\n`)
@@ -478,20 +476,20 @@ function buildRentaPage1(data: RentaReportData, dateStr: string, hasImage: boole
   if (hasImage) {
     const imgPad = 2
     const imgW = c2W - 2 * imgPad
-    const imgH = c2H - 18 - 2 * imgPad
+    const imgH = c2H - 22 - 2 * imgPad
     const imgX = c2X + imgPad
-    const imgY = c2Bottom + 18 + imgPad
+    const imgY = c2Bottom + 22 + imgPad
     out.push(`q ${imgW.toFixed(2)} 0 0 ${imgH.toFixed(2)} ${imgX.toFixed(2)} ${imgY.toFixed(2)} cm /Img1 Do Q\n`)
   }
 
   // Légende photo
-  out.push(`0.97 0.98 0.99 rg ${c2X} ${c2Bottom} ${c2W} 18 re f\n`)
-  out.push(`${LINE} RG 0.6 w ${c2X} ${(c2Bottom + 18).toFixed(2)} m ${c2X + c2W} ${(c2Bottom + 18).toFixed(2)} l S\n`)
-  txt('Vue aérienne Satellite & Emprise du terrain (ESRI / OSM)', c2X + 8, c2Bottom + 6, 6.5, 'F2', GRAY)
+  out.push(`0.97 0.98 0.99 rg ${c2X} ${c2Bottom} ${c2W} 22 re f\n`)
+  out.push(`${LINE} RG 0.6 w ${c2X} ${(c2Bottom + 22).toFixed(2)} m ${c2X + c2W} ${(c2Bottom + 22).toFixed(2)} l S\n`)
+  txt('Vue aérienne Satellite & Emprise du terrain', c2X + 8, c2Bottom + 7, 12, 'F2', GRAY)
 
   // ── Indicateurs Clés (KPIs - 4 Cartouches) ──
-  const kpiTop = 618
-  const kpiH = 46
+  const kpiTop = 604
+  const kpiH = 54
   const kpiBottom = kpiTop - kpiH
   const kpiW = (AP - 90 - 3 * 8) / 4
 
@@ -506,13 +504,13 @@ function buildRentaPage1(data: RentaReportData, dateStr: string, hasImage: boole
     const kx = 45 + i * (kpiW + 8)
     out.push(`${k.bg} rg ${kx.toFixed(2)} ${kpiBottom.toFixed(2)} ${kpiW.toFixed(2)} ${kpiH} re f\n`)
     out.push(`${LINE} RG 0.8 w ${kx.toFixed(2)} ${kpiBottom.toFixed(2)} ${kpiW.toFixed(2)} ${kpiH} re S\n`)
-    txt(k.label, kx + 8, kpiTop - 13, 6.5, 'F2', GRAY)
-    txt(k.val, kx + 8, kpiTop - 32, 10, 'F2', k.fg)
+    txt(k.label, kx + 8, kpiTop - 18, 12, 'F2', GRAY)
+    txt(k.val, kx + 8, kpiTop - 38, 14, 'F2', k.fg)
   })
 
   // ── Deux Cartes du Milieu : Paramètres + Bilan des Surfaces ──
-  const midTop = 558
-  const midH = 210
+  const midTop = 538
+  const midH = 260
   const midBottom = midTop - midH
   const midW = (AP - 90 - 12) / 2
 
@@ -520,8 +518,8 @@ function buildRentaPage1(data: RentaReportData, dateStr: string, hasImage: boole
   const m1X = 45
   out.push(`${BG_CARD} rg ${m1X} ${midBottom} ${midW} ${midH} re f\n`)
   out.push(`${LINE} RG 0.8 w ${m1X} ${midBottom} ${midW} ${midH} re S\n`)
-  txt('PARAMÈTRES & TAUX APPLIQUÉS', m1X + 10, midTop - 15, 8, 'F2', NAVY)
-  out.push(`${LINE} RG 0.5 w ${m1X + 10} ${midTop - 20} m ${m1X + midW - 10} ${midTop - 20} l S\n`)
+  txt('PARAMÈTRES & TAUX APPLIQUÉS', m1X + 10, midTop - 18, 14, 'F2', NAVY)
+  out.push(`${LINE} RG 0.5 w ${m1X + 10} ${midTop - 24} m ${m1X + midW - 10} ${midTop - 24} l S\n`)
 
   const paramRows = [
     { label: 'Prix foncier brut :', val: `${fmtVal(rentaResult.parametres?.prix_foncier_m2 ?? Number(rentaForm.prixFoncierM2))} DH/m²` },
@@ -530,26 +528,26 @@ function buildRentaPage1(data: RentaReportData, dateStr: string, hasImage: boole
     { label: 'COS / CUS :', val: `${rentaResult.parametres?.cos ?? rentaForm.cos ?? 'N/A'} / ${rentaResult.parametres?.cus ?? rentaForm.cus ?? 'N/A'}` },
     { label: 'Études & Honoraires :', val: `${rentaResult.parametres?.taux_etudes_pct ?? rentaForm.tauxEtudes ?? 0} %` },
     { label: 'Imprévus :', val: `${rentaResult.parametres?.taux_imprevus_pct ?? rentaForm.tauxImprevus ?? 0} %` },
-    { label: 'Frais de commercialisation :', val: `${rentaResult.parametres?.taux_commercialisation_pct ?? rentaForm.tauxCommercialisation ?? 0} %` },
+    { label: 'Frais commercialisation :', val: `${rentaResult.parametres?.taux_commercialisation_pct ?? rentaForm.tauxCommercialisation ?? 0} %` },
     { label: 'Taux d\'actualisation :', val: `${rentaResult.parametres?.taux_actualisation_pct ?? rentaForm.tauxActualisation ?? 0} %` },
-    { label: 'Durée de construction :', val: `${rentaResult.parametres?.duree_construction ?? rentaForm.dureeConstruction ?? 2} an(s)` },
+    { label: 'Durée construction :', val: `${rentaResult.parametres?.duree_construction ?? rentaForm.dureeConstruction ?? 2} an(s)` },
     { label: 'Durée commercialisation :', val: `${rentaResult.parametres?.duree_commercialisation ?? rentaForm.dureeCommercialisation ?? 3} an(s)` },
   ]
 
-  let py = midTop - 34
+  let py = midTop - 42
   paramRows.forEach((r) => {
-    txt(r.label, m1X + 10, py, 7.5, 'F1', GRAY)
-    txtR(r.val, m1X + midW - 10, py, 7.5, 'F2', DARK)
-    out.push(`${LINE} RG 0.3 w ${m1X + 10} ${(py - 2.5).toFixed(2)} m ${m1X + midW - 10} ${(py - 2.5).toFixed(2)} l S\n`)
-    py -= 17.5
+    txt(r.label, m1X + 10, py, 12, 'F1', GRAY)
+    txtR(r.val, m1X + midW - 10, py, 12, 'F2', DARK)
+    out.push(`${LINE} RG 0.3 w ${m1X + 10} ${(py - 3.5).toFixed(2)} m ${m1X + midW - 10} ${(py - 3.5).toFixed(2)} l S\n`)
+    py -= 22
   })
 
   // Bloc Droite : Bilan des Surfaces
   const m2X = 45 + midW + 12
   out.push(`${BG_CARD} rg ${m2X} ${midBottom} ${midW} ${midH} re f\n`)
   out.push(`${LINE} RG 0.8 w ${m2X} ${midBottom} ${midW} ${midH} re S\n`)
-  txt('BILAN DES SURFACES DU PROJET (M²)', m2X + 10, midTop - 15, 8, 'F2', NAVY)
-  out.push(`${LINE} RG 0.5 w ${m2X + 10} ${midTop - 20} m ${m2X + midW - 10} ${midTop - 20} l S\n`)
+  txt('BILAN DES SURFACES DU PROJET (M²)', m2X + 10, midTop - 18, 14, 'F2', NAVY)
+  out.push(`${LINE} RG 0.5 w ${m2X + 10} ${midTop - 24} m ${m2X + midW - 10} ${midTop - 24} l S\n`)
 
   const surfRows = [
     { label: 'Surface brute :', val: `${fmtVal(rentaResult.surfaces?.surface_brute)} m²` },
@@ -564,43 +562,43 @@ function buildRentaPage1(data: RentaReportData, dateStr: string, hasImage: boole
     { label: 'Surface à aménager :', val: `${fmtVal(rentaResult.surfaces?.surface_a_amenager)} m²` },
   ]
 
-  let sy = midTop - 34
+  let sy = midTop - 42
   surfRows.forEach((r) => {
-    txt(r.label, m2X + 10, sy, 7.5, 'F1', GRAY)
-    txtR(r.val, m2X + midW - 10, sy, 7.5, 'F2', DARK)
-    out.push(`${LINE} RG 0.3 w ${m2X + 10} ${(sy - 2.5).toFixed(2)} m ${m2X + midW - 10} ${(sy - 2.5).toFixed(2)} l S\n`)
-    sy -= 17.5
+    txt(r.label, m2X + 10, sy, 12, 'F1', GRAY)
+    txtR(r.val, m2X + midW - 10, sy, 12, 'F2', DARK)
+    out.push(`${LINE} RG 0.3 w ${m2X + 10} ${(sy - 3.5).toFixed(2)} m ${m2X + midW - 10} ${(sy - 3.5).toFixed(2)} l S\n`)
+    sy -= 22
   })
 
   // ── Bloc Bas : Synthèse Économique & Répartition Financière ──
-  const botTop = 334
-  const botH = 76
+  const botTop = 266
+  const botH = 80
   const botBottom = botTop - botH
   const botW = AP - 90
 
   out.push(`${BG_CARD} rg 45 ${botBottom} ${botW} ${botH} re f\n`)
   out.push(`${LINE} RG 0.8 w 45 ${botBottom} ${botW} ${botH} re S\n`)
-  txt('SYNTHÈSE FINANCIÈRE GLOBALE (DH)', 55, botTop - 14, 8, 'F2', NAVY)
-  out.push(`${LINE} RG 0.5 w 55 ${botTop - 18} m ${(AP - 55).toFixed(2)} ${botTop - 18} l S\n`)
+  txt('SYNTHÈSE FINANCIÈRE GLOBALE (DH)', 55, botTop - 18, 14, 'F2', NAVY)
+  out.push(`${LINE} RG 0.5 w 55 ${botTop - 24} m ${(AP - 55).toFixed(2)} ${botTop - 24} l S\n`)
 
   const synCols = [
     { label: 'Acquisition foncier', val: `${fmtVal(rentaResult.acquisition?.cout_total)} DH` },
-    { label: 'Coût construction total', val: `${fmtVal(rentaResult.construction?.cout_total)} DH` },
+    { label: 'Coût construction', val: `${fmtVal(rentaResult.construction?.cout_total)} DH` },
     { label: 'Total des charges', val: `${fmtVal(rentaResult.cout_total_projet)} DH` },
-    { label: 'Chiffre d\'affaires global', val: `${fmtVal(rentaResult.ca?.ca_total)} DH` },
+    { label: 'Chiffre d\'affaires', val: `${fmtVal(rentaResult.ca?.ca_total)} DH` },
   ]
 
   const sColW = botW / 4
   synCols.forEach((sc, idx) => {
     const scx = 45 + idx * sColW
-    txt(sc.label, scx + 10, botTop - 34, 7, 'F1', GRAY)
-    txt(sc.val, scx + 10, botTop - 52, 9, 'F2', DARK)
+    txt(sc.label, scx + 10, botTop - 44, 12, 'F1', GRAY)
+    txt(sc.val, scx + 10, botTop - 64, 12, 'F2', DARK)
   })
 
   // ── Pied de page ──
   out.push(`${LINE} RG 0.5 w 45 48 m ${(AP - 45).toFixed(2)} 48 l S\n`)
-  txt('Plateforme WebSIG de Prospection & Analyse Foncière • SIGMATOP SARL', 45, 34, 7, 'F1', LIGHT_GRAY)
-  txtR('Page 1 / 2', AP - 45, 34, 7, 'F2', GRAY)
+  txt('Plateforme WebSIG de Prospection & Analyse Foncière • SIGMATOP SARL', 45, 28, 12, 'F1', LIGHT_GRAY)
+  txtR('Page 1 / 2', AP - 45, 28, 12, 'F2', GRAY)
 
   return out.join('')
 }
@@ -623,59 +621,56 @@ function buildRentaPage2(data: RentaReportData, dateStr: string): string {
   }
 
   // ── En-tête Page 2 ──
-  txt('WebSIG FONCIER', 45, 805, 14, 'F2', NAVY)
-  txt('TABLEAU PRÉVISIONNEL DES FLUX DE TRÉSORERIE (CASH FLOWS ANNUELS)', 45, 792, 7.5, 'F2', GRAY)
+  txt('TABLEAU PRÉVISIONNEL DES FLUX DE TRÉSORERIE', 45, 806, 16, 'F2', NAVY)
+  txt(`WebSIG Foncier • Terrain : ${fitText(data.terrainNom, 12, 180, true)} • Généré le ${dateStr}`, 45, 788, 12, 'F1', GRAY)
 
-  txtR(`Terrain : ${fitText(data.terrainNom, 9, 200, true)}`, AP - 45, 805, 9, 'F2', DARK)
-  txtR(`Généré le ${dateStr}`, AP - 45, 792, 7.5, 'F1', GRAY)
-
-  out.push(`${BLUE_ACCENT} RG 1.5 w 45 780 m ${(AP - 45).toFixed(2)} 780 l S\n`)
+  out.push(`${BLUE_ACCENT} RG 1.5 w 45 776 m ${(AP - 45).toFixed(2)} 776 l S\n`)
 
   // ── Tableau des Flux ──
   const tX = 45
   const tW = AP - 90
-  const colLabelW = 200
+  const colLabelW = 220
   const nbCols = Math.max(1, fluxList.length)
   const colYearW = (tW - colLabelW) / nbCols
 
-  let curY = 765
+  let curY = 762
 
   // En-tête du tableau
-  const headH = 22
+  const headH = 28
   out.push(`0.92 0.95 0.98 rg ${tX} ${(curY - headH).toFixed(2)} ${tW} ${headH} re f\n`)
   out.push(`${LINE} RG 0.8 w ${tX} ${(curY - headH).toFixed(2)} ${tW} ${headH} re S\n`)
-  txt('POSTE DE TRÉSORERIE (DH)', tX + 8, curY - 14, 7.5, 'F2', NAVY)
+  txt('POSTE DE TRÉSORERIE (DH)', tX + 8, curY - 18, 12, 'F2', NAVY)
 
   fluxList.forEach((f, i) => {
     const yx = tX + colLabelW + i * colYearW
-    txtR(`Année ${f.annee}`, yx + colYearW - 8, curY - 14, 7.5, 'F2', NAVY)
+    txtR(`Année ${f.annee}`, yx + colYearW - 8, curY - 18, 12, 'F2', NAVY)
   })
   curY -= headH
 
   const renderSectionHeader = (title: string): void => {
-    const secH = 16
+    const secH = 24
     out.push(`0.88 0.92 0.96 rg ${tX} ${(curY - secH).toFixed(2)} ${tW} ${secH} re f\n`)
     out.push(`${LINE} RG 0.6 w ${tX} ${(curY - secH).toFixed(2)} ${tW} ${secH} re S\n`)
-    txt(title, tX + 8, curY - 11, 7, 'F2', NAVY)
+    txt(title, tX + 8, curY - 16, 14, 'F2', NAVY)
     curY -= secH
   }
 
   const renderDataRow = (label: string, values: Array<{ val: number | undefined; pct?: string }>, isEven: boolean): void => {
-    const rowH = 17
+    const rowH = 24
     if (isEven) {
       out.push(`0.985 0.99 1.0 rg ${tX} ${(curY - rowH).toFixed(2)} ${tW} ${rowH} re f\n`)
     }
     out.push(`${LINE} RG 0.4 w ${tX} ${(curY - rowH).toFixed(2)} ${tW} ${rowH} re S\n`)
 
-    txt(label, tX + 8, curY - 12, 7.5, 'F1', DARK)
+    txt(label, tX + 8, curY - 16, 12, 'F1', DARK)
 
     values.forEach((v, i) => {
       const yx = tX + colLabelW + i * colYearW
       if (v.val != null && v.val > 0) {
         const valStr = `${fmtVal(v.val)}${v.pct ? ` (${v.pct})` : ''}`
-        txtR(valStr, yx + colYearW - 8, curY - 14, 7.5, 'F1', DARK)
+        txtR(valStr, yx + colYearW - 8, curY - 16, 12, 'F1', DARK)
       } else {
-        txtR('0 DH', yx + colYearW - 8, curY - 14, 7.5, 'F1', LIGHT_GRAY)
+        txtR('0 DH', yx + colYearW - 8, curY - 16, 12, 'F1', LIGHT_GRAY)
       }
     })
     curY -= rowH
@@ -771,21 +766,21 @@ function buildRentaPage2(data: RentaReportData, dateStr: string): string {
   )
 
   // 3. LIGNE TOTAL FLUX NET
-  const netH = 26
+  const netH = 32
   out.push(`${BG_GREEN} rg ${tX} ${(curY - netH).toFixed(2)} ${tW} ${netH} re f\n`)
   out.push(`0.09 0.55 0.24 RG 1.2 w ${tX} ${(curY - netH).toFixed(2)} ${tW} ${netH} re S\n`)
-  txt('FLUX NET DE TRÉSORERIE (DH)', tX + 8, curY - 16, 8.5, 'F2', GREEN_TEXT)
+  txt('FLUX NET DE TRÉSORERIE (DH)', tX + 8, curY - 20, 14, 'F2', GREEN_TEXT)
 
   fluxList.forEach((f, i) => {
     const yx = tX + colLabelW + i * colYearW
-    txtR(`${fmtVal(f.flux_net)} DH`, yx + colYearW - 8, curY - 16, 8.5, 'F2', GREEN_TEXT)
+    txtR(`${fmtVal(f.flux_net)} DH`, yx + colYearW - 8, curY - 20, 14, 'F2', GREEN_TEXT)
   })
   curY -= netH
 
   // ── Pied de page ──
   out.push(`${LINE} RG 0.5 w 45 48 m ${(AP - 45).toFixed(2)} 48 l S\n`)
-  txt('Plateforme WebSIG de Prospection & Analyse Foncière • SIGMATOP SARL', 45, 34, 7, 'F1', LIGHT_GRAY)
-  txtR('Page 2 / 2', AP - 45, 34, 7, 'F2', GRAY)
+  txt('Plateforme WebSIG de Prospection & Analyse Foncière • SIGMATOP SARL', 45, 28, 12, 'F1', LIGHT_GRAY)
+  txtR('Page 2 / 2', AP - 45, 28, 12, 'F2', GRAY)
 
   return out.join('')
 }
@@ -849,8 +844,8 @@ function assembleVectorPdf(pages: GeneratedPdfPage[], jpegBytes: Uint8Array | nu
 
   // Fonts
   objects.push(
-    strToAscii(`${firstFont} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\nendobj\n`),
-    strToAscii(`${firstFont + 1} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>\nendobj\n`)
+    strToAscii(`${firstFont} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman /Encoding /WinAnsiEncoding >>\nendobj\n`),
+    strToAscii(`${firstFont + 1} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold /Encoding /WinAnsiEncoding >>\nendobj\n`)
   )
 
   // Image Object

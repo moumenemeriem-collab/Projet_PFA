@@ -40,7 +40,8 @@ const BG_BLUE = '0.94 0.97 1.0'
 const BLUE_TEXT = '0.08 0.4 0.75'
 const BG_AMBER = '0.99 0.97 0.92'
 const AMBER_TEXT = '0.70 0.45 0.05'
-const GRID = '0.88 0.91 0.94'
+const BG_MAP = '0.995 0.998 1.0'
+const BORDER = '0.88 0.91 0.94'
 
 // ---------------------------------------------------------------------------
 // Projection EPSG:26191
@@ -137,39 +138,40 @@ function esc(s: string): string {
   return r
 }
 
-// Métriques Helvetica
-const HELV_W: Record<number, number> = {
-  32: 278, 33: 278, 34: 355, 35: 556, 36: 556, 37: 889, 38: 667, 39: 191,
-  40: 333, 41: 333, 42: 389, 43: 584, 44: 278, 45: 333, 46: 278, 47: 278,
-  48: 556, 49: 556, 50: 556, 51: 556, 52: 556, 53: 556, 54: 556, 55: 556, 56: 556, 57: 556,
-  58: 278, 59: 278, 60: 584, 61: 584, 62: 584, 63: 556, 64: 1015,
-  65: 667, 66: 667, 67: 722, 68: 722, 69: 667, 70: 611, 71: 778, 72: 722, 73: 278,
-  74: 500, 75: 667, 76: 556, 77: 833, 78: 722, 79: 778, 80: 667, 81: 778, 82: 722,
-  83: 667, 84: 611, 85: 722, 86: 667, 87: 944, 88: 667, 89: 667, 90: 611,
-  91: 278, 92: 278, 93: 278, 94: 469, 95: 556, 96: 333,
-  97: 556, 98: 556, 99: 500, 100: 556, 101: 556, 102: 278, 103: 556, 104: 556,
-  105: 222, 106: 222, 107: 500, 108: 222, 109: 833, 110: 556, 111: 556, 112: 556,
-  113: 556, 114: 333, 115: 500, 116: 278, 117: 556, 118: 500, 119: 722, 120: 500,
-  121: 500, 122: 500, 123: 334, 124: 260, 125: 334, 126: 584,
-  0x96: 556, 0x97: 1000, 0x91: 222, 0x92: 222, 0x93: 400, 0x94: 400, 0x85: 1000,
-  0xb2: 333, 0xb0: 400,
+// Métriques Times-Roman
+const TIMES_W: Record<number, number> = {
+  32: 250, 33: 333, 34: 408, 35: 500, 36: 500, 37: 833, 38: 778, 39: 180,
+  40: 333, 41: 333, 42: 500, 43: 564, 44: 250, 45: 333, 46: 250, 47: 278,
+  48: 500, 49: 500, 50: 500, 51: 500, 52: 500, 53: 500, 54: 500, 55: 500, 56: 500, 57: 500,
+  58: 278, 59: 278, 60: 564, 61: 564, 62: 564, 63: 444, 64: 921,
+  65: 722, 66: 667, 67: 667, 68: 722, 69: 611, 70: 556, 71: 722, 72: 722, 73: 333,
+  74: 389, 75: 722, 76: 611, 77: 889, 78: 722, 79: 722, 80: 556, 81: 722, 82: 667,
+  83: 556, 84: 611, 85: 722, 86: 667, 87: 889, 88: 667, 89: 667, 90: 611,
+  91: 333, 92: 278, 93: 333, 94: 469, 95: 500, 96: 333,
+  97: 444, 98: 500, 99: 444, 100: 500, 101: 444, 102: 278, 103: 500, 104: 500,
+  105: 278, 106: 278, 107: 444, 108: 278, 109: 778, 110: 500, 111: 500, 112: 500,
+  113: 500, 114: 333, 115: 389, 116: 278, 117: 500, 118: 500, 119: 722, 120: 500,
+  121: 500, 122: 444, 123: 400, 124: 275, 125: 400, 126: 541,
+  0x96: 500, 0x97: 1000, 0x91: 250, 0x92: 250, 0x93: 450, 0x94: 450, 0x85: 1000,
+  0xb2: 300, 0xb0: 400, 0xb7: 250,
 }
 
-const HELV_BOLD_W: Record<number, number> = {
-  32: 278, 33: 333, 34: 474, 35: 556, 36: 556, 37: 889, 38: 722, 39: 238,
-  40: 333, 41: 333, 42: 389, 43: 584, 44: 278, 45: 333, 46: 278, 47: 278,
-  48: 556, 49: 556, 50: 556, 51: 556, 52: 556, 53: 556, 54: 556, 55: 556, 56: 556, 57: 556,
-  58: 333, 59: 333, 60: 584, 61: 584, 62: 584, 63: 611, 64: 975,
-  65: 722, 66: 722, 67: 722, 68: 722, 69: 667, 70: 611, 71: 778, 72: 722, 73: 278,
-  74: 556, 75: 722, 76: 611, 77: 833, 78: 722, 79: 778, 80: 667, 81: 778, 82: 722,
-  83: 667, 84: 611, 85: 722, 86: 667, 87: 944, 88: 667, 89: 667, 90: 611,
-  91: 333, 92: 278, 93: 333, 94: 584, 95: 556, 96: 333,
-  97: 556, 98: 611, 99: 556, 100: 611, 101: 556, 102: 333, 103: 611, 104: 611,
-  105: 278, 106: 278, 107: 556, 108: 278, 109: 889, 110: 611, 111: 611, 112: 611,
-  113: 611, 114: 389, 115: 556, 116: 333, 117: 611, 118: 556, 119: 778, 120: 556,
-  121: 556, 122: 500, 123: 389, 124: 280, 125: 389, 126: 584,
-  0x96: 556, 0x97: 1000, 0x91: 278, 0x92: 278, 0x93: 500, 0x94: 500, 0x85: 1000,
-  0xb2: 333, 0xb0: 400,
+// Métriques Times-Bold
+const TIMES_BOLD_W: Record<number, number> = {
+  32: 250, 33: 333, 34: 555, 35: 500, 36: 500, 37: 1000, 38: 833, 39: 278,
+  40: 333, 41: 333, 42: 500, 43: 570, 44: 250, 45: 333, 46: 250, 47: 278,
+  48: 500, 49: 500, 50: 500, 51: 500, 52: 500, 53: 500, 54: 500, 55: 500, 56: 500, 57: 500,
+  58: 333, 59: 333, 60: 570, 61: 570, 62: 570, 63: 500, 64: 930,
+  65: 722, 66: 667, 67: 722, 68: 722, 69: 667, 70: 611, 71: 778, 72: 778, 73: 389,
+  74: 500, 75: 778, 76: 667, 77: 944, 78: 722, 79: 778, 80: 611, 81: 778, 82: 722,
+  83: 556, 84: 667, 85: 722, 86: 722, 87: 1000, 88: 722, 89: 722, 90: 667,
+  91: 333, 92: 278, 93: 333, 94: 581, 95: 500, 96: 333,
+  97: 500, 98: 556, 99: 444, 100: 556, 101: 444, 102: 333, 103: 500, 104: 556,
+  105: 278, 106: 333, 107: 556, 108: 278, 109: 833, 110: 556, 111: 500, 112: 556,
+  113: 556, 114: 444, 115: 389, 116: 333, 117: 556, 118: 500, 119: 722, 120: 500,
+  121: 500, 122: 444, 123: 394, 124: 220, 125: 394, 126: 520,
+  0x96: 500, 0x97: 1000, 0x91: 300, 0x92: 300, 0x93: 555, 0x94: 555, 0x85: 1000,
+  0xb2: 300, 0xb0: 400, 0xb7: 250,
 }
 
 const ACCENT_BASE: Record<string, string> = {
@@ -186,7 +188,7 @@ const ACCENT_BASE: Record<string, string> = {
 }
 
 function charWidth(ch: string, bold: boolean): number {
-  const table = bold ? HELV_BOLD_W : HELV_W
+  const table = bold ? TIMES_BOLD_W : TIMES_W
   const code = ch.codePointAt(0) ?? 0
   if (table[code] != null) return table[code]
   const byte = WIN_ANSI[ch]
@@ -196,7 +198,7 @@ function charWidth(ch: string, bold: boolean): number {
     const baseCode = base.codePointAt(0) ?? 0
     if (table[baseCode] != null) return table[baseCode]
   }
-  return 556
+  return 500
 }
 
 function textW(s: string, size: number, bold = false): number {
@@ -289,7 +291,7 @@ function drawRoundedRect(x: number, y: number, w: number, h: number, r: number, 
 
 function drawHeaderBanner(title: string, subtitle: string, badgeText: string, width = AP, height = APH): string {
   const out: string[] = []
-  const bannerH = 68
+  const bannerH = 74
   const bannerY = height - bannerH
 
   out.push(`${NAVY} rg 0 ${bannerY.toFixed(2)} ${width.toFixed(2)} ${bannerH.toFixed(2)} re f\n`)
@@ -299,16 +301,16 @@ function drawHeaderBanner(title: string, subtitle: string, badgeText: string, wi
     out.push(`${color} rg BT /${font} ${size} Tf 1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm (${esc(s)}) Tj ET\n`)
   }
 
-  txt('WEB-SIG FONCIER & ANALYSE SPATIALE', 36, bannerY + 48, 6.8, 'F2', '0.7 0.85 0.95')
-  txt(title, 36, bannerY + 30, 14, 'F2', '1 1 1')
-  txt(subtitle, 36, bannerY + 14, 8.5, 'F1', '0.85 0.92 0.98')
+  txt('WEB-SIG FONCIER • SIGMATOP SARL', 36, bannerY + 52, 12, 'F2', '0.7 0.85 0.95')
+  txt(title, 36, bannerY + 32, 16, 'F2', '1 1 1')
+  txt(subtitle, 36, bannerY + 14, 12, 'F1', '0.85 0.92 0.98')
 
   if (badgeText) {
-    const bw = textW(badgeText, 7.5, true) + 16
+    const bw = textW(badgeText, 12, true) + 20
     const bx = width - 36 - bw
     const by = bannerY + 24
-    out.push(drawRoundedRect(bx, by, bw, 20, 10, BLUE_ACCENT))
-    txt(badgeText, bx + 8, by + 6, 7.5, 'F2', '1 1 1')
+    out.push(drawRoundedRect(bx, by, bw, 24, 12, BLUE_ACCENT))
+    txt(badgeText, bx + 10, by + 7, 12, 'F2', '1 1 1')
   }
 
   return out.join('')
@@ -320,12 +322,12 @@ function drawFooter(pageIdx: number, totalPages: number, dateStr: string, width 
     out.push(`${color} rg BT /${font} ${size} Tf 1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm (${esc(s)}) Tj ET\n`)
   }
 
-  out.push(`${LINE} RG 0.8 w 36 34 m ${(width - 36).toFixed(2)} 34 l S\n`)
-  txt(`WebSIG Foncier • Système d'Information Géographique (EPSG:26191 Merchich/Sahara) • Généré le ${dateStr}`, 36, 22, 6.8, 'F1', GRAY)
+  out.push(`${LINE} RG 0.8 w 36 36 m ${(width - 36).toFixed(2)} 36 l S\n`)
+  txt(`WebSIG Foncier • Système d'Information Géographique • ${dateStr}`, 36, 20, 12, 'F1', GRAY)
 
   const rightText = `Page ${pageIdx} / ${totalPages}`
-  const rw = textW(rightText, 6.8, true)
-  txt(rightText, width - 36 - rw, 22, 6.8, 'F2', DARK)
+  const rw = textW(rightText, 12, true)
+  txt(rightText, width - 36 - rw, 20, 12, 'F2', DARK)
 
   return out.join('')
 }
@@ -386,7 +388,7 @@ function buildPage1(d: PlanData, dateStr: string): string {
   const txtR = (s: string, right: number, y: number, size: number, font = 'F1', color = DARK): void =>
     txt(s, right - textW(s, size, font === 'F2'), y, size, font, color)
 
-  // 1. En-tête
+  // 1. En-tête (Titre 1 : 16 pt)
   out.push(drawHeaderBanner('PLAN TOPOGRAPHIQUE & GÉOMÉTRIQUE', subj(d), 'TOPOGRAPHIE', AP, APH))
 
   // 2. Grille de 4 cartes KPI
@@ -398,20 +400,20 @@ function buildPage1(d: PlanData, dateStr: string): string {
   ]
 
   const kpiW = (AP - 72 - 3 * 8) / 4
-  const kpiY = 708
+  const kpiY = 698
   kpis.forEach((kpi, idx) => {
     const kx = 36 + idx * (kpiW + 8)
-    out.push(drawRoundedRect(kx, kpiY, kpiW, 48, 6, kpi.color, LINE, 0.8))
-    txt(kpi.label, kx + 8, kpiY + 34, 6.2, 'F2', GRAY)
-    txt(kpi.val, kx + 8, kpiY + 18, 10, 'F2', kpi.textColor)
-    txt(kpi.sub, kx + 8, kpiY + 7, 5.8, 'F1', GRAY)
+    out.push(drawRoundedRect(kx, kpiY, kpiW, 54, 6, kpi.color, LINE, 0.8))
+    txt(kpi.label, kx + 8, kpiY + 38, 12, 'F2', GRAY)
+    txt(kpi.val, kx + 8, kpiY + 20, 14, 'F2', kpi.textColor)
+    txt(kpi.sub, kx + 8, kpiY + 6, 12, 'F1', GRAY)
   })
 
-  // 3. Fiche d'informations du terrain
-  let y = 688
-  out.push(`${BLUE_ACCENT} rg 36 ${y - 12} 3 14 re f\n`)
-  txt('INFORMATIONS GÉNÉRALES DU TERRAIN', 44, y - 10, 9.5, 'F2', DARK)
-  y -= 22
+  // 3. Fiche d'informations du terrain (Titre 2 : 14 pt, Texte : 12 pt interligne 1.5)
+  let y = 672
+  out.push(`${BLUE_ACCENT} rg 36 ${y - 12} 3 16 re f\n`)
+  txt('INFORMATIONS GÉNÉRALES DU TERRAIN', 44, y - 10, 14, 'F2', DARK)
+  y -= 24
 
   const infoRows = [
     { label: 'Identifiant / Nom de la parcelle :', val: subj(d) },
@@ -421,59 +423,59 @@ function buildPage1(d: PlanData, dateStr: string): string {
     { label: 'Date et heure du relevé :', val: dateStr },
   ]
 
-  const infoCardH = infoRows.length * 17 + 8
+  const infoCardH = infoRows.length * 24 + 10
   out.push(drawRoundedRect(36, y - infoCardH, AP - 72, infoCardH, 6, BG_CARD, LINE, 0.8))
 
   infoRows.forEach((row, i) => {
-    const ry = y - 16 - i * 17
+    const ry = y - 20 - i * 24
     if (i % 2 === 1) {
-      out.push(`0.96 0.97 0.99 rg 37 ${(ry - 4).toFixed(2)} ${(AP - 74).toFixed(2)} 16 re f\n`)
+      out.push(`0.96 0.97 0.99 rg 37 ${(ry - 5).toFixed(2)} ${(AP - 74).toFixed(2)} 22 re f\n`)
     }
-    txt(row.label, 48, ry, 7.8, 'F2', GRAY)
-    txt(row.val, 230, ry, 7.8, 'F1', DARK)
+    txt(row.label, 48, ry, 12, 'F2', GRAY)
+    txt(row.val, 240, ry, 12, 'F1', DARK)
   })
 
-  y -= infoCardH + 18
+  y -= infoCardH + 20
 
-  // 4. Tableau des coordonnées des sommets et des côtés
-  out.push(`${BLUE_ACCENT} rg 36 ${y - 12} 3 14 re f\n`)
-  txt('TABLEAU DES SOMMETS & LONGUEURS DES CÔTÉS (EPSG:26191)', 44, y - 10, 9.5, 'F2', DARK)
-  y -= 22
+  // 4. Tableau des coordonnées des sommets et des côtés (Titre 2 : 14 pt, Texte : 12 pt interligne 1.5)
+  out.push(`${BLUE_ACCENT} rg 36 ${y - 12} 3 16 re f\n`)
+  txt('TABLEAU DES SOMMETS & LONGUEURS DES CÔTÉS (EPSG:26191)', 44, y - 10, 14, 'F2', DARK)
+  y -= 24
 
   const tableX = 36
   const tableW = AP - 72
-  const colW = { p: 50, x: 120, y: 120, seg: 100, dist: tableW - 390 }
+  const colW = { p: 60, x: 120, y: 120, seg: 100, dist: tableW - 400 }
 
   // En-tête du tableau
-  out.push(drawRoundedRect(tableX, y - 18, tableW, 18, 4, NAVY))
-  txt('Sommet', tableX + 10, y - 12, 7.5, 'F2', '1 1 1')
-  txtR('X (m / Lambert)', tableX + colW.p + colW.x - 10, y - 12, 7.5, 'F2', '1 1 1')
-  txtR('Y (m / Lambert)', tableX + colW.p + colW.x + colW.y - 10, y - 12, 7.5, 'F2', '1 1 1')
-  txt('Segment', tableX + colW.p + colW.x + colW.y + 10, y - 12, 7.5, 'F2', '1 1 1')
-  txtR('Longueur (m)', tableX + tableW - 12, y - 12, 7.5, 'F2', '1 1 1')
-  y -= 18
+  out.push(drawRoundedRect(tableX, y - 22, tableW, 22, 4, NAVY))
+  txt('Sommet', tableX + 10, y - 15, 12, 'F2', '1 1 1')
+  txtR('X (m)', tableX + colW.p + colW.x - 10, y - 15, 12, 'F2', '1 1 1')
+  txtR('Y (m)', tableX + colW.p + colW.x + colW.y - 10, y - 15, 12, 'F2', '1 1 1')
+  txt('Segment', tableX + colW.p + colW.x + colW.y + 10, y - 15, 12, 'F2', '1 1 1')
+  txtR('Longueur (m)', tableX + tableW - 12, y - 15, 12, 'F2', '1 1 1')
+  y -= 22
 
   const n = d.pts.length
-  const maxRowsPage1 = Math.min(n, 18)
+  const maxRowsPage1 = Math.min(n, 12)
   for (let i = 0; i < maxRowsPage1; i++) {
     const p = d.pts[i]
     const nextIdx = (i + 1) % n
     const sideLen = d.sides[i]
     const rowBg = i % 2 === 0 ? '1 1 1' : '0.97 0.985 1'
 
-    out.push(`${rowBg} rg ${tableX} ${(y - 15).toFixed(2)} ${tableW} 15 re f\n`)
-    out.push(`${LINE} RG 0.5 w ${tableX} ${(y - 15).toFixed(2)} m ${(tableX + tableW).toFixed(2)} ${(y - 15).toFixed(2)} l S\n`)
+    out.push(`${rowBg} rg ${tableX} ${(y - 20).toFixed(2)} ${tableW} 20 re f\n`)
+    out.push(`${LINE} RG 0.5 w ${tableX} ${(y - 20).toFixed(2)} m ${(tableX + tableW).toFixed(2)} ${(y - 20).toFixed(2)} l S\n`)
 
-    txt(`P${i + 1}`, tableX + 10, y - 10.5, 7.5, 'F2', BLUE_TEXT)
-    txtR(frNum(p.x, 2), tableX + colW.p + colW.x - 10, y - 10.5, 7.5, 'F1', DARK)
-    txtR(frNum(p.y, 2), tableX + colW.p + colW.x + colW.y - 10, y - 10.5, 7.5, 'F1', DARK)
-    txt(`P${i + 1} -> P${nextIdx + 1}`, tableX + colW.p + colW.x + colW.y + 10, y - 10.5, 7.5, 'F1', GRAY)
-    txtR(frNum(sideLen, 2) + ' m', tableX + tableW - 12, y - 10.5, 7.5, 'F2', DARK)
-    y -= 15
+    txt(`P${i + 1}`, tableX + 10, y - 14, 12, 'F2', BLUE_TEXT)
+    txtR(frNum(p.x, 2), tableX + colW.p + colW.x - 10, y - 14, 12, 'F1', DARK)
+    txtR(frNum(p.y, 2), tableX + colW.p + colW.x + colW.y - 10, y - 14, 12, 'F1', DARK)
+    txt(`P${i + 1} -> P${nextIdx + 1}`, tableX + colW.p + colW.x + colW.y + 10, y - 14, 12, 'F1', GRAY)
+    txtR(frNum(sideLen, 2) + ' m', tableX + tableW - 12, y - 14, 12, 'F2', DARK)
+    y -= 20
   }
 
   if (n > maxRowsPage1) {
-    txt(`... et ${n - maxRowsPage1} autres sommets (voir plan page 2)`, tableX + 10, y - 12, 7.2, 'F1', GRAY)
+    txt(`... et ${n - maxRowsPage1} autres sommets (voir plan page 2)`, tableX + 10, y - 14, 12, 'F1', GRAY)
   }
 
   // Pied de page
@@ -498,10 +500,8 @@ function buildPage2(d: PlanData, dateStr: string, opts: Page2Opts = {}): string 
   const txt = (s: string, x: number, y: number, size: number, font = 'F1', color = DARK): void => {
     out.push(`${color} rg BT /${font} ${size} Tf 1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm (${esc(s)}) Tj ET\n`)
   }
-  const txtR = (s: string, right: number, y: number, size: number, font = 'F1', color = DARK): void =>
-    txt(s, right - textW(s, size, font === 'F2'), y, size, font, color)
 
-  // En-tête pleine largeur paysage
+  // En-tête pleine largeur paysage (Titre 1 : 16 pt)
   out.push(drawHeaderBanner(opts.titleText ?? 'PLAN TOPOGRAPHIQUE & GÉOMÉTRIQUE', opts.subtitleText ?? `${subj(d)} • EPSG:26191`, 'PLAN VECTEUR', AL, ALH))
 
   const n = d.pts.length
@@ -519,190 +519,115 @@ function buildPage2(d: PlanData, dateStr: string, opts: Page2Opts = {}): string 
   const padY = Math.max(eY * 0.1, step * 0.6)
   const bx0 = minX - padX
   const by0 = minY - padY
-  const bx1 = maxX + padX
-  const by1 = maxY + padY
+  const bw = eX + 2 * padX
+  const bh = eY + 2 * padY
 
-  // Cadre du plan
-  const P_X0 = 36
-  const P_X1 = 560
-  const P_Y0 = 48
-  const P_Y1 = 512
-  const IP = 12
-  const SCALE_BAND = 24
-  const A_X0 = P_X0 + IP
-  const A_X1 = P_X1 - IP
-  const A_Y0 = P_Y0 + IP + SCALE_BAND
-  const A_Y1 = P_Y1 - IP
+  // Zone graphique
+  const gX = 36
+  const gY = 56
+  const gW = AL - 72
+  const gH = ALH - 74 - 56 - 16
 
-  // Fond du cadre de dessin
-  out.push(`0.995 0.998 1 rg ${P_X0} ${P_Y0} ${P_X1 - P_X0} ${P_Y1 - P_Y0} re f\n`)
-  out.push(`${LINE} RG 1 w ${P_X0} ${P_Y0} ${P_X1 - P_X0} ${P_Y1 - P_Y0} re S\n`)
+  const scale = Math.min(gW / bw, gH / bh)
+  const ox = gX + (gW - bw * scale) / 2
+  const oy = gY + (gH - bh * scale) / 2
+  const mapX = (x: number): number => ox + (x - bx0) * scale
+  const mapY = (y: number): number => oy + (y - by0) * scale
 
-  const scale = Math.min((A_X1 - A_X0) / (bx1 - bx0), (A_Y1 - A_Y0) / (by1 - by0))
-  const offX = (A_X1 - A_X0 - (bx1 - bx0) * scale) / 2
-  const offY = (A_Y1 - A_Y0 - (by1 - by0) * scale) / 2
-  const px = (x: number): number => A_X0 + offX + (x - bx0) * scale
-  const py = (y: number): number => A_Y1 - (offY + (y - by0) * scale)
-  const pCX = px((bx0 + bx1) / 2)
-  const pCY = py((by0 + by1) / 2)
+  // Cadre de la zone de dessin
+  out.push(`${BG_MAP} rg ${gX} ${gY} ${gW} ${gH} re f\n`)
+  out.push(`${BORDER} RG 1 w ${gX} ${gY} ${gW} ${gH} re S\n`)
 
-  // Grille métrique
-  out.push(`${GRID} RG 0.4 w\n`)
-  for (let gx = Math.ceil(bx0 / step) * step; gx <= bx1; gx += step) {
-    out.push(`${px(gx).toFixed(2)} ${A_Y0.toFixed(2)} m ${px(gx).toFixed(2)} ${A_Y1.toFixed(2)} l S\n`)
+  // Grille carroyage
+  const firstGridX = Math.ceil(bx0 / step) * step
+  const lastGridX = Math.floor((bx0 + bw) / step) * step
+  const firstGridY = Math.ceil(by0 / step) * step
+  const lastGridY = Math.floor((by0 + bh) / step) * step
+
+  for (let gx = firstGridX; gx <= lastGridX; gx += step) {
+    const x = mapX(gx)
+    if (x >= gX && x <= gX + gW) {
+      out.push(`0.86 0.90 0.95 RG 0.5 w [2 3] 0 d ${x.toFixed(2)} ${gY} m ${x.toFixed(2)} ${(gY + gH).toFixed(2)} l S [] 0 d\n`)
+      txt(`${Math.round(gx)}`, x + 2, gY + 3, 12, 'F1', GRAY)
+    }
   }
-  for (let gy = Math.ceil(by0 / step) * step; gy <= by1; gy += step) {
-    out.push(`${A_X0.toFixed(2)} ${py(gy).toFixed(2)} m ${A_X1.toFixed(2)} ${py(gy).toFixed(2)} l S\n`)
+  for (let gy = firstGridY; gy <= lastGridY; gy += step) {
+    const y = mapY(gy)
+    if (y >= gY && y <= gY + gH) {
+      out.push(`0.86 0.90 0.95 RG 0.5 w [2 3] 0 d ${gX} ${y.toFixed(2)} m ${(gX + gW).toFixed(2)} ${y.toFixed(2)} l S [] 0 d\n`)
+      txt(`${Math.round(gy)}`, gX + 3, y + 2, 12, 'F1', GRAY)
+    }
   }
 
-  // Contour filigrane contexte
+  // Fond polygonal secondaire
   if (opts.background && opts.background.length >= 3) {
-    const bg = opts.background
-      .map((p, i) => `${px(p.x).toFixed(2)} ${py(p.y).toFixed(2)} ${i === 0 ? 'm' : 'l'}`)
-      .join(' ') + ' h S\n'
-    out.push(`${LINE} RG 0.8 w\n${bg}`)
+    const bgMapped = opts.background.map((p) => ({ x: mapX(p.x), y: mapY(p.y) }))
+    out.push('0.93 0.94 0.96 rg 0.7 0.75 0.82 RG 1 w [3 3] 0 d ')
+    out.push(`${bgMapped[0].x.toFixed(2)} ${bgMapped[0].y.toFixed(2)} m `)
+    for (let i = 1; i < bgMapped.length; i++) {
+      out.push(`${bgMapped[i].x.toFixed(2)} ${bgMapped[i].y.toFixed(2)} l `)
+    }
+    out.push('h B [] 0 d\n')
   }
 
   // Polygone principal
-  const pathCmd = d.pts
-    .map((p, i) => `${px(p.x).toFixed(2)} ${py(p.y).toFixed(2)} ${i === 0 ? 'm' : 'l'}`)
-    .join(' ') + ' h\n'
-
-  if (opts.fill) {
-    out.push(`${opts.fill} rg\n${pathCmd} f\n`)
-  } else {
-    out.push(`0.92 0.96 1 rg\n${pathCmd} f\n`)
+  const mapped = d.pts.map((p) => ({ x: mapX(p.x), y: mapY(p.y) }))
+  const fill = opts.fill ?? '0.88 0.93 0.99'
+  out.push(`${fill} rg ${NAVY} RG 2 w `)
+  out.push(`${mapped[0].x.toFixed(2)} ${mapped[0].y.toFixed(2)} m `)
+  for (let i = 1; i < mapped.length; i++) {
+    out.push(`${mapped[i].x.toFixed(2)} ${mapped[i].y.toFixed(2)} l `)
   }
-  out.push(`${NAVY} RG 1.5 w\n${pathCmd} S\n`)
+  out.push('h B\n')
 
-  // Marques des sommets
-  out.push(`${BLUE_ACCENT} rg\n`)
-  for (let i = 0; i < n; i++) {
-    const p = d.pts[i]
-    const cx = px(p.x)
-    const cy = py(p.y)
-    out.push(`${(cx - 2).toFixed(2)} ${(cy - 2).toFixed(2)} 4 4 re f\n`)
-  }
-
-  // Anti-collision des étiquettes (Sommets & Distances)
+  // Sommets (pastilles numérotées)
   const labels: LabelBox[] = []
+  mapped.forEach((pt, i) => {
+    const tag = `P${i + 1}`
+    const tw = textW(tag, 12, true)
+    labels.push({ x: pt.x + 6, y: pt.y + 6, w: tw + 6, h: 14, text: tag, size: 12 })
+  })
+
+  // Longueurs de côtés
   for (let i = 0; i < n; i++) {
-    const p = d.pts[i]
-    const cx = px(p.x)
-    const cy = py(p.y)
-    const dx = cx - pCX
-    const dy = cy - pCY
-    const l = Math.hypot(dx, dy) || 1
-    const lx = cx + (dx / l) * 14
-    const ly = cy + (dy / l) * 14
-    const text = `P${i + 1}`
-    const w = textW(text, 7.5, true) + 5
-    labels.push({ x: lx - w / 2, y: ly - 4, w, h: 8, text, size: 7.5 })
+    const p1 = mapped[i]
+    const p2 = mapped[(i + 1) % n]
+    const mx = (p1.x + p2.x) / 2
+    const my = (p1.y + p2.y) / 2
+    const tag = `${frNum(d.sides[i], 1)} m`
+    const tw = textW(tag, 12, true)
+    labels.push({ x: mx - tw / 2, y: my - 6, w: tw + 6, h: 14, text: tag, size: 12 })
   }
 
-  for (let i = 0; i < n; i++) {
-    const p = d.pts[i]
-    const q = d.pts[(i + 1) % n]
-    const ax = px(p.x)
-    const ay = py(p.y)
-    const bx = px(q.x)
-    const by = py(q.y)
-    const mx = (ax + bx) / 2
-    const my = (ay + by) / 2
-    const vx = bx - ax
-    const vy = by - ay
-    const vl = Math.hypot(vx, vy) || 1
-    const nx = -vy / vl
-    const ny = vx / vl
-    const side = (mx - pCX) * nx + (my - pCY) * ny < 0 ? -1 : 1
-    const lx = mx + nx * side * 10
-    const ly = my + ny * side * 10
-    const text = formatM(d.sides[i])
-    const w = textW(text, 7.5, true) + 6
-    labels.push({ x: lx - w / 2, y: ly - 5, w, h: 10, text, size: 7.5 })
-  }
+  separateLabels(labels, 40)
 
-  separateLabels(labels)
+  // Dessin des pastilles de sommets
+  mapped.forEach((pt) => {
+    out.push(`1 1 1 rg ${NAVY} RG 1.5 w `)
+    out.push(`${(pt.x + 3.5).toFixed(2)} ${pt.y.toFixed(2)} m `)
+    out.push(`${(pt.x + 3.5).toFixed(2)} ${(pt.y + 1.93).toFixed(2)} ${(pt.x + 1.93).toFixed(2)} ${(pt.y + 3.5).toFixed(2)} ${pt.x.toFixed(2)} ${(pt.y + 3.5).toFixed(2)} c `)
+    out.push(`${(pt.x - 1.93).toFixed(2)} ${(pt.y + 3.5).toFixed(2)} ${(pt.x - 3.5).toFixed(2)} ${(pt.y + 1.93).toFixed(2)} ${(pt.x - 3.5).toFixed(2)} ${pt.y.toFixed(2)} c `)
+    out.push(`${(pt.x - 3.5).toFixed(2)} ${(pt.y - 1.93).toFixed(2)} ${(pt.x - 1.93).toFixed(2)} ${(pt.y - 3.5).toFixed(2)} ${pt.x.toFixed(2)} ${(pt.y - 3.5).toFixed(2)} c `)
+    out.push(`${(pt.x + 1.93).toFixed(2)} ${(pt.y - 3.5).toFixed(2)} ${(pt.x + 3.5).toFixed(2)} ${(pt.y - 1.93).toFixed(2)} ${(pt.x + 3.5).toFixed(2)} ${pt.x.toFixed(2)} ${pt.y.toFixed(2)} c B\n`)
+  })
 
-  for (const l of labels) {
-    if (l.y < A_Y0 + 2) l.y = A_Y0 + 2
-    if (l.y + l.h > A_Y1 - 2) l.y = A_Y1 - 2 - l.h
-    if (l.x < A_X0 + 2) l.x = A_X0 + 2
-    if (l.x + l.w > A_X1 - 2) l.x = A_X1 - 2 - l.w
-  }
+  // Dessin des étiquettes
+  labels.forEach((lbl) => {
+    out.push(drawRoundedRect(lbl.x, lbl.y, lbl.w, lbl.h, 2, '1 1 1', LINE, 0.5))
+    txt(lbl.text, lbl.x + 3, lbl.y + 3, lbl.size, 'F2', DARK)
+  })
 
-  for (const l of labels) {
-    out.push(`1 1 1 rg ${l.x.toFixed(2)} ${l.y.toFixed(2)} ${l.w.toFixed(2)} ${l.h.toFixed(2)} re f\n`)
-    out.push(`${LINE} RG 0.5 w ${l.x.toFixed(2)} ${l.y.toFixed(2)} ${l.w.toFixed(2)} ${l.h.toFixed(2)} re S\n`)
-    txt(l.text, l.x + (l.w - textW(l.text, l.size, true)) / 2, l.y + (l.h - l.size) / 2 + 1, l.size, 'F2', DARK)
-  }
-
-  // Flèche Nord
-  const nX = P_X1 - 24
-  const nY = P_Y1 - 24
-  out.push(`${NAVY} RG 1.2 w ${NAVY} rg\n`)
-  out.push(`${nX.toFixed(2)} ${(nY - 16).toFixed(2)} m ${nX.toFixed(2)} ${(nY + 8).toFixed(2)} l S\n`)
-  out.push(`${nX.toFixed(2)} ${(nY + 8).toFixed(2)} m ${(nX - 4).toFixed(2)} ${(nY - 2).toFixed(2)} l ${(nX + 4).toFixed(2)} ${(nY - 2).toFixed(2)} l h f\n`)
-  txt('N', nX - 3, nY + 12, 8.5, 'F2', NAVY)
-
-  // Échelle graphique
-  const metersPerPt = (bx1 - bx0) / (A_X1 - A_X0)
-  const barStep = niceStep(eX, 3)
-  const segments = Math.max(1, Math.min(3, Math.floor((A_X1 - A_X0) / 2 / (barStep * metersPerPt))))
-  const barW = segments * barStep * metersPerPt
-  const barX = (A_X0 + A_X1) / 2 - barW / 2
-  const barY = P_Y0 + IP + 4
-  out.push(`${DARK} RG 1 w ${DARK} rg\n`)
-  out.push(`${barX.toFixed(2)} ${barY.toFixed(2)} m ${(barX + barW).toFixed(2)} ${barY.toFixed(2)} l S\n`)
-  for (let i = 0; i <= segments; i++) {
-    const x = barX + i * barStep * metersPerPt
-    out.push(`${x.toFixed(2)} ${barY.toFixed(2)} m ${x.toFixed(2)} ${(barY + 4).toFixed(2)} l S\n`)
-    const tick = frNum(Math.round(i * barStep), 0)
-    const tw = textW(tick, 6.5)
-    txt(tick, x - tw / 2, barY + 8, 6.5)
-  }
-  txt('m', barX + barW + 4, barY + 8, 6.5)
-
-  // Cartouche latéral droit
-  const T_X0 = 574
-  const T_W = AL - 36 - T_X0
-  const T_Top = P_Y1
-
-  out.push(drawRoundedRect(T_X0, P_Y0, T_W, P_Y1 - P_Y0, 6, BG_CARD, LINE, 0.8))
-
-  // En-tête cartouche
-  out.push(drawRoundedRect(T_X0, T_Top - 24, T_W, 24, 4, NAVY))
-  txt('CARTOUCHE & COORDONNÉES', T_X0 + 10, T_Top - 16, 8, 'F2', '1 1 1')
-
-  let cy = T_Top - 36
-  txt('Terrain :', T_X0 + 10, cy, 7.5, 'F2', GRAY)
-  txt(fitText(subj(d), 7.5, T_W - 60, true), T_X0 + 55, cy, 7.5, 'F2', DARK)
-  cy -= 14
-  txt('Surface :', T_X0 + 10, cy, 7.5, 'F2', GRAY)
-  txt(formatA(d.area), T_X0 + 55, cy, 7.5, 'F2', BLUE_TEXT)
-  cy -= 14
-  txt('Périmètre :', T_X0 + 10, cy, 7.5, 'F2', GRAY)
-  txt(formatM(d.perimeter), T_X0 + 55, cy, 7.5, 'F2', DARK)
-  cy -= 18
-
-  // Tableau coordonnées compact
-  out.push(drawRoundedRect(T_X0 + 6, cy - 14, T_W - 12, 14, 2, '0.94 0.97 1.0'))
-  txt('Point', T_X0 + 12, cy - 10, 6.8, 'F2', BLUE_TEXT)
-  txtR('X (m)', T_X0 + 115, cy - 10, 6.8, 'F2', BLUE_TEXT)
-  txtR('Y (m)', T_X0 + T_W - 14, cy - 10, 6.8, 'F2', BLUE_TEXT)
-  cy -= 16
-
-  const maxRowsCartouche = Math.floor((cy - P_Y0 - 10) / 12)
-  for (let i = 0; i < Math.min(n, maxRowsCartouche); i++) {
-    const p = d.pts[i]
-    if (i % 2 === 1) {
-      out.push(`0.96 0.97 0.99 rg ${(T_X0 + 6).toFixed(2)} ${(cy - 10).toFixed(2)} ${(T_W - 12).toFixed(2)} 11 re f\n`)
-    }
-    txt(`P${i + 1}`, T_X0 + 12, cy - 8, 6.8, 'F2', BLUE_TEXT)
-    txtR(frNum(p.x, 2), T_X0 + 115, cy - 8, 6.8, 'F1', DARK)
-    txtR(frNum(p.y, 2), T_X0 + T_W - 14, cy - 8, 6.8, 'F1', DARK)
-    cy -= 12
-  }
+  // Cartouche en bas à droite
+  const cartW = 240
+  const cartH = 74
+  const cartX = gX + gW - cartW - 12
+  const cartY = gY + 12
+  out.push(drawRoundedRect(cartX, cartY, cartW, cartH, 6, '1 1 1', NAVY, 1.2))
+  out.push(`${NAVY} rg ${cartX} ${(cartY + cartH - 22).toFixed(2)} ${cartW} 22 re f\n`)
+  txt('CARTOUCHE DU PLAN', cartX + 10, cartY + cartH - 16, 12, 'F2', '1 1 1')
+  txt(`Échelle indicative : 1 / ${Math.round(1000 / scale)}`, cartX + 10, cartY + 36, 12, 'F1', DARK)
+  txt(`Superficie totale : ${formatA(d.area)}`, cartX + 10, cartY + 20, 12, 'F2', DARK)
+  txt(`Périmètre : ${formatM(d.perimeter)}`, cartX + 10, cartY + 6, 12, 'F1', GRAY)
 
   // Pied de page
   out.push(drawFooter(2, 2, dateStr, AL))
@@ -716,7 +641,13 @@ function buildPage2(d: PlanData, dateStr: string, opts: Page2Opts = {}): string 
 
 const AFF_SUMMARY_MAX_ROWS = 10
 
-function buildAffSummaryPage(d: PlanData, pieces: AffectationPiece[], totalCount: number, dateStr: string, continuation: boolean): string {
+function buildAffSummaryPage(
+  d: PlanData,
+  pieces: AffectationPiece[],
+  totalCount: number,
+  dateStr: string,
+  _isMultiPage: boolean
+): string {
   const out: string[] = []
   const txt = (s: string, x: number, y: number, size: number, font = 'F1', color = DARK): void => {
     out.push(`${color} rg BT /${font} ${size} Tf 1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm (${esc(s)}) Tj ET\n`)
@@ -724,81 +655,76 @@ function buildAffSummaryPage(d: PlanData, pieces: AffectationPiece[], totalCount
   const txtR = (s: string, right: number, y: number, size: number, font = 'F1', color = DARK): void =>
     txt(s, right - textW(s, size, font === 'F2'), y, size, font, color)
 
-  out.push(drawHeaderBanner(
-    'PLAN DES AFFECTATIONS DU SOL & DÉCOUPAGE',
-    continuation ? `${subj(d)} (Suite)` : subj(d),
-    'AFFECTATIONS',
-    AL,
-    ALH
-  ))
+  // En-tête (Titre 1 : 16 pt)
+  out.push(drawHeaderBanner("PLAN D'AMÉNAGEMENT & ZONAGE URBAIN", subj(d), 'RÉCAPITULATIF', AL, ALH))
 
-  let y = 505
+  let y = ALH - 74 - 20
 
-  if (!continuation) {
-    // 4 KPI Cards
+  // 4 Cartes KPI (Titre 2 : 14 pt pour les valeurs)
+  if (pieces.length > 0) {
     const domPiece = pieces.length > 0 ? pieces.slice().sort((a, b) => b.areaM2 - a.areaM2)[0] : null
 
     const kpis = [
       { label: 'SUPERFICIE DU TERRAIN', val: `${frNum(d.area, 0)} m²`, sub: d.area >= 10000 ? `${frNum(d.area / 10000, 2)} ha` : 'Superficie cadastrale', color: BG_BLUE, textColor: BLUE_TEXT },
       { label: 'PÉRIMÈTRE TOTAL', val: formatM(d.perimeter), sub: 'Périmètre extérieur', color: BG_CARD, textColor: NAVY },
       { label: "ZONES D'AFFECTATION", val: `${totalCount} affectation(s)`, sub: `${pieces.length} affichée(s) sur cette page`, color: BG_GREEN, textColor: GREEN_TEXT },
-      { label: 'AFFECTATION DOMINANTE', val: domPiece ? fitText(domPiece.label, 9, 140, true) : 'Aucune', sub: domPiece ? `${domPiece.percent.toFixed(1)} % (${frNum(domPiece.areaM2, 0)} m²)` : 'Aucune zone', color: BG_AMBER, textColor: AMBER_TEXT },
+      { label: 'AFFECTATION DOMINANTE', val: domPiece ? fitText(domPiece.label, 12, 140, true) : 'Aucune', sub: domPiece ? `${domPiece.percent.toFixed(1)} % (${frNum(domPiece.areaM2, 0)} m²)` : 'Aucune zone', color: BG_AMBER, textColor: AMBER_TEXT },
     ]
 
     const kpiW = (AL - 72 - 3 * 10) / 4
     kpis.forEach((kpi, idx) => {
       const kx = 36 + idx * (kpiW + 10)
-      out.push(drawRoundedRect(kx, y - 46, kpiW, 46, 6, kpi.color, LINE, 0.8))
-      txt(kpi.label, kx + 8, y - 14, 6.2, 'F2', GRAY)
-      txt(kpi.val, kx + 8, y - 28, 9.5, 'F2', kpi.textColor)
-      txt(kpi.sub, kx + 8, y - 40, 5.8, 'F1', GRAY)
+      out.push(drawRoundedRect(kx, y - 54, kpiW, 54, 6, kpi.color, LINE, 0.8))
+      txt(kpi.label, kx + 8, y - 18, 12, 'F2', GRAY)
+      txt(kpi.val, kx + 8, y - 36, 14, 'F2', kpi.textColor)
+      txt(kpi.sub, kx + 8, y - 50, 12, 'F1', GRAY)
     })
 
-    y -= 64
+    y -= 72
   }
 
-  // Tableau des affectations
-  out.push(`${BLUE_ACCENT} rg 36 ${y - 12} 3 14 re f\n`)
-  txt('DÉTAIL DES AFFECTATIONS DU PLAN D\'AMÉNAGEMENT', 44, y - 10, 9.5, 'F2', DARK)
-  y -= 22
+  // Tableau des affectations (Titre 2 : 14 pt, Texte : 12 pt interligne 1.5)
+  out.push(`${BLUE_ACCENT} rg 36 ${y - 12} 3 16 re f\n`)
+  txt('DÉTAIL DES AFFECTATIONS DU PLAN D\'AMÉNAGEMENT', 44, y - 10, 14, 'F2', DARK)
+  y -= 26
 
   const tableX = 36
   const tableW = AL - 72
   const colW = { color: 30, label: 220, desig: 200, m2: 120, ha: 100, pct: tableW - 670 }
 
   // En-tête
-  out.push(drawRoundedRect(tableX, y - 18, tableW, 18, 4, NAVY))
-  txt('Zonage', tableX + 10, y - 12, 7.5, 'F2', '1 1 1')
-  txt('Libellé / Affectation', tableX + colW.color + 10, y - 12, 7.5, 'F2', '1 1 1')
-  txt('Désignation PA', tableX + colW.color + colW.label + 10, y - 12, 7.5, 'F2', '1 1 1')
-  txtR('Superficie (m²)', tableX + colW.color + colW.label + colW.desig + colW.m2 - 10, y - 12, 7.5, 'F2', '1 1 1')
-  txtR('Superficie (ha)', tableX + colW.color + colW.label + colW.desig + colW.m2 + colW.ha - 10, y - 12, 7.5, 'F2', '1 1 1')
-  txtR('Part (%)', tableX + tableW - 12, y - 12, 7.5, 'F2', '1 1 1')
-  y -= 18
+  out.push(drawRoundedRect(tableX, y - 24, tableW, 24, 4, NAVY))
+  txt('Zonage', tableX + 10, y - 16, 12, 'F2', '1 1 1')
+  txt('Libellé / Affectation', tableX + colW.color + 10, y - 16, 12, 'F2', '1 1 1')
+  txt('Désignation PA', tableX + colW.color + colW.label + 10, y - 16, 12, 'F2', '1 1 1')
+  txtR('Superficie (m²)', tableX + colW.color + colW.label + colW.desig + colW.m2 - 10, y - 16, 12, 'F2', '1 1 1')
+  txtR('Superficie (ha)', tableX + colW.color + colW.label + colW.desig + colW.m2 + colW.ha - 10, y - 16, 12, 'F2', '1 1 1')
+  txtR('Part (%)', tableX + tableW - 12, y - 16, 12, 'F2', '1 1 1')
+  y -= 24
 
   pieces.forEach((pc, i) => {
     const rowBg = i % 2 === 0 ? '1 1 1' : '0.97 0.985 1'
-    out.push(`${rowBg} rg ${tableX} ${(y - 18).toFixed(2)} ${tableW} 18 re f\n`)
-    out.push(`${LINE} RG 0.5 w ${tableX} ${(y - 18).toFixed(2)} m ${(tableX + tableW).toFixed(2)} ${(y - 18).toFixed(2)} l S\n`)
+    out.push(`${rowBg} rg ${tableX} ${(y - 24).toFixed(2)} ${tableW} 24 re f\n`)
+    out.push(`${LINE} RG 0.5 w ${tableX} ${(y - 24).toFixed(2)} m ${(tableX + tableW).toFixed(2)} ${(y - 24).toFixed(2)} l S\n`)
 
     // Pastille de couleur de zonage
     const chipX = tableX + 10
-    const chipY = y - 14
-    out.push(drawRoundedRect(chipX, chipY, 12, 10, 2, hexToRgb(pc.color), LINE, 0.6))
+    const chipY = y - 18
+    out.push(drawRoundedRect(chipX, chipY, 14, 12, 2, hexToRgb(pc.color), LINE, 0.6))
 
-    txt(fitText(pc.label, 8, colW.label - 14, true), tableX + colW.color + 10, y - 12, 8, 'F2', DARK)
-    txt(fitText(pc.designation || 'Non spécifiée', 7.5, colW.desig - 14), tableX + colW.color + colW.label + 10, y - 12, 7.5, 'F1', GRAY)
-    txtR(`${frNum(pc.areaM2, 0)} m²`, tableX + colW.color + colW.label + colW.desig + colW.m2 - 10, y - 12, 7.8, 'F2', DARK)
-    txtR(pc.areaM2 >= 10000 ? `${frNum(pc.areaM2 / 10000, 2)} ha` : '< 1 ha', tableX + colW.color + colW.label + colW.desig + colW.m2 + colW.ha - 10, y - 12, 7.5, 'F1', GRAY)
-    txtR(`${pc.percent.toFixed(1)} %`, tableX + tableW - 12, y - 12, 8, 'F2', BLUE_TEXT)
+    txt(fitText(pc.label, 12, colW.label - 14, true), tableX + colW.color + 10, y - 16, 12, 'F2', DARK)
+    txt(fitText(pc.designation || 'Non spécifiée', 12, colW.desig - 14), tableX + colW.color + colW.label + 10, y - 16, 12, 'F1', GRAY)
+    txtR(`${frNum(pc.areaM2, 0)} m²`, tableX + colW.color + colW.label + colW.desig + colW.m2 - 10, y - 16, 12, 'F2', DARK)
+    txtR(pc.areaM2 >= 10000 ? `${frNum(pc.areaM2 / 10000, 2)} ha` : '< 1 ha', tableX + colW.color + colW.label + colW.desig + colW.m2 + colW.ha - 10, y - 16, 12, 'F1', GRAY)
+    txtR(`${pc.percent.toFixed(1)} %`, tableX + tableW - 12, y - 16, 12, 'F2', BLUE_TEXT)
 
-    y -= 18
+    y -= 24
   })
 
   if (pieces.length === 0) {
-    out.push(`1 1 1 rg ${tableX} ${(y - 24).toFixed(2)} ${tableW} 24 re f\n`)
-    txt("Aucune affectation trouvée pour cette parcelle dans le plan d'aménagement.", tableX + 16, y - 16, 8, 'F1', '0.72 0.11 0.11')
-    y -= 24
+    out.push(`1 1 1 rg ${tableX} ${(y - 28).toFixed(2)} ${tableW} 28 re f\n`)
+    txt("Aucune affectation trouvée pour cette parcelle dans le plan d'aménagement.", tableX + 16, y - 18, 12, 'F1', '0.72 0.11 0.11')
+    y -= 28
   }
 
   // Pied de page
@@ -852,8 +778,8 @@ function assemblePdf(pages: PdfPage[]): Uint8Array {
     )
   }
   objects.push(
-    ascii(`${firstFont} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\nendobj\n`),
-    ascii(`${firstFont + 1} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>\nendobj\n`)
+    ascii(`${firstFont} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman /Encoding /WinAnsiEncoding >>\nendobj\n`),
+    ascii(`${firstFont + 1} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold /Encoding /WinAnsiEncoding >>\nendobj\n`)
   )
   for (let i = 0; i < n; i++) {
     const content = ascii(pages[i].content)
