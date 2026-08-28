@@ -2,7 +2,6 @@
 // (intersection géométrique via @turf/intersect) + affichage détaillé.
 
 import intersect from '@turf/intersect'
-import difference from '@turf/difference'
 import { extractRing, polygonAreaM2 } from './terrainDims'
 import { downloadAffectationsPdf } from './pdfPlan'
 import { getReglesPrincipales, getHauteurEtEtages } from './reglementationPA'
@@ -273,7 +272,7 @@ export function computeParcelAffectations(
     }
   }
 
-  return resolveOverlappingAffectationPieces(pieces, totalArea)
+  return resolveParentChildAffectations(pieces, totalArea)
 }
 
 export function isChildAffectation(codeA: string, codeB: string): boolean {
@@ -286,10 +285,10 @@ export function isChildAffectation(codeA: string, codeB: string): boolean {
   return false
 }
 
-export function resolveOverlappingAffectationPieces(pieces: AffectationPiece[], totalArea: number): AffectationPiece[] {
+export function resolveParentChildAffectations(pieces: AffectationPiece[], totalArea: number): AffectationPiece[] {
   if (pieces.length <= 1) return pieces
 
-  // Trier par spécificité décroissante (les filles d'abord : chiffres, longueur)
+  // Trier par spécificité décroissante (les filles en premier)
   const sorted = [...pieces].sort((a, b) => {
     const codeA = a.designation.toUpperCase()
     const codeB = b.designation.toUpperCase()
@@ -304,38 +303,13 @@ export function resolveOverlappingAffectationPieces(pieces: AffectationPiece[], 
     const child = sorted[i]
     if (!child || child.areaM2 <= 0.1) continue
 
-    // Soustraire cette pièce fille de toutes les pièces parentes suivantes
     for (let j = i + 1; j < sorted.length; j++) {
       const parent = sorted[j]
       if (!parent || parent.areaM2 <= 0.1) continue
 
-      const isParent = isChildAffectation(child.designation, parent.designation) ||
-        (child.designation.length > parent.designation.length && parent.designation.length > 0 && child.designation.includes(parent.designation))
-
-      if (isParent) {
-        try {
-          const diff = difference({
-            type: 'FeatureCollection',
-            features: [parent.feature, child.feature],
-          })
-          if (diff && diff.geometry) {
-            const newArea = geometryAreaM2(diff.geometry)
-            if (newArea > 0.1) {
-              parent.feature = diff
-              parent.areaM2 = newArea
-              parent.percent = totalArea > 0 ? (newArea / totalArea) * 100 : 0
-            } else {
-              parent.areaM2 = 0
-              parent.percent = 0
-            }
-          } else {
-            // Complètement superposés -> suppression de la pièce mère
-            parent.areaM2 = 0
-            parent.percent = 0
-          }
-        } catch {
-          /* ignore error on difference */
-        }
+      if (isChildAffectation(child.designation, parent.designation)) {
+        parent.areaM2 = Math.max(0, Math.round((parent.areaM2 - child.areaM2) * 100) / 100)
+        parent.percent = totalArea > 0 ? (parent.areaM2 / totalArea) * 100 : 0
       }
     }
   }
