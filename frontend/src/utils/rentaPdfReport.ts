@@ -3,7 +3,7 @@
 // tables vectorielles, métriques financières, et capture satellite OSM / ESRI avec le contour du terrain).
 
 import type { Rentabilite } from '../api/projets'
-import { AP, APH, NAVY, BLUE_ACCENT, DARK, GRAY, LIGHT_GRAY, LINE, BG_CARD, BG_GREEN, GREEN_TEXT, BG_BLUE, BLUE_TEXT, BG_SUBTLE } from './pdfTheme'
+import { AP, APH, NAVY, DARK, GRAY, LIGHT_GRAY, LINE, BG_CARD, BG_SUBTLE } from './pdfTheme'
 
 export interface RentaReportData {
   projectName?: string
@@ -417,8 +417,6 @@ function buildRentaPage1(data: RentaReportData, dateStr: string, hasImage: boole
   txtR('RAPPORT D\'ÉTUDE DE RENTABILITÉ', AP - 45, 805, 11, 'F2', DARK)
   txtR(`Date d'édition : ${dateStr}`, AP - 45, 792, 7.5, 'F1', GRAY)
 
-  out.push(`${BLUE_ACCENT} RG 1.5 w 45 780 m ${(AP - 45).toFixed(2)} 780 l S\n`)
-
   // ── Haut Gauche : Fiche d'identification du Terrain ──
   const c1X = 45
   const c1W = 245
@@ -474,27 +472,6 @@ function buildRentaPage1(data: RentaReportData, dateStr: string, hasImage: boole
   out.push(`${BG_SUBTLE} rg ${c2X} ${c2Bottom} ${c2W} 18 re f\n`)
   out.push(`${LINE} RG 0.6 w ${c2X} ${(c2Bottom + 18).toFixed(2)} m ${c2X + c2W} ${(c2Bottom + 18).toFixed(2)} l S\n`)
   txt('Vue aérienne Satellite & Emprise du terrain (ESRI / OSM)', c2X + 8, c2Bottom + 6, 6.5, 'F2', GRAY)
-
-  // ── Indicateurs Clés (KPIs - 4 Cartouches) ──
-  const kpiTop = 618
-  const kpiH = 46
-  const kpiBottom = kpiTop - kpiH
-  const kpiW = (AP - 90 - 3 * 8) / 4
-
-  const kpis = [
-    { label: 'TRI (Taux Interne)', val: rentaResult.tri != null ? `${rentaResult.tri}%` : 'Non calculé', bg: BG_GREEN, fg: GREEN_TEXT },
-    { label: 'Bénéfice Net Global', val: `${fmtVal(rentaResult.benefice_net)} DH`, bg: BG_GREEN, fg: GREEN_TEXT },
-    { label: 'Chiffre d\'Affaires', val: `${fmtVal(rentaResult.ca?.ca_total)} DH`, bg: BG_BLUE, fg: BLUE_TEXT },
-    { label: 'Coût Total Projet', val: `${fmtVal(rentaResult.cout_total_projet)} DH`, bg: BG_CARD, fg: DARK },
-  ]
-
-  kpis.forEach((k, i) => {
-    const kx = 45 + i * (kpiW + 8)
-    out.push(`${k.bg} rg ${kx.toFixed(2)} ${kpiBottom.toFixed(2)} ${kpiW.toFixed(2)} ${kpiH} re f\n`)
-    out.push(`${LINE} RG 0.8 w ${kx.toFixed(2)} ${kpiBottom.toFixed(2)} ${kpiW.toFixed(2)} ${kpiH} re S\n`)
-    txt(k.label, kx + 8, kpiTop - 13, 6.5, 'F2', GRAY)
-    txt(k.val, kx + 8, kpiTop - 32, 10, 'F2', k.fg)
-  })
 
   // ── Deux Cartes du Milieu : Paramètres + Bilan des Surfaces ──
   const midTop = 558
@@ -616,8 +593,6 @@ function buildRentaPage2(data: RentaReportData, dateStr: string): string {
   txtR(`Terrain : ${fitText(data.terrainNom, 9, 200, true)}`, AP - 45, 805, 9, 'F2', DARK)
   txtR(`Généré le ${dateStr}`, AP - 45, 792, 7.5, 'F1', GRAY)
 
-  out.push(`${BLUE_ACCENT} RG 1.5 w 45 780 m ${(AP - 45).toFixed(2)} 780 l S\n`)
-
   // ── Tableau des Flux ──
   const tX = 45
   const tW = AP - 90
@@ -647,11 +622,8 @@ function buildRentaPage2(data: RentaReportData, dateStr: string): string {
     curY -= secH
   }
 
-  const renderDataRow = (label: string, values: Array<{ val: number | undefined; pct?: string }>, isEven: boolean): void => {
+  const renderDataRow = (label: string, values: Array<{ val: number | undefined; pct?: string }>, _isEven: boolean): void => {
     const rowH = 17
-    if (isEven) {
-      out.push(`${BG_SUBTLE} rg ${tX} ${(curY - rowH).toFixed(2)} ${tW} ${rowH} re f\n`)
-    }
     out.push(`${LINE} RG 0.4 w ${tX} ${(curY - rowH).toFixed(2)} ${tW} ${rowH} re S\n`)
 
     txt(label, tX + 8, curY - 12, 7.5, 'F1', DARK)

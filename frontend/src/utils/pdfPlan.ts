@@ -5,7 +5,7 @@
 // Page 2 paysage (plan topographique vectoriel avec cartouche, échelle et coordonnées).
 
 import { isAffectationValide, type AffectationPiece } from './affectations'
-import { AP, APH, AL, ALH, NAVY, BLUE_ACCENT, DARK, GRAY, LIGHT_GRAY, LINE, GRID, BG_CARD, BG_GREEN, GREEN_TEXT, BG_BLUE, BLUE_TEXT, BG_AMBER, AMBER_TEXT, BG_SUBTLE } from './pdfTheme'
+import { AP, APH, AL, ALH, NAVY, BLUE_ACCENT, DARK, GRAY, LINE, GRID, BG_CARD, BLUE_TEXT, BG_SUBTLE } from './pdfTheme'
 
 interface Pt {
   x: number
@@ -269,29 +269,16 @@ function drawRoundedRect(x: number, y: number, w: number, h: number, r: number, 
   return s
 }
 
-function drawHeaderBanner(title: string, subtitle: string, badgeText: string, width = AP, height = APH): string {
+// En-tête sobre (noir & blanc) : pas de bandeau coloré,
+// uniquement le titre en noir + un fin filet. height = hauteur de la page.
+function drawHeaderSober(title: string, subtitle: string, height: number, _width = AL): string {
   const out: string[] = []
-  const bannerH = 68
-  const bannerY = height - bannerH
-
-  out.push(`${NAVY} rg 0 ${bannerY.toFixed(2)} ${width.toFixed(2)} ${bannerH.toFixed(2)} re f\n`)
-  out.push(`${BLUE_ACCENT} rg 0 ${(bannerY - 3).toFixed(2)} ${width.toFixed(2)} 3 re f\n`)
-
-  const txt = (s: string, x: number, y: number, size: number, font = 'F1', color = '1 1 1'): void => {
+  const h = (s: string, x: number, y: number, size: number, font = 'F1', color = DARK): void => {
     out.push(`${color} rg BT /${font} ${size} Tf 1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm (${esc(s)}) Tj ET\n`)
   }
 
-  txt('GEO INVEST • ANALYSE SPATIALE & FONCIÈRE', 36, bannerY + 48, 6.8, 'F2', LIGHT_GRAY)
-  txt(title, 36, bannerY + 30, 14, 'F2', '1 1 1')
-  txt(subtitle, 36, bannerY + 14, 8.5, 'F1', '0.8 0.82 0.85')
-
-  if (badgeText) {
-    const bw = textW(badgeText, 7.5, true) + 16
-    const bx = width - 36 - bw
-    const by = bannerY + 24
-    out.push(drawRoundedRect(bx, by, bw, 20, 10, BLUE_ACCENT))
-    txt(badgeText, bx + 8, by + 6, 7.5, 'F2', '1 1 1')
-  }
+  h(title, 36, height - 36, 15, 'F2', DARK)
+  h(subtitle, 36, height - 51, 8.5, 'F1', GRAY)
 
   return out.join('')
 }
@@ -368,31 +355,12 @@ function buildPage1(d: PlanData, dateStr: string): string {
   const txtR = (s: string, right: number, y: number, size: number, font = 'F1', color = DARK): void =>
     txt(s, right - textW(s, size, font === 'F2'), y, size, font, color)
 
-  // 1. En-tête
-  out.push(drawHeaderBanner('PLAN TOPOGRAPHIQUE & GÉOMÉTRIQUE', subj(d), 'TOPOGRAPHIE', AP, APH))
+  // 1. En-tête sobre
+  out.push(drawHeaderSober('PLAN TOPOGRAPHIQUE & GÉOMÉTRIQUE', subj(d), APH, AP))
 
-  // 2. Grille de 4 cartes KPI
-  const kpis = [
-    { label: 'SUPERFICIE', val: `${frNum(d.area, 0)} m²`, sub: d.area >= 10000 ? `${frNum(d.area / 10000, 2)} ha` : 'Superficie brute', color: BG_BLUE, textColor: BLUE_TEXT },
-    { label: 'PÉRIMÈTRE', val: formatM(d.perimeter), sub: 'Longueur totale contour', color: BG_CARD, textColor: NAVY },
-    { label: 'SOMMETS', val: `${d.pts.length}`, sub: 'Bornes géoréférencées', color: BG_GREEN, textColor: GREEN_TEXT },
-    { label: 'SYSTÈME', val: 'EPSG:26191', sub: 'Merchich / Sahara', color: BG_CARD, textColor: DARK },
-  ]
-
-  const kpiW = (AP - 72 - 3 * 8) / 4
-  const kpiY = 708
-  kpis.forEach((kpi, idx) => {
-    const kx = 36 + idx * (kpiW + 8)
-    out.push(drawRoundedRect(kx, kpiY, kpiW, 48, 6, kpi.color, LINE, 0.8))
-    txt(kpi.label, kx + 8, kpiY + 34, 6.2, 'F2', GRAY)
-    txt(kpi.val, kx + 8, kpiY + 18, 10, 'F2', kpi.textColor)
-    txt(kpi.sub, kx + 8, kpiY + 7, 5.8, 'F1', GRAY)
-  })
-
-  // 3. Fiche d'informations du terrain
-  let y = 688
-  out.push(`${BLUE_ACCENT} rg 36 ${y - 12} 3 14 re f\n`)
-  txt('INFORMATIONS GÉNÉRALES DU TERRAIN', 44, y - 10, 9.5, 'F2', DARK)
+  // 2. Fiche d'informations du terrain
+  let y = 760
+  txt('INFORMATIONS GÉNÉRALES DU TERRAIN', 36, y - 10, 9.5, 'F2', DARK)
   y -= 22
 
   const infoRows = [
@@ -404,35 +372,30 @@ function buildPage1(d: PlanData, dateStr: string): string {
   ]
 
   const infoCardH = infoRows.length * 17 + 8
-  out.push(drawRoundedRect(36, y - infoCardH, AP - 72, infoCardH, 6, BG_CARD, LINE, 0.8))
 
   infoRows.forEach((row, i) => {
     const ry = y - 16 - i * 17
-    if (i % 2 === 1) {
-      out.push(`${BG_SUBTLE} rg 37 ${(ry - 4).toFixed(2)} ${(AP - 74).toFixed(2)} 16 re f\n`)
-    }
-    txt(row.label, 48, ry, 7.8, 'F2', GRAY)
+    txt(row.label, 36, ry, 7.8, 'F2', GRAY)
     txt(row.val, 230, ry, 7.8, 'F1', DARK)
   })
 
   y -= infoCardH + 18
 
-  // 4. Tableau des coordonnées des sommets et des côtés
-  out.push(`${BLUE_ACCENT} rg 36 ${y - 12} 3 14 re f\n`)
-  txt('TABLEAU DES SOMMETS & LONGUEURS DES CÔTÉS (EPSG:26191)', 44, y - 10, 9.5, 'F2', DARK)
+  // 3. Tableau des coordonnées des sommets et des côtés
+  txt('TABLEAU DES SOMMETS & LONGUEURS DES CÔTÉS (EPSG:26191)', 36, y - 10, 9.5, 'F2', DARK)
   y -= 22
 
   const tableX = 36
   const tableW = AP - 72
   const colW = { p: 50, x: 120, y: 120, seg: 100, dist: tableW - 390 }
 
-  // En-tête du tableau
-  out.push(drawRoundedRect(tableX, y - 18, tableW, 18, 4, NAVY))
-  txt('Sommet', tableX + 10, y - 12, 7.5, 'F2', '1 1 1')
-  txtR('X (m / Lambert)', tableX + colW.p + colW.x - 10, y - 12, 7.5, 'F2', '1 1 1')
-  txtR('Y (m / Lambert)', tableX + colW.p + colW.x + colW.y - 10, y - 12, 7.5, 'F2', '1 1 1')
-  txt('Segment', tableX + colW.p + colW.x + colW.y + 10, y - 12, 7.5, 'F2', '1 1 1')
-  txtR('Longueur (m)', tableX + tableW - 12, y - 12, 7.5, 'F2', '1 1 1')
+  // En-tête (fond blanc, titres noirs, filet noir)
+  out.push(`${DARK} RG 1 w ${tableX} ${(y - 18).toFixed(2)} m ${(tableX + tableW).toFixed(2)} ${(y - 18).toFixed(2)} l S\n`)
+  txt('Sommet', tableX + 10, y - 12, 7.5, 'F2', DARK)
+  txtR('X (m / Lambert)', tableX + colW.p + colW.x - 10, y - 12, 7.5, 'F2', DARK)
+  txtR('Y (m / Lambert)', tableX + colW.p + colW.x + colW.y - 10, y - 12, 7.5, 'F2', DARK)
+  txt('Segment', tableX + colW.p + colW.x + colW.y + 10, y - 12, 7.5, 'F2', DARK)
+  txtR('Longueur (m)', tableX + tableW - 12, y - 12, 7.5, 'F2', DARK)
   y -= 18
 
   const n = d.pts.length
@@ -441,9 +404,8 @@ function buildPage1(d: PlanData, dateStr: string): string {
     const p = d.pts[i]
     const nextIdx = (i + 1) % n
     const sideLen = d.sides[i]
-    const rowBg = i % 2 === 0 ? '1 1 1' : BG_SUBTLE
 
-    out.push(`${rowBg} rg ${tableX} ${(y - 15).toFixed(2)} ${tableW} 15 re f\n`)
+    out.push(`1 1 1 rg ${tableX} ${(y - 15).toFixed(2)} ${tableW} 15 re f\n`)
     out.push(`${LINE} RG 0.5 w ${tableX} ${(y - 15).toFixed(2)} m ${(tableX + tableW).toFixed(2)} ${(y - 15).toFixed(2)} l S\n`)
 
     txt(`P${i + 1}`, tableX + 10, y - 10.5, 7.5, 'F2', BLUE_TEXT)
@@ -483,8 +445,8 @@ function buildPage2(d: PlanData, dateStr: string, opts: Page2Opts = {}): string 
   const txtR = (s: string, right: number, y: number, size: number, font = 'F1', color = DARK): void =>
     txt(s, right - textW(s, size, font === 'F2'), y, size, font, color)
 
-  // En-tête pleine largeur paysage
-  out.push(drawHeaderBanner(opts.titleText ?? 'PLAN TOPOGRAPHIQUE & GÉOMÉTRIQUE', opts.subtitleText ?? `${subj(d)} • EPSG:26191`, 'PLAN VECTEUR', AL, ALH))
+  // En-tête pleine largeur paysage (sobre, sans bandeau coloré)
+  out.push(drawHeaderSober(opts.titleText ?? 'PLAN TOPOGRAPHIQUE & GÉOMÉTRIQUE', opts.subtitleText ?? `${subj(d)} • EPSG:26191`, ALH, AL))
 
   const n = d.pts.length
   const allPts = opts.background && opts.background.length ? [...d.pts, ...opts.background] : d.pts
@@ -652,35 +614,32 @@ function buildPage2(d: PlanData, dateStr: string, opts: Page2Opts = {}): string 
 
   out.push(drawRoundedRect(T_X0, P_Y0, T_W, P_Y1 - P_Y0, 6, BG_CARD, LINE, 0.8))
 
-  // En-tête cartouche
-  out.push(drawRoundedRect(T_X0, T_Top - 24, T_W, 24, 4, NAVY))
-  txt('CARTOUCHE & COORDONNÉES', T_X0 + 10, T_Top - 16, 8, 'F2', '1 1 1')
+  // En-tête cartouche (sobre)
+  out.push(`${DARK} RG 1 w ${T_X0} ${(T_Top - 24).toFixed(2)} m ${(T_X0 + T_W).toFixed(2)} ${(T_Top - 24).toFixed(2)} l S\n`)
+  txt('CARTOUCHE & COORDONNÉES', T_X0 + 10, T_Top - 16, 8, 'F2', DARK)
 
   let cy = T_Top - 36
   txt('Terrain :', T_X0 + 10, cy, 7.5, 'F2', GRAY)
   txt(fitText(subj(d), 7.5, T_W - 60, true), T_X0 + 55, cy, 7.5, 'F2', DARK)
   cy -= 14
   txt('Surface :', T_X0 + 10, cy, 7.5, 'F2', GRAY)
-  txt(formatA(d.area), T_X0 + 55, cy, 7.5, 'F2', BLUE_TEXT)
+  txt(formatA(d.area), T_X0 + 55, cy, 7.5, 'F2', DARK)
   cy -= 14
   txt('Périmètre :', T_X0 + 10, cy, 7.5, 'F2', GRAY)
   txt(formatM(d.perimeter), T_X0 + 55, cy, 7.5, 'F2', DARK)
   cy -= 18
 
   // Tableau coordonnées compact
-  out.push(drawRoundedRect(T_X0 + 6, cy - 14, T_W - 12, 14, 2, BG_SUBTLE))
-  txt('Point', T_X0 + 12, cy - 10, 6.8, 'F2', BLUE_TEXT)
-  txtR('X (m)', T_X0 + 115, cy - 10, 6.8, 'F2', BLUE_TEXT)
-  txtR('Y (m)', T_X0 + T_W - 14, cy - 10, 6.8, 'F2', BLUE_TEXT)
+  out.push(`${DARK} RG 0.8 w ${T_X0 + 6} ${(cy - 14).toFixed(2)} m ${(T_X0 + T_W - 6).toFixed(2)} ${(cy - 14).toFixed(2)} l S\n`)
+  txt('Point', T_X0 + 12, cy - 10, 6.8, 'F2', DARK)
+  txtR('X (m)', T_X0 + 115, cy - 10, 6.8, 'F2', DARK)
+  txtR('Y (m)', T_X0 + T_W - 14, cy - 10, 6.8, 'F2', DARK)
   cy -= 16
 
   const maxRowsCartouche = Math.floor((cy - P_Y0 - 10) / 12)
   for (let i = 0; i < Math.min(n, maxRowsCartouche); i++) {
     const p = d.pts[i]
-    if (i % 2 === 1) {
-      out.push(`${BG_SUBTLE} rg ${(T_X0 + 6).toFixed(2)} ${(cy - 10).toFixed(2)} ${(T_W - 12).toFixed(2)} 11 re f\n`)
-    }
-    txt(`P${i + 1}`, T_X0 + 12, cy - 8, 6.8, 'F2', BLUE_TEXT)
+    txt(`P${i + 1}`, T_X0 + 12, cy - 8, 6.8, 'F2', DARK)
     txtR(frNum(p.x, 2), T_X0 + 115, cy - 8, 6.8, 'F1', DARK)
     txtR(frNum(p.y, 2), T_X0 + T_W - 14, cy - 8, 6.8, 'F1', DARK)
     cy -= 12
@@ -698,7 +657,7 @@ function buildPage2(d: PlanData, dateStr: string, opts: Page2Opts = {}): string 
 
 const AFF_SUMMARY_MAX_ROWS = 10
 
-function buildAffSummaryPage(d: PlanData, pieces: AffectationPiece[], totalCount: number, dateStr: string, continuation: boolean): string {
+function buildAffSummaryPage(d: PlanData, pieces: AffectationPiece[], dateStr: string, continuation: boolean): string {
   const out: string[] = []
   const txt = (s: string, x: number, y: number, size: number, font = 'F1', color = DARK): void => {
     out.push(`${color} rg BT /${font} ${size} Tf 1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm (${esc(s)}) Tj ET\n`)
@@ -706,72 +665,40 @@ function buildAffSummaryPage(d: PlanData, pieces: AffectationPiece[], totalCount
   const txtR = (s: string, right: number, y: number, size: number, font = 'F1', color = DARK): void =>
     txt(s, right - textW(s, size, font === 'F2'), y, size, font, color)
 
-  out.push(drawHeaderBanner(
+  out.push(drawHeaderSober(
     'PLAN DES AFFECTATIONS DU SOL & DÉCOUPAGE',
     continuation ? `${subj(d)} (Suite)` : subj(d),
-    'AFFECTATIONS',
-    AL,
-    ALH
+    ALH,
+    AL
   ))
 
-  let y = 505
-
-  if (!continuation) {
-    // 4 KPI Cards
-    const domPiece = pieces.length > 0 ? pieces.slice().sort((a, b) => b.areaM2 - a.areaM2)[0] : null
-
-    const kpis = [
-      { label: 'SUPERFICIE DU TERRAIN', val: `${frNum(d.area, 0)} m²`, sub: d.area >= 10000 ? `${frNum(d.area / 10000, 2)} ha` : 'Superficie cadastrale', color: BG_BLUE, textColor: BLUE_TEXT },
-      { label: 'PÉRIMÈTRE TOTAL', val: formatM(d.perimeter), sub: 'Périmètre extérieur', color: BG_CARD, textColor: NAVY },
-      { label: "ZONES D'AFFECTATION", val: `${totalCount} affectation(s)`, sub: `${pieces.length} affichée(s) sur cette page`, color: BG_GREEN, textColor: GREEN_TEXT },
-      { label: 'AFFECTATION DOMINANTE', val: domPiece ? fitText(domPiece.label, 9, 140, true) : 'Aucune', sub: domPiece ? `${domPiece.percent.toFixed(1)} % (${frNum(domPiece.areaM2, 0)} m²)` : 'Aucune zone', color: BG_AMBER, textColor: AMBER_TEXT },
-    ]
-
-    const kpiW = (AL - 72 - 3 * 10) / 4
-    kpis.forEach((kpi, idx) => {
-      const kx = 36 + idx * (kpiW + 10)
-      out.push(drawRoundedRect(kx, y - 46, kpiW, 46, 6, kpi.color, LINE, 0.8))
-      txt(kpi.label, kx + 8, y - 14, 6.2, 'F2', GRAY)
-      txt(kpi.val, kx + 8, y - 28, 9.5, 'F2', kpi.textColor)
-      txt(kpi.sub, kx + 8, y - 40, 5.8, 'F1', GRAY)
-    })
-
-    y -= 64
-  }
+  let y = 540
 
   // Tableau des affectations
-  out.push(`${BLUE_ACCENT} rg 36 ${y - 12} 3 14 re f\n`)
-  txt('DÉTAIL DES AFFECTATIONS DU PLAN D\'AMÉNAGEMENT', 44, y - 10, 9.5, 'F2', DARK)
+  txt('DÉTAIL DES AFFECTATIONS DU PLAN D\'AMÉNAGEMENT', 36, y - 10, 9.5, 'F2', DARK)
   y -= 22
 
   const tableX = 36
   const tableW = AL - 72
-  const colW = { color: 30, label: 220, desig: 200, m2: 120, ha: 100, pct: tableW - 670 }
+  const colW = { label: 220, desig: 200, m2: 120, ha: 100, pct: tableW - 640 }
 
-  // En-tête
-  out.push(drawRoundedRect(tableX, y - 18, tableW, 18, 4, NAVY))
-  txt('Zonage', tableX + 10, y - 12, 7.5, 'F2', '1 1 1')
-  txt('Libellé / Affectation', tableX + colW.color + 10, y - 12, 7.5, 'F2', '1 1 1')
-  txt('Désignation PA', tableX + colW.color + colW.label + 10, y - 12, 7.5, 'F2', '1 1 1')
-  txtR('Superficie (m²)', tableX + colW.color + colW.label + colW.desig + colW.m2 - 10, y - 12, 7.5, 'F2', '1 1 1')
-  txtR('Superficie (ha)', tableX + colW.color + colW.label + colW.desig + colW.m2 + colW.ha - 10, y - 12, 7.5, 'F2', '1 1 1')
-  txtR('Part (%)', tableX + tableW - 12, y - 12, 7.5, 'F2', '1 1 1')
+  // En-tête (fond blanc, titre en gras noir, filet noir sous l'en-tête)
+  out.push(`${DARK} RG 1 w ${tableX} ${(y - 18).toFixed(2)} m ${(tableX + tableW).toFixed(2)} ${(y - 18).toFixed(2)} l S\n`)
+  txt('Libellé / Affectation', tableX + 10, y - 12, 7.5, 'F2', DARK)
+  txt('Désignation PA', tableX + colW.label + 10, y - 12, 7.5, 'F2', DARK)
+  txtR('Superficie (m²)', tableX + colW.label + colW.desig + colW.m2 - 10, y - 12, 7.5, 'F2', DARK)
+  txtR('Superficie (ha)', tableX + colW.label + colW.desig + colW.m2 + colW.ha - 10, y - 12, 7.5, 'F2', DARK)
+  txtR('Part (%)', tableX + tableW - 12, y - 12, 7.5, 'F2', DARK)
   y -= 18
 
-  pieces.forEach((pc, i) => {
-    const rowBg = i % 2 === 0 ? '1 1 1' : BG_SUBTLE
-    out.push(`${rowBg} rg ${tableX} ${(y - 18).toFixed(2)} ${tableW} 18 re f\n`)
+  pieces.forEach((pc) => {
+    out.push(`1 1 1 rg ${tableX} ${(y - 18).toFixed(2)} ${tableW} 18 re f\n`)
     out.push(`${LINE} RG 0.5 w ${tableX} ${(y - 18).toFixed(2)} m ${(tableX + tableW).toFixed(2)} ${(y - 18).toFixed(2)} l S\n`)
 
-    // Pastille de couleur de zonage
-    const chipX = tableX + 10
-    const chipY = y - 14
-    out.push(drawRoundedRect(chipX, chipY, 12, 10, 2, hexToRgb(pc.color), LINE, 0.6))
-
-    txt(fitText(pc.label, 8, colW.label - 14, true), tableX + colW.color + 10, y - 12, 8, 'F2', DARK)
-    txt(fitText(pc.designation || 'Non spécifiée', 7.5, colW.desig - 14), tableX + colW.color + colW.label + 10, y - 12, 7.5, 'F1', GRAY)
-    txtR(`${frNum(pc.areaM2, 0)} m²`, tableX + colW.color + colW.label + colW.desig + colW.m2 - 10, y - 12, 7.8, 'F2', DARK)
-    txtR(pc.areaM2 >= 10000 ? `${frNum(pc.areaM2 / 10000, 2)} ha` : '< 1 ha', tableX + colW.color + colW.label + colW.desig + colW.m2 + colW.ha - 10, y - 12, 7.5, 'F1', GRAY)
+    txt(fitText(pc.label, 8, colW.label - 14, true), tableX + 10, y - 12, 8, 'F2', DARK)
+    txt(fitText(pc.designation || 'Non spécifiée', 7.5, colW.desig - 14), tableX + colW.label + 10, y - 12, 7.5, 'F1', GRAY)
+    txtR(`${frNum(pc.areaM2, 0)} m²`, tableX + colW.label + colW.desig + colW.m2 - 10, y - 12, 7.8, 'F2', DARK)
+    txtR(pc.areaM2 >= 10000 ? `${frNum(pc.areaM2 / 10000, 2)} ha` : '< 1 ha', tableX + colW.label + colW.desig + colW.m2 + colW.ha - 10, y - 12, 7.5, 'F1', GRAY)
     txtR(`${pc.percent.toFixed(1)} %`, tableX + tableW - 12, y - 12, 8, 'F2', BLUE_TEXT)
 
     y -= 18
@@ -930,13 +857,13 @@ export function buildAffectationsPdf(title: string, terrainRing: number[][], raw
 
   // Page 1 récapitulative
   if (pieces.length === 0) {
-    pages.push({ width: AL, height: ALH, content: buildAffSummaryPage(terrain, [], 0, dateStr, false) })
+    pages.push({ width: AL, height: ALH, content: buildAffSummaryPage(terrain, [], dateStr, false) })
   } else {
     for (let i = 0; i < pieces.length; i += AFF_SUMMARY_MAX_ROWS) {
       pages.push({
         width: AL,
         height: ALH,
-        content: buildAffSummaryPage(terrain, pieces.slice(i, i + AFF_SUMMARY_MAX_ROWS), pieces.length, dateStr, i > 0),
+        content: buildAffSummaryPage(terrain, pieces.slice(i, i + AFF_SUMMARY_MAX_ROWS), dateStr, i > 0),
       })
     }
   }
