@@ -2,6 +2,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import area from '@turf/area'
 import centroid from '@turf/centroid'
 import { type CoucheFeatureCollection } from '../api/couches'
+import { attributeLabel, CADASTRE_ATTRIBUTE_LABELS, formatParcelleRef } from '../utils/attributeLabels'
 import { t } from '../i18n/index'
 import { extractRing } from '../utils/terrainDims'
 
@@ -42,7 +43,7 @@ const CADASTRE_SELECTED_STYLE = { color: '#16a34a', weight: 4, opacity: 1, fillC
 const MANUAL_PATH_STYLE = { color: '#dc2626', weight: 2, fillColor: '#ef4444', fillOpacity: 0.18 }
 const MANUAL_PREVIEW_STYLE = { color: '#dc2626', weight: 2, dashArray: '4 4' }
 
-const emptyGeom = (mode: TerrainGeomMode = 'cadastre'): TerrainGeom => ({
+const emptyGeom = (mode: TerrainGeomMode = 'geojson'): TerrainGeom => ({
   mode,
   vertices: [],
   geometry: '',
@@ -142,9 +143,18 @@ export function TerrainGeometryEditor({ value, onChange, cadastre }: TerrainGeom
 
   const [, forceRender] = useReducer((x: number) => x + 1, 0)
 
-  const [geojsonText, setGeojsonText] = useState('')
   const [geojsonError, setGeojsonError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  interface ImportRow {
+    id: number
+    label: string
+    attrs: string
+    ring: number[][]
+  }
+
+  const [importRows, setImportRows] = useState<ImportRow[] | null>(null)
+  const [importFileName, setImportFileName] = useState('')
 
   const [cadastreQuery, setCadastreQuery] = useState('')
   const [cadastreMsg, setCadastreMsg] = useState<{ type: 'ok' | 'error'; text: string } | null>(null)
@@ -519,47 +529,99 @@ export function TerrainGeometryEditor({ value, onChange, cadastre }: TerrainGeom
     if (value.mode === mode) return
     if (mode !== 'geojson') {
       setGeojsonError(null)
-      setGeojsonText('')
+      setImportRows(null)
+      setImportFileName('')
     }
     setCadastreMsg(null)
     onChange({ ...value, mode, vertices: [], geometry: '', areaM2: null, centroid: null, source: '' })
   }
 
-  const applyImportedRing = (ring: number[][], label: string): void => {
-    if (!ring || ring.length < 3) {
-      setGeojsonError(t('ranking.geo_geojson_invalid'))
-      return
+  const collectFeatures = (parsed: unknown): any[] => {
+    if (!parsed || typeof parsed !== 'object') return []
+    const p = parsed as any
+    if (p.type === 'FeatureCollection' && Array.isArray(p.features)) return p.features
+    if (p.type === 'Feature') return [p]
+    if (p.type === 'Polygon' || p.type === 'MultiPolygon') {
+      return [{ type: 'Feature', properties: {}, geometry: p }]
     }
-    const geom = ringToGeom(ring)
+    if (Array.isArray(p)) {
+      const out: any[] = []
+      for (const item of p) {
+        out.push(...collectFeatures(item))
+      }
+      return out
+    }
+    return []
+  }
+
+  const ROW_ATTR_EXCLUDE = new Set(['geometry', 'id', 'gid', 'ogc_fid'])
+
+  const buildImportRows = (features: any[]): ImportRow[] => {
+    const rows: ImportRow[] = []
+    features.forEach((feat: any, i: number) => {
+      const ring = firstRing(feat?.geometry)
+      if (!ring || ring.ring.length < 3) return
+      const props = feat?.properties
+      const num = props?.num ?? props?.num_parcelle ?? props?.num_titre_foncier ?? props?.id_parcelle ?? ''
+      const indice = props?.indice ?? ''
+      const ref = formatParcelleRef(num, indice)
+      const label = ref || `Parcelle ${i + 1}`
+      const attrs = Object.entries(props || {})
+        .filter(([k, v]) => !ROW_ATTR_EXCLUDE.has(k) && v != null && v !== '' && String(v).trim() !== '')
+        .slice(0, 6)
+        .map(([k, v]) => `${attributeLabel(k, CADASTRE_ATTRIBUTE_LABELS)} : ${v}`)
+        .join(' · ')
+      rows.push({ id: i, label, attrs, ring: ring.ring })
+    })
+    return rows
+  }
+
+  const applyImportRow = (row: ImportRow): void => {
+    const geom = ringToGeom(row.ring)
     if (!geom.geometry || geom.vertices.length < 3) {
       setGeojsonError(t('ranking.geo_geojson_invalid'))
       return
     }
     setGeojsonError(null)
-    onChange({ ...geom, mode: 'geojson', source: label })
+    onChange({ ...geom, mode: 'geojson', source: row.label })
   }
 
-  const parseAndImport = (raw: string, label: string): void => {
+  const resetImport = (): void => {
+    setImportRows(null)
+    setImportFileName('')
     setGeojsonError(null)
-    let parsed: unknown
-    try {
-      parsed = JSON.parse(raw)
-    } catch {
-      setGeojsonError(t('ranking.geo_geojson_invalid'))
-      return
-    }
-    const ring = firstRing(parsed)
-    if (!ring) {
-      setGeojsonError(t('ranking.geo_geojson_invalid'))
-      return
-    }
-    applyImportedRing(ring.ring, label)
+    onChange({ ...value, vertices: [], geometry: '', areaM2: null, centroid: null, source: '' })
   }
 
   const handleFile = (file: File): void => {
+    setGeojsonError(null)
     const reader = new FileReader()
-    reader.onload = () => parseAndImport(String(reader.result ?? ''), file.name)
-    reader.onerror = () => setGeojsonError(t('ranking.geo_geojson_invalid'))
+    reader.onload = () => {
+      let parsed: unknown
+      try {
+        parsed = JSON.parse(String(reader.result ?? ''))
+      } catch {
+        setImportRows(null)
+        setImportFileName('')
+        setGeojsonError(t('ranking.geo_geojson_invalid'))
+        return
+      }
+      const features = collectFeatures(parsed)
+      const rows = buildImportRows(features)
+      if (rows.length === 0) {
+        setImportRows(null)
+        setImportFileName('')
+        setGeojsonError(t('ranking.geo_geojson_invalid'))
+        return
+      }
+      setImportRows(rows)
+      setImportFileName(file.name)
+    }
+    reader.onerror = () => {
+      setImportRows(null)
+      setImportFileName('')
+      setGeojsonError(t('ranking.geo_geojson_invalid'))
+    }
     reader.readAsText(file)
   }
 
@@ -569,14 +631,6 @@ export function TerrainGeometryEditor({ value, onChange, cadastre }: TerrainGeom
   return (
     <div className="geo-terrain-geom">
       <div className="geo-terrain-geom-modes">
-        <button
-          type="button"
-          className={`geo-terrain-geom-mode geo-terrain-geom-mode--recommended${value.mode === 'cadastre' ? ' is-active' : ''}`}
-          onClick={() => switchMode('cadastre')}
-        >
-          {t('ranking.geo_mode_cadastre')}
-          <span className="geo-terrain-geom-mode-badge">{t('ranking.geo_recommended')}</span>
-        </button>
         <button
           type="button"
           className={`geo-terrain-geom-mode${value.mode === 'geojson' ? ' is-active' : ''}`}
@@ -590,7 +644,6 @@ export function TerrainGeometryEditor({ value, onChange, cadastre }: TerrainGeom
           onClick={() => switchMode('manual')}
         >
           {t('ranking.geo_mode_manual')}
-          <span className="geo-terrain-geom-mode-badge geo-terrain-geom-mode-badge--warn">{t('ranking.geo_last_resort')}</span>
         </button>
       </div>
 
@@ -642,37 +695,43 @@ export function TerrainGeometryEditor({ value, onChange, cadastre }: TerrainGeom
         </div>
       ) : value.mode === 'geojson' ? (
         <div className="geo-terrain-geom-geojson">
-          <div className="geo-terrain-geom-geojson-row">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".geojson,.json,application/geo+json,application/json"
-              hidden
-              onChange={(e) => {
-                const file = e.currentTarget.files?.[0]
-                if (file) handleFile(file)
-                e.currentTarget.value = ''
-              }}
-            />
-            <button type="button" className="btn btn-outline" onClick={() => fileInputRef.current?.click()}>
-              {t('ranking.geo_import_file')}
-            </button>
-            <textarea
-              className="geo-terrain-geom-geojson-text"
-              placeholder={t('ranking.geo_paste_geojson')}
-              value={geojsonText}
-              onChange={(e) => setGeojsonText(e.target.value)}
-              rows={3}
-            />
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={!geojsonText.trim()}
-              onClick={() => parseAndImport(geojsonText, t('ranking.geo_import_pasted'))}
-            >
-              {t('ranking.geo_import')}
-            </button>
-          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".geojson,.json,application/geo+json,application/json"
+            hidden
+            onChange={(e) => {
+              const file = e.currentTarget.files?.[0]
+              if (file) handleFile(file)
+              e.currentTarget.value = ''
+            }}
+          />
+          {importRows === null ? (
+            <div className="geo-terrain-geom-geojson-row">
+              <button type="button" className="btn btn-primary" onClick={() => fileInputRef.current?.click()}>
+                {t('ranking.geo_import')}
+              </button>
+            </div>
+          ) : (
+            <>
+              <p className="geo-terrain-geom-ok">
+                {t('ranking.geo_import_rows_count').replace('{file}', importFileName).replace('{n}', String(importRows.length))}
+              </p>
+              <div className="geo-terrain-geom-import-list">
+                {importRows.map((row) => (
+                  <button type="button" key={row.id} className="geo-terrain-geom-import-row" onClick={() => applyImportRow(row)}>
+                    <span className="geo-terrain-geom-import-row-label"><strong>{row.label}</strong></span>
+                    {row.attrs ? <span className="geo-terrain-geom-import-row-attrs">{row.attrs}</span> : null}
+                  </button>
+                ))}
+              </div>
+              <div className="geo-terrain-geom-import-footer">
+                <button type="button" className="btn btn-outline btn-action" onClick={resetImport}>
+                  {t('ranking.geo_import_rechoose')}
+                </button>
+              </div>
+            </>
+          )}
           {geojsonError ? <p className="geo-terrain-geom-error">{geojsonError}</p> : null}
           {value.geometry && value.areaM2 != null ? (
             <p className="geo-terrain-geom-ok">

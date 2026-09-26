@@ -23,7 +23,6 @@ const investisseurNav: NavItem[] = [
 ]
 
 const investisseurProjectNav: NavItem[] = [
-  { id: 'project_details', labelKey: 'dashboard.sidebar.project_details', icon: 'folder', href: '' },
   { id: 'ranking', labelKey: 'dashboard.sidebar.ranking', icon: 'ranking', href: '' },
   { id: 'geoportail', labelKey: 'dashboard.sidebar.geoportail', icon: 'globe', href: '' },
 ]
@@ -129,9 +128,7 @@ export function DashboardLayout({ role, activePage, children, hideSidebar = fals
               Projet : {ctx.name}
             </span>
             {nav.map((item) => {
-              const href = item.id === 'project_details'
-                ? `/projets/${ctx.id}/details`
-                : item.id === 'ranking'
+              const href = item.id === 'ranking'
                 ? `/projets/${ctx.id}/classement`
                 : item.id === 'geoportail'
                 ? `/projets/${ctx.id}/classement/ajouter`

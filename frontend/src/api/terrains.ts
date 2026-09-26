@@ -36,14 +36,18 @@ export interface TerrainListResponse {
 }
 
 export interface TerrainPayload {
-  num_titre_foncier: string
-  statut_juridique: string
-  prix_demande: number | null
-  zonage: string
-  cos: number | null
-  cus: number | null
-  hauteur_maximale: number | null
-  equipements: string[]
+  num_parcelle?: string
+  indice?: string
+  complement?: string
+  consistance?: string
+  num_titre_foncier?: string
+  statut_juridique?: string
+  prix_demande?: number | null
+  zonage?: string
+  cos?: number | null
+  cus?: number | null
+  hauteur_maximale?: number | null
+  equipements?: string[]
   superficie: number | null
   lat: number | null
   lng: number | null

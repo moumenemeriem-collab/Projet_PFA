@@ -1925,6 +1925,21 @@
   visibility: visible;
 }
 
+/* ── Bouton d'ouverture/fermeture du sidebar AMC : titre permanent ── */
+/* Le titre « Filtres d'analyse » reste affiché tant que le sidebar est fermé */
+/* et disparaît dès que le sidebar est ouvert. */
+
+.geo-fab-sidebar[data-tooltip]:not(.geo-fab--active)::after {
+  opacity: 1;
+  visibility: visible;
+}
+
+.geo-fab-sidebar.geo-fab--active[data-tooltip]::after,
+.geo-fab-sidebar.geo-fab--active[data-tooltip]:hover::after {
+  opacity: 0;
+  visibility: hidden;
+}
+
 /* ── Leaflet zoom controls (en bas à gauche, juste au-dessus des coordonnées) ── */
 
 .leaflet-bottom.leaflet-left {
@@ -3431,6 +3446,49 @@
   margin: 6px 0 0;
   font-size: 0.75rem;
   color: #b45309;
+}
+
+.geo-terrain-geom-import-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.geo-terrain-geom-import-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  text-align: left;
+  border: 1px solid #d6dde6;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.geo-terrain-geom-import-row:hover {
+  border-color: var(--primary);
+  background: #f0f6ff;
+}
+
+.geo-terrain-geom-import-row-label {
+  font-size: 0.82rem;
+  color: #1a2b3c;
+}
+
+.geo-terrain-geom-import-row-attrs {
+  font-size: 0.72rem;
+  color: #6b7c90;
+  word-break: break-word;
+}
+
+.geo-terrain-geom-import-footer {
+  display: flex;
+  margin-top: 4px;
 }
 
 .geo-terrain-geom-geojson-row {
@@ -5008,8 +5066,8 @@
   font-weight: 800;
   color: #1E293B;
   letter-spacing: -0.02em;
-  line-height: 1.25;
-  margin: 0 0 2px;
+  line-height: 1.5;
+  margin: 0 0 6px;
 }
 
 .geo-sidebar-scroll--ponderation .geo-sidebar-desc {
@@ -5017,7 +5075,7 @@
   font-weight: 400;
   color: #64748B;
   margin: 0;
-  line-height: 1.4;
+  line-height: 1.65;
 }
 
 /* ── Stepper dans la sidebar ── */
@@ -5026,8 +5084,8 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 10px 20px 8px;
-  margin-bottom: 0.4rem;
+  padding: 12px 20px 10px;
+  margin-bottom: 0.6rem;
   background: linear-gradient(180deg, #E8F0FB 0%, #f4f7fc 100%);
   border-bottom: 1px solid #e8ecf2;
   box-sizing: border-box;
@@ -5127,8 +5185,9 @@
   width: 100%;
   max-width: 68px;
   text-align: center;
-  line-height: 1.2;
+  line-height: 1.5;
   letter-spacing: 0.01em;
+  margin-top: 6px;
   transition: color 0.3s ease, font-weight 0.2s ease;
 }
 
@@ -5164,23 +5223,25 @@
 .geo-sidebar-scroll--ponderation .critere-step-title {
   font-size: 1.05rem;
   color: #1a2744;
-  margin-top: 0;
+  margin-top: 20px;
   margin-bottom: 0.15rem;
+  line-height: 1.5;
 }
 
 .geo-sidebar-scroll--ponderation .critere-step-desc {
   font-size: 0.78rem;
   color: #6B7A99;
   margin-top: 0;
-  margin-bottom: 0.6rem;
+  margin-bottom: 1rem;
+  line-height: 1.65;
 }
 
 .geo-sidebar-scroll--ponderation .critere-section {
   background: #ffffff;
   border: 1px solid #e8ecf2;
   border-radius: 14px;
-  padding: 0.75rem 1rem 0.85rem;
-  margin: 0 0 0.65rem;
+  padding: 0.9rem 1rem 1rem;
+  margin: 0 0 1rem;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.025);
   transition: box-shadow 0.2s, border-color 0.2s;
 }
@@ -5195,20 +5256,20 @@
   font-weight: 700;
   color: #1a2744;
   margin-top: 0;
-  margin-bottom: 0.15rem;
-  line-height: 1.2;
+  margin-bottom: 0.35rem;
+  line-height: 1.5;
 }
 
 .geo-sidebar-scroll--ponderation .critere-section-desc {
   font-size: 0.74rem;
   color: #6B7A99;
   margin-top: 0;
-  margin-bottom: 0.5rem;
-  line-height: 1.35;
+  margin-bottom: 0.9rem;
+  line-height: 1.6;
 }
 
 .geo-sidebar-scroll--ponderation .critere-chips {
-  gap: 0.45rem;
+  gap: 0.6rem;
 }
 
 .geo-sidebar-scroll--ponderation .critere-chip {
@@ -5237,9 +5298,9 @@
 }
 
 .geo-sidebar-scroll--ponderation .critere-sub {
-  margin-top: 0.75rem;
+  margin-top: 1rem;
   background: #f8faff;
-  padding: 0.75rem 0.9rem;
+  padding: 0.9rem 0.9rem;
   border-radius: 10px;
   border: 1px solid #e0e7f2;
 }
@@ -5250,13 +5311,13 @@
 
 .geo-sidebar-scroll--ponderation .critere-select {
   font-size: 0.8rem;
-  padding: 0.4rem 0.65rem;
+  padding: 0.5rem 0.7rem;
   border-radius: 8px;
   border: 1.5px solid #d4dbe8;
 }
 
 .geo-sidebar-scroll--ponderation .critere-radios {
-  gap: 0.5rem;
+  gap: 0.65rem;
 }
 
 .geo-sidebar-scroll--ponderation .critere-radio {
@@ -5274,7 +5335,7 @@
 /* ── AhpStep dans la sidebar ── */
 
 .geo-sidebar-scroll--ponderation .ahp-step {
-  padding: 0;
+  padding: 0 20px 1.25rem;
   background: transparent;
   border: none;
   border-radius: 0;
@@ -5284,18 +5345,21 @@
 .geo-sidebar-scroll--ponderation .ahp-step-title {
   font-size: 1.05rem;
   color: #1a2744;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+  margin-top: 20px;
 }
 
 .geo-sidebar-scroll--ponderation .ahp-step-desc {
   font-size: 0.8rem;
   color: #6B7A99;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1.1rem;
+  line-height: 1.65;
 }
 
 .geo-sidebar-scroll--ponderation .ahp-comparison-card {
-  padding: 0.75rem;
-  margin-bottom: 0.75rem;
+  padding: 0.9rem;
+  margin-bottom: 1rem;
 }
 
 .geo-sidebar-scroll--ponderation .ahp-comparison-header {
@@ -5320,7 +5384,7 @@
 }
 
 .geo-sidebar-scroll--ponderation .ahp-badge-container {
-  margin-top: 0.35rem;
+  margin-top: 0.6rem;
 }
 
 .geo-sidebar-scroll--ponderation .ahp-badge {
@@ -5329,16 +5393,16 @@
 }
 
 .geo-sidebar-scroll--ponderation .ahp-result {
-  margin-top: 0.75rem;
+  margin-top: 1rem;
 }
 
 .geo-sidebar-scroll--ponderation .ahp-result h4 {
   font-size: 0.88rem;
-  margin-bottom: 0.45rem;
+  margin-bottom: 0.6rem;
 }
 
 .geo-sidebar-scroll--ponderation .ahp-weight-item {
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.5rem;
 }
 
 .geo-sidebar-scroll--ponderation .ahp-weight-label {
@@ -5350,9 +5414,9 @@
 }
 
 .geo-sidebar-scroll--ponderation .ahp-coherence {
-  padding: 0.45rem 0.7rem;
+  padding: 0.6rem 0.75rem;
   font-size: 0.78rem;
-  margin-top: 0.45rem;
+  margin-top: 0.75rem;
   border-radius: 10px;
 }
 
@@ -5410,7 +5474,7 @@
 /* ── RocStep dans la sidebar ── */
 
 .geo-sidebar-scroll--ponderation .roc-step {
-  padding: 0;
+  padding: 0 20px 1.25rem;
   background: transparent;
   border: none;
   border-radius: 0;
@@ -5420,17 +5484,20 @@
 .geo-sidebar-scroll--ponderation .roc-step-title {
   font-size: 1.05rem;
   color: #1a2744;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+  margin-top: 20px;
 }
 
 .geo-sidebar-scroll--ponderation .roc-step-desc {
   font-size: 0.8rem;
   color: #6B7A99;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1.1rem;
+  line-height: 1.65;
 }
 
 .geo-sidebar-scroll--ponderation .roc-item {
-  padding: 0.6rem 0.75rem;
+  padding: 0.75rem 0.85rem;
   font-size: 0.82rem;
   border-radius: 10px;
   border: 1.5px solid #e0e7f2;
@@ -5469,7 +5536,7 @@
 /* ── ResultatsStep dans la sidebar ── */
 
 .geo-sidebar-scroll--ponderation .resultats-step {
-  padding: 0;
+  padding: 0 20px 1.25rem;
   background: transparent;
   border: none;
   border-radius: 0;
@@ -5477,26 +5544,28 @@
 }
 
 .geo-sidebar-scroll--ponderation .resultats-header-block {
-  margin-top: 0.25rem;
-  margin-bottom: 0.75rem;
-  padding-top: 1rem;
+  margin-top: 0.35rem;
+  margin-bottom: 1rem;
+  padding-top: 1.1rem;
   border-top: 1px solid #e8ecf2;
 }
 
 .geo-sidebar-scroll--ponderation .resultats-step-title {
   font-size: 1.05rem;
   color: #1a2744;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.4rem;
+  line-height: 1.5;
 }
 
 .geo-sidebar-scroll--ponderation .resultats-step-desc {
   font-size: 0.78rem;
   color: #6B7A99;
+  line-height: 1.65;
 }
 
 .geo-sidebar-scroll--ponderation .resultats-poids-card {
-  padding: 0.85rem;
-  margin-bottom: 0.75rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
   border-radius: 12px;
   border: 1px solid #e0e7f2;
 }
@@ -5507,7 +5576,7 @@
 }
 
 .geo-sidebar-scroll--ponderation .resultats-poids-item {
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.45rem;
   border-radius: 8px;
   border: 1px solid #e8ecf2;
 }
@@ -5528,8 +5597,8 @@
   border-radius: 12px;
   border: 1px solid #bfdbfe;
   background: linear-gradient(135deg, #eff6ff, #f0fdf4);
-  padding: 0.75rem 0.9rem;
-  margin-bottom: 0.85rem;
+  padding: 0.9rem 1rem;
+  margin-bottom: 1.1rem;
 }
 
 .geo-sidebar-scroll--ponderation .resultats-synthesis-text {
@@ -5562,8 +5631,8 @@
 
 .geo-sidebar-scroll--ponderation .resultats-synthesis-show {
   font-size: 0.72rem;
-  padding: 0.35rem 0.65rem;
-  margin: 0 0 0.65rem;
+  padding: 0.45rem 0.75rem;
+  margin: 0 0 0.85rem;
 }
 
 .geo-sidebar-scroll--ponderation .resultats-contrib-row {
@@ -5576,8 +5645,8 @@
 }
 
 .geo-sidebar-scroll--ponderation .resultats-filter-bar {
-  padding: 0.65rem 0.85rem;
-  margin-bottom: 0.65rem;
+  padding: 0.8rem 0.9rem;
+  margin-bottom: 0.85rem;
   border-radius: 12px;
   border: 1.5px solid #e0e7f2;
 }
@@ -5677,14 +5746,14 @@
 /* ── Step-actions buttons dans la sidebar ── */
 
 .geo-sidebar-scroll--ponderation .step-actions {
-  padding: 0.75px 20px 0.75rem;
-  gap: 0.6rem;
+  padding: 0.75px 20px 1rem;
+  gap: 0.9rem;
   background: transparent;
 }
 
 .geo-sidebar-scroll--ponderation .step-actions .wz-btn {
   font-size: 0.8rem;
-  padding: 0.5rem 1rem;
+  padding: 0.6rem 1.1rem;
   border-radius: 10px;
 }
 

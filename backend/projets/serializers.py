@@ -262,7 +262,11 @@ class TerrainListSerializer(serializers.ModelSerializer):
 
 
 class TerrainCreateSerializer(serializers.Serializer):
+    num_parcelle = serializers.CharField(max_length=255, allow_blank=True, default='')
     num_titre_foncier = serializers.CharField(max_length=255, allow_blank=True, default='')
+    indice = serializers.CharField(max_length=255, allow_blank=True, default='')
+    complement = serializers.CharField(max_length=255, allow_blank=True, default='')
+    consistance = serializers.CharField(max_length=255, allow_blank=True, default='')
     statut_juridique = serializers.ChoiceField(
         choices=[c for c, _ in Terrain.STATUT_JURIDIQUE_CHOICES],
         required=False,
@@ -299,12 +303,14 @@ class TerrainCreateSerializer(serializers.Serializer):
             if geom is None or geom.geom_type != 'Polygon' or not geom.valid:
                 raise serializers.ValidationError({'geometry': 'Seul un polygone valide est accepté.'})
             geom.srid = 4326
+        num_parcelle = validated_data.pop('num_parcelle', '')
         num_titre = validated_data.pop('num_titre_foncier', '')
+        identifiant = num_parcelle or num_titre
         superficie = validated_data.pop('superficie', None)
         terrain = Terrain(
-            nom=num_titre,
-            num_parcelle=num_titre,
-            num_titre_foncier=num_titre,
+            nom=identifiant,
+            num_parcelle=identifiant,
+            num_titre_foncier=identifiant,
             superficie=superficie if superficie is not None else 0,
             geometry=geom,
             **validated_data,

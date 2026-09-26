@@ -536,21 +536,6 @@ const TEMARA_BOUNDS: [[number, number], [number, number]] = [
   [34.05, -6.75],
 ]
 
-const STATUTS_JURIDIQUES: { value: string; label: string }[] = [
-  { value: 'titre', label: 'statut_titre' },
-  { value: 'requisition', label: 'statut_requisition' },
-  { value: 'non_immatricule', label: 'statut_non_immatricule' },
-  { value: 'collectif', label: 'statut_collectif' },
-]
-
-const ZONAGES: { value: string; label: string }[] = [
-  { value: 'residentiel', label: 'zonage_residentiel' },
-  { value: 'commercial', label: 'zonage_commercial' },
-  { value: 'industriel', label: 'zonage_industriel' },
-  { value: 'agricole', label: 'zonage_agricole' },
-  { value: 'mixte', label: 'zonage_mixte' },
-]
-
 // Mesure l'espace occupé par les panneaux qui recouvrent la carte (`.geo-terrain-card`
 // à droite, `.geo-nav` en haut) afin que la zone RÉELLEMENT VISIBLE en tienne compte.
 // Réutilisé par `centerMapOnPoint` (panBy) et par `overlayFlyToBounds` (flyToBounds).
@@ -921,14 +906,10 @@ export function GeoportalPage(): React.JSX.Element {
   const [drawFinished, setDrawFinished] = useState<{ area: number; center: { lat: number; lng: number }; geometry: string } | null>(null)
   const [drawError, setDrawError] = useState<string | null>(null)
   const [terrainForm, setTerrainForm] = useState({
-    num_titre_foncier: '',
-    statut_juridique: '',
-    prix_demande: '',
-    zonage: '',
-    cos: '',
-    cus: '',
-    hauteur_maximale: '',
-    equipements: [] as string[],
+    num_parcelle: '',
+    indice: '',
+    complement: '',
+    consistance: '',
     geom: emptyGeom(),
   })
   const [savingTerrain, setSavingTerrain] = useState(false)
@@ -1657,45 +1638,33 @@ export function GeoportalPage(): React.JSX.Element {
   const handleAddTerrain = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
     if (!projetId) return
-    const numTitre = terrainForm.num_titre_foncier.trim()
-    const prixDemande = terrainForm.prix_demande.trim() !== '' ? Number(terrainForm.prix_demande) : null
+    const numParcelle = terrainForm.num_parcelle.trim()
     const superficie = terrainForm.geom.areaM2 != null ? Math.round(terrainForm.geom.areaM2) : null
 
-    if (!numTitre) {
-      setTerrainError(t('ranking.validation_required'))
-      return
-    }
-    if (prixDemande == null || !Number.isFinite(prixDemande) || prixDemande <= 0) {
-      setTerrainError(t('ranking.field_prix_required'))
+    if (!numParcelle) {
+      setTerrainError(t('ranking.field_num_parcelle_required'))
       return
     }
     if (!terrainForm.geom.geometry || superficie == null || superficie <= 0) {
       setTerrainError(t('ranking.geo_required_polygon'))
       return
     }
-    const cos = terrainForm.cos.trim() !== '' ? Number(terrainForm.cos) : null
-    const cus = terrainForm.cus.trim() !== '' ? Number(terrainForm.cus) : null
-    const hauteur = terrainForm.hauteur_maximale.trim() !== '' ? Number(terrainForm.hauteur_maximale) : null
 
     setSavingTerrain(true)
     setTerrainError(null)
     try {
       await createTerrain(projetId, {
-        num_titre_foncier: numTitre,
-        statut_juridique: terrainForm.statut_juridique || 'titre',
-        prix_demande: prixDemande,
-        zonage: terrainForm.zonage || 'residentiel',
-        cos,
-        cus,
-        hauteur_maximale: hauteur,
-        equipements: terrainForm.equipements,
+        num_parcelle: numParcelle,
+        indice: terrainForm.indice.trim(),
+        complement: terrainForm.complement.trim(),
+        consistance: terrainForm.consistance.trim(),
         superficie,
         lat: terrainForm.geom.centroid?.lat ?? null,
         lng: terrainForm.geom.centroid?.lng ?? null,
-        geometry: JSON.stringify(terrainForm.geom.geometry),
+        geometry: terrainForm.geom.geometry,
       })
       localStorage.setItem(`terrain_created_${projetId}`, String(Date.now()))
-      setTerrainForm({ num_titre_foncier: '', statut_juridique: '', prix_demande: '', zonage: '', cos: '', cus: '', hauteur_maximale: '', equipements: [], geom: emptyGeom() })
+      setTerrainForm({ num_parcelle: '', indice: '', complement: '', consistance: '', geom: emptyGeom() })
       setTerrainNote(t('ranking.terrain_added'))
       setTerrainError(null)
       setTimeout(() => { setCardMode('search'); setCardHidden(true); setTerrainNote(null) }, 1500)
@@ -3422,10 +3391,6 @@ export function GeoportalPage(): React.JSX.Element {
 
   const terrainAreaM2 = terrainForm.geom.areaM2
   const superficieCalculee = terrainAreaM2 != null ? Math.round(terrainAreaM2) : null
-  const prixDemandeNum = terrainForm.prix_demande.trim() !== '' ? Number(terrainForm.prix_demande) : null
-  const prixM2 = prixDemandeNum != null && superficieCalculee != null && superficieCalculee > 0 ? prixDemandeNum / superficieCalculee : null
-  const cosNum = terrainForm.cos.trim() !== '' ? Number(terrainForm.cos) : null
-  const surfaceConstructible = superficieCalculee != null && cosNum != null && cosNum > 0 ? superficieCalculee * cosNum : null
 
   return (
     <>
@@ -5208,54 +5173,28 @@ export function GeoportalPage(): React.JSX.Element {
 
                 <div className="geo-card-form-section">
                   <div className="form-field">
-                    <label htmlFor="g-t-titre" className="form-label">{t('ranking.field_num_titre_foncier')}</label>
-                    <input id="g-t-titre" name="num_titre_foncier" className="modal-input" placeholder="T54884" value={terrainForm.num_titre_foncier} onChange={(e) => setTerrainForm((f) => ({ ...f, num_titre_foncier: e.target.value }))} />
+                    <label htmlFor="g-t-num" className="form-label">{t('ranking.field_num_parcelle')}</label>
+                    <input id="g-t-num" name="num_parcelle" className="modal-input" placeholder="T26553" value={terrainForm.num_parcelle} onChange={(e) => setTerrainForm((f) => ({ ...f, num_parcelle: e.target.value }))} />
                   </div>
 
                   <div className="form-row">
                     <div className="form-field form-field--half">
-                      <label htmlFor="g-t-statut" className="form-label">{t('ranking.field_statut_juridique')}</label>
-                      <select id="g-t-statut" name="statut_juridique" className="modal-input" value={terrainForm.statut_juridique || 'titre'} onChange={(e) => setTerrainForm((f) => ({ ...f, statut_juridique: e.target.value }))}>
-                        {STATUTS_JURIDIQUES.map((s) => (
-                          <option key={s.value} value={s.value}>{t(`ranking.${s.label}`)}</option>
-                        ))}
-                      </select>
+                      <label htmlFor="g-t-indice" className="form-label">{t('ranking.field_indice')}</label>
+                      <input id="g-t-indice" name="indice" className="modal-input" placeholder="R" value={terrainForm.indice} onChange={(e) => setTerrainForm((f) => ({ ...f, indice: e.target.value }))} />
                     </div>
                     <div className="form-field form-field--half">
-                      <label htmlFor="g-t-zonage" className="form-label">{t('ranking.field_zonage')}</label>
-                      <select id="g-t-zonage" name="zonage" className="modal-input" value={terrainForm.zonage || 'residentiel'} onChange={(e) => setTerrainForm((f) => ({ ...f, zonage: e.target.value }))}>
-                        {ZONAGES.map((z) => (
-                          <option key={z.value} value={z.value}>{t(`ranking.${z.label}`)}</option>
-                        ))}
-                      </select>
+                      <label htmlFor="g-t-complement" className="form-label">{t('ranking.field_complement')}</label>
+                      <input id="g-t-complement" name="complement" className="modal-input" placeholder="P2" value={terrainForm.complement} onChange={(e) => setTerrainForm((f) => ({ ...f, complement: e.target.value }))} />
                     </div>
                   </div>
 
-                  <div className="form-row">
-                    <div className="form-field form-field--half">
-                      <label htmlFor="g-t-prix" className="form-label">{t('ranking.field_prix_demande')}</label>
-                      <input id="g-t-prix" name="prix_demande" type="number" min="0" step="any" className="modal-input" value={terrainForm.prix_demande} onChange={(e) => setTerrainForm((f) => ({ ...f, prix_demande: e.target.value }))} />
-                    </div>
-                    <div className="form-field form-field--half">
-                      <label htmlFor="g-t-hauteur" className="form-label">{t('ranking.field_hauteur_maximale')}</label>
-                      <input id="g-t-hauteur" name="hauteur_maximale" type="number" min="0" step="any" className="modal-input" placeholder="15" value={terrainForm.hauteur_maximale} onChange={(e) => setTerrainForm((f) => ({ ...f, hauteur_maximale: e.target.value }))} />
-                    </div>
-                  </div>
-
-                  <div className="form-row">
-                    <div className="form-field form-field--half">
-                      <label htmlFor="g-t-cos" className="form-label">{t('ranking.field_cos')}</label>
-                      <input id="g-t-cos" name="cos" type="number" min="0" step="any" className="modal-input" placeholder="0.5" value={terrainForm.cos} onChange={(e) => setTerrainForm((f) => ({ ...f, cos: e.target.value }))} />
-                    </div>
-                    <div className="form-field form-field--half">
-                      <label htmlFor="g-t-cus" className="form-label">{t('ranking.field_cus')}</label>
-                      <input id="g-t-cus" name="cus" type="number" min="0" step="any" className="modal-input" placeholder="1.0" value={terrainForm.cus} onChange={(e) => setTerrainForm((f) => ({ ...f, cus: e.target.value }))} />
-                    </div>
+                  <div className="form-field">
+                    <label htmlFor="g-t-consistance" className="form-label">{t('ranking.field_consistance')}</label>
+                    <input id="g-t-consistance" name="consistance" className="modal-input" placeholder="TN" value={terrainForm.consistance} onChange={(e) => setTerrainForm((f) => ({ ...f, consistance: e.target.value }))} />
                   </div>
                 </div>
 
                 <div className="geo-card-form-section">
-                  <span className="geo-layers-popup-label">{t('ranking.geo_geometry_title')}</span>
                   <TerrainGeometryEditor
                     value={terrainForm.geom}
                     onChange={(geom: TerrainGeom) => setTerrainForm((f) => ({ ...f, geom }))}
@@ -5267,14 +5206,6 @@ export function GeoportalPage(): React.JSX.Element {
                   <div className="geo-terrain-calc-row">
                     <span>{t('ranking.geo_area')}</span>
                     <strong>{superficieCalculee != null ? `${superficieCalculee.toLocaleString('fr-FR')} m²` : '—'}</strong>
-                  </div>
-                  <div className="geo-terrain-calc-row">
-                    <span>{t('ranking.price_per_m2')}</span>
-                    <strong>{prixM2 != null ? `${prixM2.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} DH/m²` : '—'}</strong>
-                  </div>
-                  <div className="geo-terrain-calc-row">
-                    <span>{t('ranking.surface_constructible')}</span>
-                    <strong>{surfaceConstructible != null ? `${surfaceConstructible.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} m²` : '—'}</strong>
                   </div>
                 </div>
 
