@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { icons, Icon } from '../components/icons'
 import { DashboardLayout } from '../components/DashboardLayout'
-import { TerrainGeometryEditor, emptyGeom, type TerrainGeom } from '../components/TerrainGeometryEditor'
+import { TerrainGeometryEditor, emptyGeom, type TerrainGeom, type TerrainImportFields } from '../components/TerrainGeometryEditor'
 import { formatApiErrors } from '../api/auth'
 import { fetchProjet, previewRentabilite, type Projet, type ProjetPayload, type Rentabilite } from '../api/projets'
 import { createTerrain, computeSurfaceConstructible, computeSurfaceEquipement, deleteTerrain, fetchSurfaceConstructible, fetchSurfaceEquipement, fetchTerrains, saveTerrainRentabilite, type AffectationSurface, type AnalyseFiltres, type AnalyseResultat, type SurfaceConstructibleResponse, type SurfaceEquipementResponse, type Terrain } from '../api/terrains'
@@ -611,6 +611,12 @@ const CADASTRE_STYLE = { color: '#b45309', weight: 1.4, opacity: 0.9, fillColor:
 const CADASTRE_SEARCH_STYLE = { color: '#dc2626', weight: 4, opacity: 1, fillColor: '#ef4444', fillOpacity: 0.45 }
 const PLAN_AMENAGEMENT_STYLE = { color: '#7c3aed', weight: 1.2, opacity: 0.85, fillColor: '#a855f7', fillOpacity: 0.16 }
 const LIMITES_ADMIN_STYLE = { color: '#0d9488', weight: 1.8, opacity: 0.9, fillColor: '#14b8a6', fillOpacity: 0.12 }
+const TERRAIN_STYLE = { color: '#1d4ed8', weight: 2.4, opacity: 0.95, fillColor: '#3b82f6', fillOpacity: 0.3 }
+
+// Panneau Leaflet dédié aux terrains ajoutés par l'utilisateur. Il est placé
+// juste sous le `overlayPane` (400) : les terrains restent visibles au-dessus du
+// fond de carte sans masquer les parcelles cadastrales ni les affectations.
+const TERRAIN_PANE = 'terrainPane'
 
 // Règlement du plan d'aménagement, servi depuis le dossier public (Vite dev et build).
 // Le fichier PDF définitif sera fourni par le client et placé à cet emplacement.
@@ -864,6 +870,15 @@ export function GeoportalPage(): React.JSX.Element {
   const [cadastreEnabled, setCadastreEnabled] = useState(true)
   const [cadastreReady, setCadastreReady] = useState(false)
   const [cadastreFc, setCadastreFc] = useState<CoucheFeatureCollection | null>(null)
+  // Limite administrative de référence : sert de masque de découpe aux
+  // terrains ajoutés depuis le formulaire « Ajouter un terrain ».
+  const [limitesFc, setLimitesFc] = useState<CoucheFeatureCollection | null>(null)
+  const [terrainsEnabled, setTerrainsEnabled] = useState(true)
+  const [terrainsFc, setTerrainsFc] = useState<CoucheFeatureCollection | null>(null)
+  const [terrainsDrawn, setTerrainsDrawn] = useState(0)
+  // Incrémenté à chaque création/destruction de la carte : les couches
+  // vectorielles doivent être reconstruites quand la carte est recréée.
+  const [mapEpoch, setMapEpoch] = useState(0)
   const [paEnabled, setPaEnabled] = useState(false)
   const [limitesEnabled, setLimitesEnabled] = useState(false)
   const [savedAnalyse, setSavedAnalyse] = useState<AnalyseDetail | null>(null)
@@ -885,6 +900,10 @@ export function GeoportalPage(): React.JSX.Element {
   const coucheDataRef = useRef<Record<number, CoucheFeatureCollection>>({})
   const typeLayersRef = useRef<Record<string, any>>({})
   const cadastreLayerRef = useRef<any>(null)
+  const terrainsLayerRef = useRef<any>(null)
+  // Résout l'action « clic » de la couche des terrains ajoutés au moment du clic
+  // (évite de capturer des fonctions de rendu périmées dans le popup).
+  const terrainActivateRef = useRef<(ref: string) => void>(() => { })
   const paLayerRef = useRef<any>(null)
   const limitesLayerRef = useRef<any>(null)
   const layersBarRef = useRef<HTMLDivElement>(null)
@@ -1635,6 +1654,19 @@ export function GeoportalPage(): React.JSX.Element {
     setTerrainNote(null)
   }
 
+  // Remplit les champs du formulaire avec les attributs de l'entité GeoJSON
+  // sélectionnée dans l'éditeur de géométrie. Les champs absents du fichier
+  // conservent la valeur déjà saisie.
+  const handleTerrainImportFields = (fields: TerrainImportFields): void => {
+    setTerrainForm((f) => ({
+      ...f,
+      num_parcelle: fields.num_parcelle ?? f.num_parcelle,
+      indice: fields.indice ?? f.indice,
+      complement: fields.complement ?? f.complement,
+      consistance: fields.consistance ?? f.consistance,
+    }))
+  }
+
   const handleAddTerrain = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
     if (!projetId) return
@@ -2222,6 +2254,8 @@ export function GeoportalPage(): React.JSX.Element {
     map.fitBounds(TEMARA_BOUNDS)
     L.control.zoom({ position: 'bottomleft' }).addTo(map)
     mapRef.current = map
+    map.createPane(TERRAIN_PANE).style.zIndex = '390'
+    setMapEpoch((n) => n + 1)
 
     const popupLayer = document.createElement('div')
     popupLayer.className = 'geo-popup-layer'
@@ -2322,6 +2356,7 @@ export function GeoportalPage(): React.JSX.Element {
       bufferLayerRef.current = null
       affectationsLayerRef.current = null
       affectationsResultRef.current = null
+      terrainsLayerRef.current = null
       popupLayer.remove()
       popupLayer.removeEventListener('click', onPopupLayerClick)
     }
@@ -2334,6 +2369,7 @@ export function GeoportalPage(): React.JSX.Element {
       .then((list) => {
         if (cancelled) return
         setCadastreFc(null)
+        setLimitesFc(null)
         const filtered = list.filter((c) => c.nom === 'cadastre' || c.nom === 'reseau_routier' || c.nom === 'equipements_publics' || c.nom === 'plan_amenagement' || c.nom === 'limites_admin')
         setCouchesDispo(filtered)
         const equipC = filtered.find((c) => c.nom === 'equipements_publics')
@@ -2370,6 +2406,9 @@ export function GeoportalPage(): React.JSX.Element {
           }
           if (c.nom === 'plan_amenagement') {
             paPreparedRef.current = preparePAZones(collection.features)
+          }
+          if (c.nom === 'limites_admin') {
+            setLimitesFc(collection)
           }
           if (c.nom !== 'reseau_routier' && c.nom !== 'equipements_publics') return
           if (c.nom === 'reseau_routier') {
@@ -2532,6 +2571,122 @@ export function GeoportalPage(): React.JSX.Element {
         }
       },
     }).addTo(map)
+
+  // ---- Terrains ajoutés par l'utilisateur (couche permanente) ----
+  // Transforme la liste des terrains du projet en FeatureCollection. Seuls les
+  // terrains disposant d'un polygone sont retenus (les autres n'ont pas de
+  // contour à afficher).
+  const terrainsToFeatureCollection = (list: Terrain[]): CoucheFeatureCollection => {
+    const features: CoucheFeature[] = []
+    list.forEach((tr) => {
+      if (!tr.geometry) return
+      let geom: Record<string, unknown> | null = null
+      try {
+        const g = JSON.parse(tr.geometry) as Record<string, unknown>
+        if (g && (g.type === 'Polygon' || g.type === 'MultiPolygon')) geom = g
+      } catch {
+        geom = null
+      }
+      if (!geom) return
+      features.push({
+        type: 'Feature',
+        geometry: geom,
+        properties: {
+          terrain_id: tr.id,
+          num: tr.num_parcelle || tr.num_titre_foncier || tr.nom,
+          indice: tr.indice ?? '',
+          complement: tr.complement ?? '',
+          Consistance: tr.consistance ?? '',
+          surface: Number(tr.superficie) || 0,
+        },
+      })
+    })
+    return { type: 'FeatureCollection', features }
+  }
+
+  const buildTerrainsLayer = (map: any, fc: CoucheFeatureCollection): any =>
+    L.geoJSON(validFeatures(fc), {
+      pane: TERRAIN_PANE,
+      style: TERRAIN_STYLE,
+      onEachFeature: (feature: any, layerItem: any) => {
+        const p = (feature?.properties ?? {}) as Record<string, unknown>
+        const num = p.num != null ? String(p.num) : ''
+        const title = formatParcelleTitle(p)
+        const fullRef = formatParcelleRef(p.num, p.indice)
+        const ring = extractRing(feature.geometry)
+        const center = ring ? ringCenter(ring) : { lat: NaN, lng: NaN }
+        const superficie = Number(p.surface) || (ring && ring.length >= 3 ? Math.round(ringAreaM2(ring)) : 0)
+        const affOpts: PopupAffectationsOpts = { idParcelle: num, computed: num !== '' && affectationsResultRef.current?.terrainNum === num }
+        layerItem.on('click', () => terrainActivateRef.current(num))
+        layerItem.bindPopup(
+          `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(title)}</div><div class="geoportal-popup-coords">${propsToHtml(p, CADASTRE_ATTRIBUTE_LABELS, ['fid', 'terrain_id'])}</div>${buildPopupActions(center.lat, center.lng, ring, title, num ? affOpts : null, ring && ring.length >= 3 ? { nom: title, superficie, lat: center.lat, lng: center.lng, ref: fullRef, ring } : undefined)}</div>`,
+          { autoPan: false }
+        )
+      },
+    }).addTo(map)
+
+  // Charge les terrains du projet et bascule la couche « terrains ajoutés ».
+  const loadingTerrainsRef = useRef(false)
+  const loadTerrains = (): void => {
+    if (!projetId || loadingTerrainsRef.current) return
+    loadingTerrainsRef.current = true
+    fetchTerrains(projetId, { page_size: 1000 })
+      .then((data) => {
+        setTerrainsDrawn(data.results.length)
+        setTerrainsFc(terrainsToFeatureCollection(data.results))
+      })
+      .catch(() => { /* la carte reste inchangée en cas d'échec réseau */ })
+      .finally(() => { loadingTerrainsRef.current = false })
+  }
+
+  useEffect(() => {
+    loadTerrains()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projetId])
+
+  // Rafraîchissement après un ajout, quel que soit le mode de saisie.
+  //
+  // `handleAddTerrain` (sélection cadastrale, import GeoJSON, dessin manuel
+  // Mode 3) et `handleSaveRentabiliteTerrain` signalent tous deux la création
+  // via la clé `terrain_created_<id>`. En la surveillant, la couche se met à
+  // jour pour les terrains issus du dessin exactement comme pour les autres,
+  // sans dupliquer la logique d'ajout.
+  useEffect(() => {
+    if (!projetId) return
+    const key = `terrain_created_${projetId}`
+    let last = localStorage.getItem(key)
+    const timer = window.setInterval(() => {
+      const current = localStorage.getItem(key)
+      if (!current || current === last) return
+      last = current
+      loadTerrains()
+    }, 1000)
+    return () => window.clearInterval(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projetId])
+
+  // Retour immédiat (sans attendre le tick) à la fermeture du bloc
+  // « Ajouter un terrain ».
+  const cardModeRef = useRef<CardMode | null>(null)
+  useEffect(() => {
+    const prev = cardModeRef.current
+    cardModeRef.current = cardMode
+    if (prev === 'addTerrain' && cardMode !== 'addTerrain') loadTerrains()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardMode])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    if (terrainsLayerRef.current) {
+      map.removeLayer(terrainsLayerRef.current)
+      terrainsLayerRef.current = null
+    }
+    if (!terrainsEnabled) return
+    if (!terrainsFc || terrainsFc.features.length === 0) return
+    terrainsLayerRef.current = buildTerrainsLayer(map, terrainsFc)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [terrainsEnabled, terrainsFc, mapEpoch])
 
   const buildPALayer = (map: any, fc: CoucheFeatureCollection): any =>
     L.geoJSON(validFeatures(fc), {
@@ -3288,6 +3443,16 @@ export function GeoportalPage(): React.JSX.Element {
     }
   }
 
+  // Clic sur un polygone de la couche « terrains ajoutés » : si le terrain
+  // correspond à un résultat d'analyse, on le sélectionne et on affiche son
+  // contour réel, comme pour une parcelle cadastrale.
+  terrainActivateRef.current = (ref: string): void => {
+    if (!ref) return
+    const tr = findResultatByCadastreNum(ref)
+    if (!tr) return
+    selectTerrain(tr.id)
+  }
+
   // Force Leaflet à recalculer sa taille après la fin de la transition CSS du panneau,
   // sinon les tuiles restent dimensionnées à l'ancienne largeur (vide gris à côté de la carte).
   const refreshMapSize = (): void => {
@@ -3672,6 +3837,22 @@ export function GeoportalPage(): React.JSX.Element {
                               />
                               <span className="geo-popup-overlay-dot geo-popup-overlay-dot--cadastre"></span>
                               <span>{t('ranking.carte_cadastrale')}</span>
+                            </label>
+                          </div>
+                        </div>
+                        <div className="geo-layers-popup-divider"></div>
+                        <div className="geo-layers-popup-section">
+                          <span className="geo-layers-popup-label">{t('ranking.terrains_ajoutes')}</span>
+                          <div className="geo-layers-popup-overlays">
+                            <label className="geo-popup-overlay-item">
+                              <input
+                                type="checkbox"
+                                checked={terrainsEnabled}
+                                onChange={() => setTerrainsEnabled((v) => !v)}
+                              />
+                              <span className="geo-popup-overlay-dot geo-popup-overlay-dot--terrain"></span>
+                              <span>{t('ranking.terrains_ajoutes')}</span>
+                              {terrainsDrawn > 0 ? <em className="geo-layers-popup-count">({terrainsDrawn})</em> : null}
                             </label>
                           </div>
                         </div>
@@ -5198,7 +5379,9 @@ export function GeoportalPage(): React.JSX.Element {
                   <TerrainGeometryEditor
                     value={terrainForm.geom}
                     onChange={(geom: TerrainGeom) => setTerrainForm((f) => ({ ...f, geom }))}
+                    onImportFields={handleTerrainImportFields}
                     cadastre={cadastreFc}
+                    limites={limitesFc}
                   />
                 </div>
 

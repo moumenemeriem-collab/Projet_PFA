@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import area from '@turf/area'
 import centroid from '@turf/centroid'
 import { type CoucheFeatureCollection } from '../api/couches'
 import { attributeLabel, CADASTRE_ATTRIBUTE_LABELS, formatParcelleRef } from '../utils/attributeLabels'
 import { t } from '../i18n/index'
 import { extractRing } from '../utils/terrainDims'
+import { buildLimiteMask, clipRingToLimite, type LimiteMask } from '../utils/limitesAdmin'
 
 export type TerrainGeomMode = 'cadastre' | 'geojson' | 'manual'
 
@@ -22,12 +23,27 @@ export interface TerrainGeom {
   source: string
 }
 
+// Champs descriptifs du formulaire « Ajouter un terrain » qui peuvent être
+// pré-remplis depuis les attributs d'une entité GeoJSON importée.
+export interface TerrainImportFields {
+  num_parcelle?: string
+  indice?: string
+  complement?: string
+  consistance?: string
+}
+
 interface TerrainGeometryEditorProps {
   value: TerrainGeom
   onChange: (v: TerrainGeom) => void
   // Features de la couche cadastrale (couche « cadastre » de la plateforme),
   // déjà chargées par la carte principale. Recherche sur `properties.num`.
   cadastre?: CoucheFeatureCollection | null
+  // Couche « limites_admin » (limite administrative de référence). Les polygones
+  // saisis sont automatiquement découpés sur cette limite.
+  limites?: CoucheFeatureCollection | null
+  // Appelé lors de l'import d'un GeoJSON avec les attributs descriptifs de
+  // l'entité choisie, afin de remplir les champs du formulaire parent.
+  onImportFields?: (fields: TerrainImportFields) => void
 }
 
 const INITIAL_CENTER: [number, number] = [33.97, -6.85]
@@ -42,6 +58,7 @@ const CADASTRE_HOVER_STYLE = { color: '#b45309', weight: 2.4, opacity: 1, fillCo
 const CADASTRE_SELECTED_STYLE = { color: '#16a34a', weight: 4, opacity: 1, fillColor: '#16a34a', fillOpacity: 0.45 }
 const MANUAL_PATH_STYLE = { color: '#dc2626', weight: 2, fillColor: '#ef4444', fillOpacity: 0.18 }
 const MANUAL_PREVIEW_STYLE = { color: '#dc2626', weight: 2, dashArray: '4 4' }
+const LIMITES_EDITOR_STYLE = { color: '#0d9488', weight: 2, opacity: 0.9, dashArray: '6 5', fillColor: '#14b8a6', fillOpacity: 0.05 }
 
 const emptyGeom = (mode: TerrainGeomMode = 'geojson'): TerrainGeom => ({
   mode,
@@ -58,6 +75,88 @@ function clampLat(v: number): number {
 
 function clampLng(v: number): number {
   return Math.min(180, Math.max(-180, v))
+}
+
+// Normalise une clé d'attribut GeoJSON pour la comparer sans tenir compte de la
+// casse, des accents ni des séparateurs (ex: « N°_Parcelle » → «nparcelle »).
+function normalizeKey(key: string): string {
+  return key
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+}
+
+// Retourne la première valeur non vide parmi les alias possibles d'un attribut.
+function pickField(props: Record<string, unknown> | null | undefined, aliases: string[]): string | undefined {
+  if (!props) return undefined
+  const wanted = new Set(aliases.map(normalizeKey))
+  for (const [key, value] of Object.entries(props)) {
+    if (!wanted.has(normalizeKey(key))) continue
+    const raw = typeof value === 'string' ? value.trim() : value
+    if (raw == null) continue
+    const text = String(raw).trim()
+    if (text === '' || text === '—' || text.toLowerCase() === 'null' || text.toLowerCase() === 'undefined') continue
+    return text
+  }
+  return undefined
+}
+
+// Extrait les champs du formulaire à partir des attributs d'une entité GeoJSON.
+// Les clés couvrent les variantes courantes (cadastre national, exports SIG).
+export function extractTerrainImportFields(props: Record<string, unknown> | null | undefined): TerrainImportFields {
+  const num = pickField(props, [
+    'num',
+    'num_parcelle',
+    'numero_parcelle',
+    'num_titre_foncier',
+    'numero_titre_foncier',
+    'id_parcelle',
+    'ref',
+    'reference_cadastrale',
+    'parcelle',
+  ])
+  const indice = pickField(props, ['indice', 'ind', 'sufixe'])
+  const complement = pickField(props, ['complement', 'compl', 'complementaire', 'complem'])
+  const consistance = pickField(props, ['consistance', 'nature', 'nature_parcelle'])
+  const fields: TerrainImportFields = {}
+  if (num != null) {
+    // Si le numéro contient déjà l'indice (« T17010/R »), on garde le numéro
+    // seul et l'indice est renseigné séparément.
+    const slash = num.indexOf('/')
+    fields.num_parcelle = slash > 0 ? num.slice(0, slash).trim() : num
+    if (indice == null && slash > 0 && slash < num.length - 1) {
+      const fromNum = num.slice(slash + 1).trim()
+      if (fromNum) fields.indice = fromNum
+    }
+  }
+  if (indice != null) fields.indice = indice
+  if (complement != null) fields.complement = complement
+  if (consistance != null) fields.consistance = consistance
+  return fields
+}
+
+// Arrondit une coordonnée à 6 décimales, précision du champ `lat`/`lng` du
+// modèle Terrain. Indispensable : les flottants renvoyés par turf (ex:
+// 33.93755735251871) font 17 chiffres et sont rejetés par l'API
+// (DecimalField max_digits=9, decimal_places=6).
+function roundCoord(v: unknown): number {
+  const n = Number(v)
+  return Number.isFinite(n) ? Number(n.toFixed(6)) : 0
+}
+
+// Centroïde d'un polygone GeoJSON au format du formulaire.
+function centroidOf(gj: unknown): { lat: number; lng: number } | null {
+  try {
+    const cen = centroid(gj as any)
+    const coords = cen?.geometry?.coordinates
+    if (Array.isArray(coords) && coords.length === 2) {
+      return { lat: roundCoord(coords[1]), lng: roundCoord(coords[0]) }
+    }
+  } catch {
+    return null
+  }
+  return null
 }
 
 // Construit le GeoJSON `Polygon` (anneau fermé [lng, lat]) à partir des sommets.
@@ -114,18 +213,13 @@ function ringToGeom(ring: number[][]): { vertices: TerrainVertex[]; geometry: st
   try {
     const gj = JSON.parse(geometry)
     const areaM2 = area(gj)
-    const cen = centroid(gj)
-    const c =
-      cen && Array.isArray(cen.geometry.coordinates) && cen.geometry.coordinates.length === 2
-        ? { lat: cen.geometry.coordinates[1], lng: cen.geometry.coordinates[0] }
-        : null
-    return { vertices, geometry, areaM2, centroid: c }
+    return { vertices, geometry, areaM2, centroid: centroidOf(gj) }
   } catch {
     return { vertices, geometry, areaM2: null, centroid: null }
   }
 }
 
-export function TerrainGeometryEditor({ value, onChange, cadastre }: TerrainGeometryEditorProps): React.JSX.Element {
+export function TerrainGeometryEditor({ value, onChange, cadastre, limites, onImportFields }: TerrainGeometryEditorProps): React.JSX.Element {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
   const basemapRef = useRef<any>(null)
@@ -133,6 +227,9 @@ export function TerrainGeometryEditor({ value, onChange, cadastre }: TerrainGeom
   const clickHandlerRef = useRef<any>(null)
   const cadastreLayerRef = useRef<any>(null)
   const cadastreFittedRef = useRef(false)
+  const limitesLayerRef = useRef<any>(null)
+  const limiteMaskRef = useRef<LimiteMask | null>(null)
+  limiteMaskRef.current = useMemo(() => buildLimiteMask(limites), [limites])
   const manualMarkersRef = useRef<any>(null)
   const manualPathRef = useRef<any>(null)
   const ptsRef = useRef<{ lat: number; lng: number }[]>([])
@@ -144,6 +241,7 @@ export function TerrainGeometryEditor({ value, onChange, cadastre }: TerrainGeom
   const [, forceRender] = useReducer((x: number) => x + 1, 0)
 
   const [geojsonError, setGeojsonError] = useState<string | null>(null)
+  const [limiteMsg, setLimiteMsg] = useState<{ type: 'warn' | 'error'; text: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   interface ImportRow {
@@ -151,6 +249,7 @@ export function TerrainGeometryEditor({ value, onChange, cadastre }: TerrainGeom
     label: string
     attrs: string
     ring: number[][]
+    properties: Record<string, unknown>
   }
 
   const [importRows, setImportRows] = useState<ImportRow[] | null>(null)
@@ -220,6 +319,7 @@ export function TerrainGeometryEditor({ value, onChange, cadastre }: TerrainGeom
       previewLayerRef.current = null
       clickHandlerRef.current = null
       cadastreLayerRef.current = null
+      limitesLayerRef.current = null
       manualMarkersRef.current = null
       manualPathRef.current = null
     }
@@ -228,6 +328,62 @@ export function TerrainGeometryEditor({ value, onChange, cadastre }: TerrainGeom
   useEffect(() => {
     zoomOkRef.current = zoomOk
   }, [zoomOk])
+
+  // ---- Limite administrative de référence ----
+
+  // Contour de la limite administrative tracé sur la mini-carte : l'utilisateur
+  // voit immédiatement la zone à laquelle son polygone sera ramené.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    if (limitesLayerRef.current) {
+      map.removeLayer(limitesLayerRef.current)
+      limitesLayerRef.current = null
+    }
+    const mask = limiteMaskRef.current
+    if (!mask) return
+    limitesLayerRef.current = L.geoJSON(mask.feature as never, {
+      style: () => LIMITES_EDITOR_STYLE,
+      interactive: false,
+      bubblingMouseEvents: false,
+    }).addTo(map)
+  }, [limites])
+
+  const formaterM2 = (m2: number): string => Math.round(m2).toLocaleString('fr-FR')
+
+  // Point d'entrée unique de toute saisie de géométrie (cadastre, GeoJSON,
+  // dessin manuel) : la limite administrative est appliquée avant la mise à jour
+  // du formulaire, donc le polygone affiché, la superficie et le centroïde
+  // transmis à l'API sont toujours ceux de la partie retenue dans la limite.
+  // Retourne les sommets retenus, ou null si le polygone a été refusé
+  // (entièrement hors limite ou géométrie dégénérée).
+  const applyRingToForm = useCallback(
+    (ring: number[][], base: Omit<TerrainGeom, 'vertices' | 'geometry' | 'areaM2' | 'centroid'>): TerrainVertex[] | null => {
+      const limited = clipRingToLimite(ring, limiteMaskRef.current)
+      if (limited.status === 'hors-limite') {
+        setLimiteMsg({
+          type: 'error',
+          text: t('ranking.geo_limite_hors').replace('{nom}', limited.nomLimite || t('ranking.geo_limite_generique')),
+        })
+        return null
+      }
+      const geom = ringToGeom(limited.ring)
+      if (!geom.geometry || geom.vertices.length < 3) return null
+      if (limited.clipped) {
+        setLimiteMsg({
+          type: 'warn',
+          text: t('ranking.geo_limite_ajuste')
+            .replace('{nom}', limited.nomLimite || t('ranking.geo_limite_generique'))
+            .replace('{surface}', formaterM2(limited.aireAvant - limited.aireApres)),
+        })
+      } else {
+        setLimiteMsg(null)
+      }
+      onChange({ ...base, ...geom })
+      return geom.vertices
+    },
+    [onChange]
+  )
 
   // Fond de carte : satellite imposé en Mode 3 (dessin manuel), OSM sinon.
   useEffect(() => {
@@ -265,10 +421,9 @@ export function TerrainGeometryEditor({ value, onChange, cadastre }: TerrainGeom
         setCadastreMsg({ type: 'error', text: t('ranking.geo_cadastre_invalid') })
         return
       }
-      const geom = ringToGeom(ring)
+      if (!applyRingToForm(ring, { mode: 'cadastre', source: num })) return
       setSelectedNum(num)
       setCadastreMsg(null)
-      onChange({ mode: 'cadastre', ...geom, source: num })
       refreshCadastreStyles()
       const map = mapRef.current
       if (map) {
@@ -276,7 +431,7 @@ export function TerrainGeometryEditor({ value, onChange, cadastre }: TerrainGeom
         map.flyToBounds(bounds.pad(0.3), { maxZoom: 19, duration: 0.7 })
       }
     },
-    [onChange, refreshCadastreStyles]
+    [applyRingToForm, refreshCadastreStyles]
   )
 
   useEffect(() => {
@@ -365,6 +520,7 @@ export function TerrainGeometryEditor({ value, onChange, cadastre }: TerrainGeom
     setSelectedNum(null)
     setCadastreQuery('')
     setCadastreMsg(null)
+    setLimiteMsg(null)
     onChange({ ...value, mode: 'cadastre', vertices: [], geometry: '', areaM2: null, centroid: null, source: '' })
     refreshCadastreStyles()
   }
@@ -429,21 +585,17 @@ export function TerrainGeometryEditor({ value, onChange, cadastre }: TerrainGeom
       onChange({ mode: 'manual', vertices: pts, geometry: '', areaM2: null, centroid: null, source: '' })
       return
     }
-    const geometry = geometryFromVertices(pts)
-    let areaM2: number | null = null
-    let cen: { lat: number; lng: number } | null = null
-    try {
-      const gj = JSON.parse(geometry)
-      areaM2 = area(gj)
-      const c = centroid(gj)
-      if (c && Array.isArray(c.geometry.coordinates) && c.geometry.coordinates.length === 2) {
-        cen = { lat: c.geometry.coordinates[1], lng: c.geometry.coordinates[0] }
-      }
-    } catch {
-      areaM2 = null
+    const ring = pts.map((p) => [p.lng, p.lat])
+    const retained = applyRingToForm(ring, { mode: 'manual', source: '' })
+    if (retained) {
+      // Les points de saisie deviennent les sommets effectivement retenus.
+      ptsRef.current = retained.map((v) => ({ ...v }))
+    } else {
+      // Polygone refusé (entièrement hors limite) : on rouvre la saisie.
+      closedRef.current = false
     }
-    onChange({ mode: 'manual', vertices: pts, geometry, areaM2, centroid: cen, source: '' })
-  }, [onChange])
+    rebuildManual()
+  }, [applyRingToForm, onChange, rebuildManual])
 
   const clearManualLayers = useCallback(() => {
     if (manualMarkersRef.current) manualMarkersRef.current.clearLayers()
@@ -512,6 +664,7 @@ export function TerrainGeometryEditor({ value, onChange, cadastre }: TerrainGeom
   const restartManual = (): void => {
     ptsRef.current = []
     closedRef.current = false
+    setLimiteMsg(null)
     clearManualLayers()
     onChange({ ...value, mode: 'manual', vertices: [], geometry: '', areaM2: null, centroid: null, source: '' })
     forceRender()
@@ -533,6 +686,7 @@ export function TerrainGeometryEditor({ value, onChange, cadastre }: TerrainGeom
       setImportFileName('')
     }
     setCadastreMsg(null)
+    setLimiteMsg(null)
     onChange({ ...value, mode, vertices: [], geometry: '', areaM2: null, centroid: null, source: '' })
   }
 
@@ -571,25 +725,24 @@ export function TerrainGeometryEditor({ value, onChange, cadastre }: TerrainGeom
         .slice(0, 6)
         .map(([k, v]) => `${attributeLabel(k, CADASTRE_ATTRIBUTE_LABELS)} : ${v}`)
         .join(' · ')
-      rows.push({ id: i, label, attrs, ring: ring.ring })
+      rows.push({ id: i, label, attrs, ring: ring.ring, properties: (props && typeof props === 'object' ? props : {}) as Record<string, unknown> })
     })
     return rows
   }
 
   const applyImportRow = (row: ImportRow): void => {
-    const geom = ringToGeom(row.ring)
-    if (!geom.geometry || geom.vertices.length < 3) {
-      setGeojsonError(t('ranking.geo_geojson_invalid'))
-      return
-    }
+    if (!applyRingToForm(row.ring, { mode: 'geojson', source: row.label })) return
     setGeojsonError(null)
-    onChange({ ...geom, mode: 'geojson', source: row.label })
+    // Pré-remplit les champs descriptifs du formulaire parent à partir des
+    // attributs de l'entité choisie dans le fichier GeoJSON.
+    onImportFields?.(extractTerrainImportFields(row.properties))
   }
 
   const resetImport = (): void => {
     setImportRows(null)
     setImportFileName('')
     setGeojsonError(null)
+    setLimiteMsg(null)
     onChange({ ...value, vertices: [], geometry: '', areaM2: null, centroid: null, source: '' })
   }
 
@@ -648,6 +801,17 @@ export function TerrainGeometryEditor({ value, onChange, cadastre }: TerrainGeom
       </div>
 
       <div className="geo-terrain-geom-map" ref={mapContainerRef}></div>
+
+      {limiteMaskRef.current ? (
+        <p className="geo-terrain-geom-limite">
+          <span className="geo-terrain-geom-limite-swatch"></span>
+          {t('ranking.geo_limite_legende')}
+        </p>
+      ) : null}
+
+      {limiteMsg ? (
+        <p className={limiteMsg.type === 'error' ? 'geo-terrain-geom-error' : 'geo-terrain-geom-warn'}>{limiteMsg.text}</p>
+      ) : null}
 
       {value.mode === 'cadastre' ? (
         <div className="geo-terrain-geom-cadastre">

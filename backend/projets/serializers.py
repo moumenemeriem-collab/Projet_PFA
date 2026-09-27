@@ -5,6 +5,25 @@ from .models import Analyse, Couche, PonderationPreference, Projet, ResultatAnal
 from .profitability import calculer_rentabilite_projet
 
 
+class RoundedDecimalField(serializers.DecimalField):
+    """DecimalField qui arrondit l'entrée à `decimal_places` avant validation.
+
+    Les coordonnées envoyées par le front (turf) sont des flottants IEEE-754 :
+    « 33.93755735251871 » fait 17 chiffres et fait échouer le contrôle
+    `max_digits` alors que la valeur est parfaitement valide. On arrondit donc
+    d'abord, puis on valide la précision.
+    """
+
+    def to_internal_value(self, data):
+        try:
+            data = float(data)
+        except (TypeError, ValueError):
+            return super().to_internal_value(data)
+        if self.decimal_places is not None:
+            return super().to_internal_value(round(data, self.decimal_places))
+        return super().to_internal_value(data)
+
+
 class TypeProjetSerializer(serializers.ModelSerializer):
     class Meta:
         model = TypeProjet
@@ -285,8 +304,8 @@ class TerrainCreateSerializer(serializers.Serializer):
     hauteur_maximale = serializers.DecimalField(max_digits=6, decimal_places=2, required=False, allow_null=True, default=None)
     equipements = serializers.ListField(child=serializers.CharField(), required=False, allow_empty=True, default=list)
     superficie = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=None)
-    lat = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True, default=None)
-    lng = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True, default=None)
+    lat = RoundedDecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True, default=None)
+    lng = RoundedDecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True, default=None)
     geometry = serializers.CharField(required=False, allow_null=True, allow_blank=True, default='')
     accessibilite = serializers.IntegerField(min_value=1, max_value=10, default=5)
     positionnement = serializers.IntegerField(min_value=1, max_value=10, default=5)
