@@ -7,6 +7,7 @@ Fournit les statistiques personnalisées de l'utilisateur connecté :
 - Résumé par projet
 """
 
+from django.db import connection
 from django.db.models import Avg, Count, Max
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -15,6 +16,23 @@ from rest_framework.views import APIView
 from accounts.authentication import JWTOptionalAuthentication
 
 from .models import Analyse, Projet, ResultatAnalyse, Terrain
+
+
+def _nb_parcelles_cadastre() -> int:
+    """Nombre de parcelles de la couche « plan cadastral » (table ou fichier)."""
+    try:
+        with connection.cursor() as cur:
+            cur.execute('SELECT COUNT(*) FROM couche_cadastre')
+            nb = int(cur.fetchone()[0])
+    except Exception:
+        nb = 0
+    if nb:
+        return nb
+    try:
+        from dashboard.stats import _nb_parcelles_cadastre as _count_fichier
+        return int(_count_fichier())
+    except Exception:
+        return 0
 
 
 class InvestorDashboardView(APIView):
@@ -116,6 +134,7 @@ class InvestorDashboardView(APIView):
                 'nb_projets': nb_projets,
                 'nb_terrains': nb_terrains,
                 'nb_analyses': nb_analyses,
+                'nb_parcelles_cadastre': _nb_parcelles_cadastre(),
                 'score_moyen': round(float(score_moyen), 2) if score_moyen else None,
             },
             'projets': projets_resume,

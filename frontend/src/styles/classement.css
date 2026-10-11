@@ -356,6 +356,25 @@
   padding: 20px 22px;
 }
 
+/* Détail d'une parcelle : popup placé sous la barre supérieure, sur une seule colonne. */
+.admin-modal-overlay.classement-modal-overlay--detail {
+  align-items: flex-start;
+  /* Laisse la barre supérieure (70px) dégagée : le popup commence en dessous. */
+  padding: 86px 20px 24px;
+}
+
+.classement-modal-overlay--detail .admin-modal.classement-modal--detail {
+  max-height: calc(100svh - 110px);
+}
+
+.admin-modal.classement-modal--detail {
+  max-width: 760px;
+}
+
+.classement-modal-body--detail {
+  padding: 18px 22px;
+}
+
 /* ── Détails ── */
 
 .classement-detail-grid {
@@ -400,6 +419,55 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-muted);
+}
+
+.classement-detail-note {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.classement-detail-subtitle {
+  margin: 14px 0 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.classement-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.classement-detail-table th,
+.classement-detail-table td {
+  padding: 7px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.classement-detail-table th {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  background: var(--bg-page);
+}
+
+.classement-detail-table td {
+  color: var(--text-heading);
+}
+
+.classement-detail-value.text-success {
+  color: #16a34a;
+}
+
+.classement-detail-value.text-error {
+  color: #dc2626;
 }
 
 .classement-criteria-list {

@@ -31,10 +31,26 @@ class TypeProjetSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class ProjetListSerializer(serializers.ModelSerializer):
+class ProjetCompteursMixin:
+    """Compteurs agrégés affichés dans la fiche projet (terrains, AMC)."""
+
+    def get_nb_terrains(self, obj: Projet) -> int:
+        return obj.terrains.count()
+
+    def get_nb_terrains_rentabilite(self, obj: Projet) -> int:
+        return obj.terrains.filter(rentabilite_json__isnull=False).count()
+
+    def get_nb_amc(self, obj: Projet) -> int:
+        return obj.analyses.count()
+
+
+class ProjetListSerializer(ProjetCompteursMixin, serializers.ModelSerializer):
     type_nom = serializers.CharField(source='id_type.nom', read_only=True)
     type_image_defaut = serializers.CharField(source='id_type.image_defaut', read_only=True)
     rentabilite = serializers.SerializerMethodField()
+    nb_terrains = serializers.SerializerMethodField()
+    nb_terrains_rentabilite = serializers.SerializerMethodField()
+    nb_amc = serializers.SerializerMethodField()
 
     class Meta:
         model = Projet
@@ -44,6 +60,7 @@ class ProjetListSerializer(serializers.ModelSerializer):
             'nombre_unites', 'surface_construite', 'cout_construction',
             'autres_charges', 'prix_vente_unitaire', 'revenu_estime',
             'image', 'date_creation', 'investisseur', 'rentabilite',
+            'nb_terrains', 'nb_terrains_rentabilite', 'nb_amc',
             'prix_foncier_m2', 'frais_acquisition', 'taux_chute', 'cos', 'cus',
             'surface_constructible', 'surface_voie', 'surface_espace_vert',
             'has_appartement', 'has_commerce', 'has_bureau', 'has_equipement',
@@ -64,10 +81,13 @@ class ProjetListSerializer(serializers.ModelSerializer):
             return None
 
 
-class ProjetDetailSerializer(serializers.ModelSerializer):
+class ProjetDetailSerializer(ProjetCompteursMixin, serializers.ModelSerializer):
     type_nom = serializers.CharField(source='id_type.nom', read_only=True)
     type_image_defaut = serializers.CharField(source='id_type.image_defaut', read_only=True)
     rentabilite = serializers.SerializerMethodField()
+    nb_terrains = serializers.SerializerMethodField()
+    nb_terrains_rentabilite = serializers.SerializerMethodField()
+    nb_amc = serializers.SerializerMethodField()
 
     class Meta:
         model = Projet
@@ -77,6 +97,7 @@ class ProjetDetailSerializer(serializers.ModelSerializer):
             'nombre_unites', 'surface_construite', 'cout_construction',
             'autres_charges', 'prix_vente_unitaire', 'revenu_estime',
             'image', 'date_creation', 'investisseur', 'rentabilite',
+            'nb_terrains', 'nb_terrains_rentabilite', 'nb_amc',
             'prix_foncier_m2', 'frais_acquisition', 'taux_chute', 'cos', 'cus',
             'surface_constructible', 'surface_voie', 'surface_espace_vert',
             'has_appartement', 'has_commerce', 'has_bureau', 'has_equipement',

@@ -161,16 +161,19 @@
 }
 
 .app-topbar-logo svg {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
 }
 
 .app-topbar-logo svg rect {
   fill: transparent;
 }
 
-.app-topbar-logo svg path {
-  fill: #3b5bdb;
+.app-topbar-logo svg text {
+  fill: #2563EB;
+  font-size: 16px;
+  font-weight: 800;
+  font-family: Inter, Arial, sans-serif;
 }
 
 .app-topbar-title {
@@ -311,16 +314,19 @@
 }
 
 .app-pnav-logo svg {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
 }
 
 .app-pnav-logo svg rect {
   fill: transparent;
 }
 
-.app-pnav-logo svg path {
-  fill: #3b5bdb;
+.app-pnav-logo svg text {
+  fill: #2563EB;
+  font-size: 16px;
+  font-weight: 800;
+  font-family: Inter, Arial, sans-serif;
 }
 
 .app-pnav-title {

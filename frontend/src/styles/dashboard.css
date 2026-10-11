@@ -849,6 +849,10 @@
   gap: 12px;
 }
 
+.project-detail-grid--vertical {
+  grid-template-columns: 1fr;
+}
+
 .project-detail-item {
   background: var(--bg-page);
   border-radius: 8px;

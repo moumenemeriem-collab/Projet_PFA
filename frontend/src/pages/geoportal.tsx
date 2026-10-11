@@ -507,6 +507,7 @@ const lightThumb = svgThumb(
 const BASEMAPS: { id: string; name: string; url: string; attribution: string; img: string }[] = [
   { id: 'osm', name: 'OpenStreetMap', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap', img: osmImg },
   { id: 'satellite', name: 'Satellite', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: '&copy; Esri', img: satImg },
+  { id: 'hybrid', name: 'Satellite hybride', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: '&copy; Esri', img: satImg },
   { id: 'topo', name: 'Topographique', url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenTopoMap', img: topoImg },
   { id: 'dark', name: 'Sombre', url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attribution: '&copy; CARTO', img: darkThumb },
   { id: 'light', name: 'Clair', url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', attribution: '&copy; CARTO', img: lightThumb },
@@ -894,6 +895,7 @@ export function GeoportalPage(): React.JSX.Element {
   const selectedTerrainIdRef = useRef<number | null>(null)
   const selectedMarkerRef = useRef<any>(null)
   const selectedGeomLayerRef = useRef<any>(null)
+  const selectedPopupInfoOnlyRef = useRef(false)
   const focusParcelleRef = useRef<number | null>(null)
   const analyseResultatsRef = useRef<AnalyseResultat[]>([])
   const overlayLayersRef = useRef<Record<string, any>>({})
@@ -906,6 +908,7 @@ export function GeoportalPage(): React.JSX.Element {
   const terrainActivateRef = useRef<(ref: string) => void>(() => { })
   const paLayerRef = useRef<any>(null)
   const limitesLayerRef = useRef<any>(null)
+  const labelLayerRef = useRef<any>(null)
   const layersBarRef = useRef<HTMLDivElement>(null)
   const basemapMenuRef = useRef<HTMLDivElement>(null)
   const legendRef = useRef<HTMLDivElement>(null)
@@ -2453,7 +2456,35 @@ export function GeoportalPage(): React.JSX.Element {
     if (!map) return
     const basemap = BASEMAPS.find((b) => b.id === basemapId) ?? BASEMAPS[0]
     if (currentLayerRef.current) map.removeLayer(currentLayerRef.current)
+    if (labelLayerRef.current) {
+      map.removeLayer(labelLayerRef.current)
+      labelLayerRef.current = null
+    }
     currentLayerRef.current = L.tileLayer(basemap.url, { attribution: basemap.attribution, maxZoom: 19 }).addTo(map)
+    if (basemapId === 'hybrid') {
+      // Esri : transports + toponymie/bornes pour un effet "hybride Google-like"
+      labelLayerRef.current = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        opacity: 0.9,
+      }).addTo(map)
+      L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        opacity: 0.95,
+        pane: 'overlayPane',
+      }).addTo(map).setZIndex(1001)
+    }
+    if (basemapId === 'hybrid') {
+      // Esri : transports + toponymie/bornes pour un effet "hybride Google-like"
+      labelLayerRef.current = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        opacity: 0.9,
+      }).addTo(map)
+      L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        opacity: 0.95,
+        pane: 'overlayPane',
+      }).addTo(map).setZIndex(1001)
+    }
   }, [basemapId, projet])
 
   useEffect(() => {
@@ -2529,7 +2560,15 @@ export function GeoportalPage(): React.JSX.Element {
       tr.num_parcelle,
       tr.fid != null ? String(tr.fid) : '',
     ]
-    return [...new Set(keys.map((v) => String(v ?? '').trim()).filter((v) => v !== ''))]
+    // Une référence de terrain peut inclure l'indice (ex. « T2015/R ») alors que le
+    // cadastre stocke le numéro seul (« T2015 »). On ajoute donc la base sans suffixe.
+    const expanded = keys.flatMap((v) => {
+      const k = String(v ?? '').trim()
+      if (k === '') return []
+      const base = k.includes('/') ? k.split('/')[0].trim() : ''
+      return base && base !== k ? [k, base] : [k]
+    })
+    return [...new Set(expanded)]
   }
 
   const findResultatByCadastreNum = (idP: string): AnalyseResultat | undefined =>
@@ -2739,7 +2778,7 @@ export function GeoportalPage(): React.JSX.Element {
       },
     }).addTo(map)
 
-  const buildParcellePopup = (tr: AnalyseResultat, p: Record<string, unknown>, ring?: number[][] | null, terrainId?: number): string => {
+  const buildParcellePopup = (tr: AnalyseResultat, p: Record<string, unknown>, ring?: number[][] | null, terrainId?: number, infoOnly = false): string => {
     const center = ring ? ringCenter(ring) : { lat: NaN, lng: NaN }
     const title = formatParcelleTitle({ ...p, nom: tr.nom, indice: p.indice ?? tr.indice ?? tr.infos_generales?.indice })
     const num = p.num != null ? String(p.num) : ''
@@ -2747,28 +2786,36 @@ export function GeoportalPage(): React.JSX.Element {
     const affOpts: PopupAffectationsOpts | null = num !== ''
       ? { idParcelle: num, computed: affectationsResultRef.current?.terrainNum === num }
       : null
-    return `<div class="geoportal-popup">
-        <div class="geoportal-popup-title">${escapeHtml(title)}</div>
-        <div class="geoportal-popup-classement">
+    const classementHtml = infoOnly
+      ? ''
+      : `<div class="geoportal-popup-classement">
           <span class="geoportal-popup-rank">${t('ranking.classement_sur')} <strong>#${tr.classement}${ordinalSuffix(tr.classement)}</strong></span>
         </div>
         <div class="geoportal-popup-scores">
           ${(tr.criteres_conformite ?? []).map(c => `<div class="geoportal-popup-row"><span>${escapeHtml(c.label)}</span><strong>${c.pct >= 50 ? '✓' : '✗'}</strong></div>`).join('')}
-        </div>
+        </div>`
+    return `<div class="geoportal-popup">
+        <div class="geoportal-popup-title">${escapeHtml(title)}</div>
+        ${classementHtml}
         <div class="geoportal-popup-coords">${propsToHtml(p, CADASTRE_ATTRIBUTE_LABELS, ['fid', 'num'])}</div>
         ${buildPopupActions(center.lat, center.lng, ring, title, affOpts, { terrainId: terrainId ?? tr.id, nom: title, superficie: tr.superficie, lat: Number.isFinite(center.lat) ? center.lat : tr.lat, lng: Number.isFinite(center.lng) ? center.lng : tr.lng, ref: fullRef, ring: ring ?? undefined })}
       </div>`
   }
 
-  const attachTerrainActionsPopup = (layer: any, tr: AnalyseResultat, geometry?: unknown): void => {
+  const attachTerrainActionsPopup = (layer: any, tr: AnalyseResultat, geometry?: unknown, infoOnly = false): void => {
     const geom = geometry ?? tr.geom ?? layer.feature?.geometry
     const ring = extractRing(geom)
     const num = tr.num_parcelle || tr.infos_generales?.reference_cadastrale || ''
+    const cadProps = (findCadastreLayerForTerrain(tr)?.feature?.properties ?? {}) as Record<string, unknown>
     const props: Record<string, unknown> = {
+      ...cadProps,
       ...(num ? { num } : {}),
-      surface: tr.superficie,
+      ...(tr.indice ? { indice: tr.indice } : {}),
+      ...(tr.complement ? { complement: tr.complement } : {}),
+      ...(tr.consistance ? { Consistance: tr.consistance } : {}),
+      surface: tr.superficie || (cadProps.surface as number) || 0,
     }
-    layer.bindPopup(buildParcellePopup(tr, props, ring, tr.id), { autoPan: false })
+    layer.bindPopup(buildParcellePopup(tr, props, ring, tr.id, infoOnly), { autoPan: false })
   }
 
   const colorCadastreParcels = (selectedId?: number): void => {
@@ -2870,8 +2917,9 @@ export function GeoportalPage(): React.JSX.Element {
   // Met en évidence le terrain sur SA géométrie réelle (contour du polygone).
   // Priorité : polygone propre du terrain > parcelle cadastre correspondante > signalement explicite.
   // Aucun cercle « générique » n'est affiché : si aucune géométrie n'existe, on prévient l'utilisateur.
-  const focusTerrainOnMap = (tr: AnalyseResultat): void => {
+  const focusTerrainOnMap = (tr: AnalyseResultat, infoOnly = false): void => {
     selectedTerrainIdRef.current = tr.id
+    selectedPopupInfoOnlyRef.current = infoOnly
     showTerrainBuffer(tr)
     clearSelectedMarker()
     clearSelectedGeom()
@@ -2895,7 +2943,7 @@ export function GeoportalPage(): React.JSX.Element {
       selectedGeomLayerRef.current.eachLayer((l: any) => {
         const el = l.getElement?.() as SVGElement | null
         el?.classList.add('geo-cadastre-selected')
-        attachTerrainActionsPopup(l, tr, geom)
+        attachTerrainActionsPopup(l, tr, geom, infoOnly)
         if (!popupLayer) popupLayer = l
       })
       selectedGeomLayerRef.current.bringToFront?.()
@@ -2915,7 +2963,7 @@ export function GeoportalPage(): React.JSX.Element {
     const layer = findCadastreLayerForTerrain(tr)
     if (layer) {
       colorCadastreParcels(tr.id)
-      attachTerrainActionsPopup(layer, tr, layer.feature?.geometry)
+      attachTerrainActionsPopup(layer, tr, layer.feature?.geometry, infoOnly)
       layer.openPopup()
       if (map) overlayFlyToBounds(map, layer.getBounds().pad(0.25), { duration: 0.8, easeLinearity: 0.25, maxZoom: 18 })
       setGeomMissing(false)
@@ -3083,6 +3131,20 @@ export function GeoportalPage(): React.JSX.Element {
         let zoomed = false
         if (analyseResultatsRef.current.length > 0) {
           colorCadastreParcels(selectedTerrainIdRef.current ?? analyseResultatsRef.current[0]?.id)
+          // Le cadastre vient de se charger : on reconstruit le popup du terrain
+          // sélectionné pour y injecter les attributs cadastraux (indice, consistance…).
+          const selId = selectedTerrainIdRef.current
+          if (selectedGeomLayerRef.current && selId != null) {
+            const sel = analyseResultatsRef.current.find((tr) => tr.id === selId)
+            if (sel) {
+              let popupLayer: any = null
+              selectedGeomLayerRef.current.eachLayer((l: any) => {
+                attachTerrainActionsPopup(l, sel, (sel as any).geom, selectedPopupInfoOnlyRef.current)
+                if (!popupLayer) popupLayer = l
+              })
+              popupLayer?.openPopup()
+            }
+          }
           const focusId = focusParcelleRef.current
           if (focusId != null) {
             const focus = analyseResultatsRef.current.find((tr) => tr.id === focusId)
@@ -3204,9 +3266,10 @@ export function GeoportalPage(): React.JSX.Element {
     if (params.get('analyse')) return
     const parcelle = params.get('parcelle')
     if (!parcelle) return
+    const hideCard = params.get('hideCard') === '1'
     let cancelled = false
     setCardMode('loading')
-    setCardHidden(false)
+    setCardHidden(hideCard)
     setCadastreEnabled(true)
     fetchTerrains(projetId, { page_size: 100 })
       .then((data) => {
@@ -3268,13 +3331,16 @@ export function GeoportalPage(): React.JSX.Element {
           geom,
           fid: found.fid ?? null,
           num_parcelle: found.num_parcelle ?? '',
+          indice: found.indice ?? '',
+          complement: found.complement ?? '',
+          consistance: found.consistance ?? '',
         } as AnalyseResultat
         analyseResultatsRef.current = [obj]
         selectedTerrainIdRef.current = obj.id
         focusParcelleRef.current = obj.id
         setSelectedTerrain(obj)
         showTerrainBuffer(obj)
-        focusTerrainOnMap(obj)
+        focusTerrainOnMap(obj, hideCard)
         setCardMode('results')
       })
       .catch(() => {

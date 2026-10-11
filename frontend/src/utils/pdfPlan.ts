@@ -369,7 +369,7 @@ function buildPage1(d: PlanData, dateStr: string): string {
     txt(s, right - textW(s, size, font === 'F2'), y, size, font, color)
 
   // 1. En-tête
-  out.push(drawHeaderBanner('PLAN TOPOGRAPHIQUE & GÉOMÉTRIQUE', subj(d), 'TOPOGRAPHIE', AP, APH))
+  out.push(drawHeaderBanner('PLAN GÉOMÉTRIQUE', subj(d), 'GÉOMÉTRIQUE', AP, APH))
 
   // 2. Grille de 4 cartes KPI
   const kpis = [
@@ -397,7 +397,7 @@ function buildPage1(d: PlanData, dateStr: string): string {
 
   const infoRows = [
     { label: 'Identifiant / Nom de la parcelle :', val: subj(d) },
-    { label: 'Système de coordonnées projetées :', val: 'EPSG:26191 (Merchich / Sahara - Lambert Conique Conforme)' },
+    { label: 'Système de coordonnées projetées :', val: 'EPSG:26191' },
     { label: 'Superficie cadastrale calculée :', val: formatA(d.area) },
     { label: 'Périmètre total du polygone :', val: formatM(d.perimeter) },
     { label: 'Date et heure du relevé :', val: dateStr },

@@ -22,13 +22,6 @@ function getTypeIcon(typeNom: string): React.JSX.Element {
   return icons.building
 }
 
-function formatBudget(value: string): string {
-  const num = parseFloat(value)
-  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M MAD`
-  if (num >= 1_000) return `${(num / 1_000).toFixed(0)}k MAD`
-  return `${num} MAD`
-}
-
 function projectImage(projet: Projet, w: number, h: number): string {
   return projet.image || projet.type_image_defaut || `https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=${w}&h=${h}&fit=crop`
 }
@@ -120,16 +113,6 @@ export function RankingProjectsPage(): React.JSX.Element {
                       {getTypeIcon(p.type_nom)}
                       {p.type_nom}
                     </span>
-                    <div className="project-metrics">
-                      <div className="project-metric">
-                        <span className="project-metric-label">{t('projects.budget')}</span>
-                        <span className="project-metric-value">{icons.euro} {formatBudget(p.budget_total)}</span>
-                      </div>
-                      <div className="project-metric">
-                        <span className="project-metric-label">{t('projects.surface')}</span>
-                        <span className="project-metric-value">{Number(p.surface_souhaitee).toLocaleString()} m²</span>
-                      </div>
-                    </div>
                     <div className="project-card-actions">
                       <Link to={`/projets/${p.id}/classement`} className="btn btn-primary project-classement-btn">
                         {icons.ranking} {t('projects.view_ranking')}

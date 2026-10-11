@@ -139,6 +139,8 @@ export interface AnalyseResultat {
   fid?: number | null
   num_parcelle?: string
   indice?: string
+  complement?: string
+  consistance?: string
 }
 
 export interface CritereConformite {

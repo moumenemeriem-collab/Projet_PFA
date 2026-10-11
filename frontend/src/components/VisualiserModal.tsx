@@ -1,14 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
+﻿import { useEffect, useRef, useState } from 'react'
 import { icons } from './icons'
 import { fetchCouches, fetchCoucheGeoJSON, type Couche, type CoucheFeatureCollection } from '../api/couches'
 
 const BASEMAPS = [
-  { id: 'osm', name: 'OpenStreetMap', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '© OpenStreetMap' },
-  { id: 'satellite', name: 'Satellite', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: '© Esri' },
-  { id: 'topo', name: 'Topographique', url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', attribution: '© OpenTopoMap' },
+  { id: 'osm', name: 'OpenStreetMap', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: 'Â© OpenStreetMap' },
+  { id: 'satellite', name: 'Satellite', url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: 'Â© Esri' },
+  { id: 'topo', name: 'Topographique', url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', attribution: 'Â© OpenTopoMap' },
 ]
 
-const MAP_EXCLUDED = new Set(['reglement_pa', 'prix_fonciers'])
+const MAP_EXCLUDED = new Set(['reglement_pa', ])
 
 interface VisualiserModalProps {
   onClose: () => void
@@ -237,3 +237,4 @@ function getCoucheColor(categorie: string | undefined): string {
     default: return '#6366f1'
   }
 }
+

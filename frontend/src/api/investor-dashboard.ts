@@ -4,6 +4,7 @@ export interface InvestorResume {
   nb_projets: number
   nb_terrains: number
   nb_analyses: number
+  nb_parcelles_cadastre: number
   score_moyen: number | null
 }
 
