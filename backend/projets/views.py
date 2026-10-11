@@ -1468,6 +1468,17 @@ class AnalyseDetailView(APIView):
             return Response({'detail': 'Analyse introuvable.'}, status=status.HTTP_404_NOT_FOUND)
         return Response(AnalyseDetailSerializer(analyse).data)
 
+    def delete(self, request, projet_pk: int, analyse_pk: int):
+        try:
+            analyse = Analyse.objects.get(pk=analyse_pk, projet_id=projet_pk)
+        except Analyse.DoesNotExist:
+            return Response({'detail': 'Analyse introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        projet_nom = analyse.projet.nom
+        nombre_parcelles = analyse.nombre_parcelles
+        analyse.delete()
+        _log(request.user, 'suppression', 'analyse', f'Analyse #{analyse_pk} du projet "{projet_nom}" ({nombre_parcelles} parcelle(s))')
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class AnalyseResultatsView(APIView):
     """Résultats d'une analyse enregistrée."""
@@ -1708,7 +1719,24 @@ def _get_attributs_all(couche):
     return [a['nom'] for a in couche.attributs] if couche.attributs else []
 
 
+def _require_admin_couche(request):
+    user = request.user
+    if not user or not user.is_authenticated:
+        return Response({'error': 'Authentification requise.'}, status=status.HTTP_401_UNAUTHORIZED)
+    role = getattr(user, 'role', None)
+    if role != 'admin' and not getattr(user, 'is_superuser', False):
+        return Response({'error': 'Permission refusée (rôle administrateur requis).'}, status=status.HTTP_403_FORBIDDEN)
+    return None
+
+
+def _touch_couche_maj(couche):
+    from django.utils import timezone
+    couche.date_mise_a_jour = timezone.now()
+    couche.save(update_fields=['date_mise_a_jour'])
+
+
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def couche_features_list(request, pk):
     try:
         couche = Couche.objects.get(pk=pk)
@@ -1773,7 +1801,11 @@ def couche_features_list(request, pk):
 
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def couche_features_create(request, pk):
+    denied = _require_admin_couche(request)
+    if denied:
+        return denied
     try:
         couche = Couche.objects.get(pk=pk)
     except Couche.DoesNotExist:
@@ -1788,8 +1820,11 @@ def couche_features_create(request, pk):
     geometry = data.get('geometry')
     props = data.get('properties', {})
 
-    cols = ['geometry']
-    vals = [json.dumps(geometry) if isinstance(geometry, dict) else None]
+    if not isinstance(geometry, dict) or not geometry.get('type'):
+        return Response({'error': 'Géométrie requise (GeoJSON valide).'}, status=status.HTTP_400_BAD_REQUEST)
+
+    cols = ['"geometry"']
+    vals = [json.dumps(geometry)]
     for a in attributs:
         cols.append(f'"{a}"')
         vals.append(props.get(a))
@@ -1802,13 +1837,18 @@ def couche_features_create(request, pk):
         with connection.cursor() as cur:
             cur.execute(sql, vals)
             new_id = cur.fetchone()[0]
+        _touch_couche_maj(couche)
         return Response({'id': new_id, 'message': 'Ligne créée'}, status=status.HTTP_201_CREATED)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['PUT'])
+@permission_classes([IsAuthenticated])
 def couche_features_update(request, pk, feature_id):
+    denied = _require_admin_couche(request)
+    if denied:
+        return denied
     try:
         couche = Couche.objects.get(pk=pk)
     except Couche.DoesNotExist:
@@ -1844,13 +1884,18 @@ def couche_features_update(request, pk, feature_id):
             cur.execute(sql, vals)
             if cur.rowcount == 0:
                 return Response({'error': 'Ligne introuvable'}, status=status.HTTP_404_NOT_FOUND)
+        _touch_couche_maj(couche)
         return Response({'message': 'Ligne mise à jour'})
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
 def couche_features_delete(request, pk, feature_id):
+    denied = _require_admin_couche(request)
+    if denied:
+        return denied
     try:
         couche = Couche.objects.get(pk=pk)
     except Couche.DoesNotExist:
@@ -1866,13 +1911,18 @@ def couche_features_delete(request, pk, feature_id):
             cur.execute(sql, [feature_id])
             if cur.rowcount == 0:
                 return Response({'error': 'Ligne introuvable'}, status=status.HTTP_404_NOT_FOUND)
+        _touch_couche_maj(couche)
         return Response({'message': 'Ligne supprimée'})
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def couche_features_duplicate(request, pk, feature_id):
+    denied = _require_admin_couche(request)
+    if denied:
+        return denied
     try:
         couche = Couche.objects.get(pk=pk)
     except Couche.DoesNotExist:
@@ -1898,8 +1948,8 @@ def couche_features_duplicate(request, pk, feature_id):
             geom = row[cols.index('geometry')]
             geom_val = json.dumps(geom) if isinstance(geom, str) else geom
 
-            insert_cols = ['geometry']
-            insert_vals = [geom_val]
+            insert_cols = ['"geometry"']
+            insert_vals = [json.dumps(geom) if isinstance(geom, dict) else geom_val]
             for a in attributs_write:
                 insert_cols.append(f'"{a}"')
                 insert_vals.append(row[cols.index(a)] if a in cols else None)
@@ -1908,6 +1958,7 @@ def couche_features_duplicate(request, pk, feature_id):
             cols_sql_ins = ', '.join(insert_cols)
             cur.execute(f'INSERT INTO "{table}" ({cols_sql_ins}) VALUES ({placeholders}) RETURNING id', insert_vals)
             new_id = cur.fetchone()[0]
+        _touch_couche_maj(couche)
         return Response({'id': new_id, 'message': 'Ligne dupliquée'}, status=status.HTTP_201_CREATED)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

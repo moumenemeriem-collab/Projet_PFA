@@ -349,7 +349,7 @@
 /* ── Modales ── */
 
 .admin-modal.classement-modal--history {
-  max-width: 520px;
+  max-width: 440px;
 }
 
 .classement-modal-body {
@@ -590,6 +590,17 @@
 .classement-history-item .table-action-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.classement-history-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.classement-history-actions .btn-action {
+  white-space: nowrap;
 }
 
 /* ── Sélection de projet (Classement) ── */

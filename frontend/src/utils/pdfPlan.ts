@@ -1,11 +1,11 @@
-// Génération d'un plan topographique et d'affectations PDF d'une parcelle cadastrale en EPSG:26191
-// (Merchich / Sahara — Lambert Conique Conforme, unité : mètre).
+// Génération d'un plan géométrique et d'affectations PDF d'une parcelle cadastrale en EPSG:26191
+// (Merchich / Nord Maroc — Lambert Conique Conforme, unité : mètre).
 // Aucune dépendance externe : projection native + moteur PDF vectoriel professionnel.
 // Structure : Page 1 portrait (fiche d'identité + métriques + tableau des sommets/côtés),
-// Page 2 paysage (plan topographique vectoriel avec cartouche, échelle et coordonnées).
+// Page 2 paysage (plan géométrique vectoriel avec cartouche, échelle et coordonnées).
 
 import { isAffectationValide, type AffectationPiece } from './affectations'
-import { AP, APH, AL, ALH, NAVY, BLUE_ACCENT, DARK, GRAY, LIGHT_GRAY, LINE, GRID, BG_CARD, BG_GREEN, GREEN_TEXT, BG_BLUE, BLUE_TEXT, BG_AMBER, AMBER_TEXT, BG_SUBTLE } from './pdfTheme'
+import { AP, APH, AL, ALH, NAVY, BLUE_ACCENT, DARK, GRAY, LINE, GRID, BG_CARD, BG_GREEN, GREEN_TEXT, BG_BLUE, BLUE_TEXT, BG_AMBER, AMBER_TEXT, BG_SUBTLE } from './pdfTheme'
 
 interface Pt {
   x: number
@@ -38,7 +38,8 @@ const E26191 = {
   fn: 300000,
 }
 
-export function projectSahara(latDeg: number, lngDeg: number): Pt {
+/** Projection WGS84 → EPSG:26191 (Merchich / Nord Maroc). */
+export function projectEpsg26191(latDeg: number, lngDeg: number): Pt {
   const { a, f, lat0, lon0, k0, fe, fn } = E26191
   const e2 = f * (2 - f)
   const e = Math.sqrt(e2)
@@ -119,8 +120,8 @@ function esc(s: string): string {
   return r
 }
 
-// Métriques Helvetica
-const HELV_W: Record<number, number> = {
+// Métriques Times-Roman (PDF Type1, équivalent Times New Roman à l'affichage)
+const TIMES_W: Record<number, number> = {
   32: 278, 33: 278, 34: 355, 35: 556, 36: 556, 37: 889, 38: 667, 39: 191,
   40: 333, 41: 333, 42: 389, 43: 584, 44: 278, 45: 333, 46: 278, 47: 278,
   48: 556, 49: 556, 50: 556, 51: 556, 52: 556, 53: 556, 54: 556, 55: 556, 56: 556, 57: 556,
@@ -137,7 +138,7 @@ const HELV_W: Record<number, number> = {
   0xb2: 333, 0xb0: 400,
 }
 
-const HELV_BOLD_W: Record<number, number> = {
+const TIMES_BOLD_W: Record<number, number> = {
   32: 278, 33: 333, 34: 474, 35: 556, 36: 556, 37: 889, 38: 722, 39: 238,
   40: 333, 41: 333, 42: 389, 43: 584, 44: 278, 45: 333, 46: 278, 47: 278,
   48: 556, 49: 556, 50: 556, 51: 556, 52: 556, 53: 556, 54: 556, 55: 556, 56: 556, 57: 556,
@@ -168,7 +169,7 @@ const ACCENT_BASE: Record<string, string> = {
 }
 
 function charWidth(ch: string, bold: boolean): number {
-  const table = bold ? HELV_BOLD_W : HELV_W
+  const table = bold ? TIMES_BOLD_W : TIMES_W
   const code = ch.codePointAt(0) ?? 0
   if (table[code] != null) return table[code]
   const byte = WIN_ANSI[ch]
@@ -269,31 +270,29 @@ function drawRoundedRect(x: number, y: number, w: number, h: number, r: number, 
   return s
 }
 
-function drawHeaderBanner(title: string, subtitle: string, badgeText: string, width = AP, height = APH): string {
+/** En-tête sobre (sans bandeau) — titres en Times-Bold (F2). */
+function drawReportHeader(title: string, subtitle: string, width = AP, pageHeight = APH): string {
   const out: string[] = []
-  const bannerH = 68
-  const bannerY = height - bannerH
-
-  out.push(`${NAVY} rg 0 ${bannerY.toFixed(2)} ${width.toFixed(2)} ${bannerH.toFixed(2)} re f\n`)
-  out.push(`${BLUE_ACCENT} rg 0 ${(bannerY - 3).toFixed(2)} ${width.toFixed(2)} 3 re f\n`)
-
-  const txt = (s: string, x: number, y: number, size: number, font = 'F1', color = '1 1 1'): void => {
+  const txt = (s: string, x: number, y: number, size: number, font = 'F1', color = DARK): void => {
     out.push(`${color} rg BT /${font} ${size} Tf 1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm (${esc(s)}) Tj ET\n`)
   }
 
-  txt('GEO INVEST • ANALYSE SPATIALE & FONCIÈRE', 36, bannerY + 48, 6.8, 'F2', LIGHT_GRAY)
-  txt(title, 36, bannerY + 30, 14, 'F2', '1 1 1')
-  txt(subtitle, 36, bannerY + 14, 8.5, 'F1', '0.8 0.82 0.85')
-
-  if (badgeText) {
-    const bw = textW(badgeText, 7.5, true) + 16
-    const bx = width - 36 - bw
-    const by = bannerY + 24
-    out.push(drawRoundedRect(bx, by, bw, 20, 10, BLUE_ACCENT))
-    txt(badgeText, bx + 8, by + 6, 7.5, 'F2', '1 1 1')
-  }
+  const titleY = pageHeight - 40
+  txt(title, 36, titleY, 14, 'F2', DARK)
+  const ruleY = subtitle ? titleY - 20 : titleY - 10
+  if (subtitle) txt(subtitle, 36, titleY - 14, 9.5, 'F1', GRAY)
+  out.push(`${LINE} RG 0.5 w 36 ${ruleY.toFixed(2)} m ${(width - 36).toFixed(2)} ${ruleY.toFixed(2)} l S\n`)
 
   return out.join('')
+}
+
+/** Ligne d'en-tête de tableau (fond gris clair, texte Times-Bold). */
+function drawTableHeadBand(x: number, y: number, w: number, h: number): string {
+  return (
+    `${BG_SUBTLE} rg ${x.toFixed(2)} ${(y - h).toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)} re f\n` +
+    `${LINE} RG 0.5 w ${x.toFixed(2)} ${(y - h).toFixed(2)} m ${(x + w).toFixed(2)} ${(y - h).toFixed(2)} l S\n` +
+    `${LINE} RG 0.5 w ${x.toFixed(2)} ${y.toFixed(2)} m ${(x + w).toFixed(2)} ${y.toFixed(2)} l S\n`
+  )
 }
 
 function drawFooter(pageIdx: number, totalPages: number, dateStr: string, width = AP): string {
@@ -302,12 +301,12 @@ function drawFooter(pageIdx: number, totalPages: number, dateStr: string, width 
     out.push(`${color} rg BT /${font} ${size} Tf 1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm (${esc(s)}) Tj ET\n`)
   }
 
-  out.push(`${LINE} RG 0.8 w 36 34 m ${(width - 36).toFixed(2)} 34 l S\n`)
-  txt(`GEO INVEST • Système d'Information Géographique • Généré le ${dateStr}`, 36, 22, 6.8, 'F1', GRAY)
+  out.push(`${LINE} RG 0.5 w 36 34 m ${(width - 36).toFixed(2)} 34 l S\n`)
+  txt(`Document généré le ${dateStr}`, 36, 22, 8, 'F1', GRAY)
 
   const rightText = `Page ${pageIdx} / ${totalPages}`
-  const rw = textW(rightText, 6.8, true)
-  txt(rightText, width - 36 - rw, 22, 6.8, 'F2', DARK)
+  const rw = textW(rightText, 8, true)
+  txt(rightText, width - 36 - rw, 22, 8, 'F2', DARK)
 
   return out.join('')
 }
@@ -369,14 +368,14 @@ function buildPage1(d: PlanData, dateStr: string): string {
     txt(s, right - textW(s, size, font === 'F2'), y, size, font, color)
 
   // 1. En-tête
-  out.push(drawHeaderBanner('PLAN GÉOMÉTRIQUE', subj(d), 'GÉOMÉTRIQUE', AP, APH))
+  out.push(drawReportHeader('PLAN GÉOMÉTRIQUE', subj(d), AP, APH))
 
   // 2. Grille de 4 cartes KPI
   const kpis = [
     { label: 'SUPERFICIE', val: `${frNum(d.area, 0)} m²`, sub: d.area >= 10000 ? `${frNum(d.area / 10000, 2)} ha` : 'Superficie brute', color: BG_BLUE, textColor: BLUE_TEXT },
     { label: 'PÉRIMÈTRE', val: formatM(d.perimeter), sub: 'Longueur totale contour', color: BG_CARD, textColor: NAVY },
     { label: 'SOMMETS', val: `${d.pts.length}`, sub: 'Bornes géoréférencées', color: BG_GREEN, textColor: GREEN_TEXT },
-    { label: 'SYSTÈME', val: 'EPSG:26191', sub: 'Merchich / Sahara', color: BG_CARD, textColor: DARK },
+    { label: 'SYSTÈME', val: 'EPSG:26191', sub: 'Merchich / Nord Maroc', color: BG_CARD, textColor: DARK },
   ]
 
   const kpiW = (AP - 72 - 3 * 8) / 4
@@ -391,13 +390,12 @@ function buildPage1(d: PlanData, dateStr: string): string {
 
   // 3. Fiche d'informations du terrain
   let y = 688
-  out.push(`${BLUE_ACCENT} rg 36 ${y - 12} 3 14 re f\n`)
-  txt('INFORMATIONS GÉNÉRALES DU TERRAIN', 44, y - 10, 9.5, 'F2', DARK)
+  txt('INFORMATIONS GÉNÉRALES DU TERRAIN', 36, y - 10, 11, 'F2', DARK)
   y -= 22
 
   const infoRows = [
     { label: 'Identifiant / Nom de la parcelle :', val: subj(d) },
-    { label: 'Système de coordonnées projetées :', val: 'EPSG:26191' },
+    { label: 'Système de coordonnées projetées :', val: 'EPSG:26191 — Merchich / Nord Maroc' },
     { label: 'Superficie cadastrale calculée :', val: formatA(d.area) },
     { label: 'Périmètre total du polygone :', val: formatM(d.perimeter) },
     { label: 'Date et heure du relevé :', val: dateStr },
@@ -418,8 +416,7 @@ function buildPage1(d: PlanData, dateStr: string): string {
   y -= infoCardH + 18
 
   // 4. Tableau des coordonnées des sommets et des côtés
-  out.push(`${BLUE_ACCENT} rg 36 ${y - 12} 3 14 re f\n`)
-  txt('TABLEAU DES SOMMETS & LONGUEURS DES CÔTÉS (EPSG:26191)', 44, y - 10, 9.5, 'F2', DARK)
+  txt('TABLEAU DES SOMMETS & LONGUEURS DES CÔTÉS (EPSG:26191)', 36, y - 10, 11, 'F2', DARK)
   y -= 22
 
   const tableX = 36
@@ -427,12 +424,12 @@ function buildPage1(d: PlanData, dateStr: string): string {
   const colW = { p: 50, x: 120, y: 120, seg: 100, dist: tableW - 390 }
 
   // En-tête du tableau
-  out.push(drawRoundedRect(tableX, y - 18, tableW, 18, 4, NAVY))
-  txt('Sommet', tableX + 10, y - 12, 7.5, 'F2', '1 1 1')
-  txtR('X (m / Lambert)', tableX + colW.p + colW.x - 10, y - 12, 7.5, 'F2', '1 1 1')
-  txtR('Y (m / Lambert)', tableX + colW.p + colW.x + colW.y - 10, y - 12, 7.5, 'F2', '1 1 1')
-  txt('Segment', tableX + colW.p + colW.x + colW.y + 10, y - 12, 7.5, 'F2', '1 1 1')
-  txtR('Longueur (m)', tableX + tableW - 12, y - 12, 7.5, 'F2', '1 1 1')
+  out.push(drawTableHeadBand(tableX, y, tableW, 18))
+  txt('Sommet', tableX + 10, y - 12, 7.5, 'F2', DARK)
+  txtR('X (m / Lambert)', tableX + colW.p + colW.x - 10, y - 12, 7.5, 'F2', DARK)
+  txtR('Y (m / Lambert)', tableX + colW.p + colW.x + colW.y - 10, y - 12, 7.5, 'F2', DARK)
+  txt('Segment', tableX + colW.p + colW.x + colW.y + 10, y - 12, 7.5, 'F2', DARK)
+  txtR('Longueur (m)', tableX + tableW - 12, y - 12, 7.5, 'F2', DARK)
   y -= 18
 
   const n = d.pts.length
@@ -465,7 +462,7 @@ function buildPage1(d: PlanData, dateStr: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// PAGE 2 — Plan topographique (paysage A4)
+// PAGE 2 — Plan géométrique (paysage A4)
 // ---------------------------------------------------------------------------
 
 interface Page2Opts {
@@ -484,7 +481,12 @@ function buildPage2(d: PlanData, dateStr: string, opts: Page2Opts = {}): string 
     txt(s, right - textW(s, size, font === 'F2'), y, size, font, color)
 
   // En-tête pleine largeur paysage
-  out.push(drawHeaderBanner(opts.titleText ?? 'PLAN TOPOGRAPHIQUE & GÉOMÉTRIQUE', opts.subtitleText ?? `${subj(d)} • EPSG:26191`, 'PLAN VECTEUR', AL, ALH))
+  out.push(drawReportHeader(
+    opts.titleText ?? 'PLAN GÉOMÉTRIQUE',
+    opts.subtitleText ?? `${subj(d)} • EPSG:26191 — Merchich / Nord Maroc`,
+    AL,
+    ALH
+  ))
 
   const n = d.pts.length
   const allPts = opts.background && opts.background.length ? [...d.pts, ...opts.background] : d.pts
@@ -652,11 +654,10 @@ function buildPage2(d: PlanData, dateStr: string, opts: Page2Opts = {}): string 
 
   out.push(drawRoundedRect(T_X0, P_Y0, T_W, P_Y1 - P_Y0, 6, BG_CARD, LINE, 0.8))
 
-  // En-tête cartouche
-  out.push(drawRoundedRect(T_X0, T_Top - 24, T_W, 24, 4, NAVY))
-  txt('CARTOUCHE & COORDONNÉES', T_X0 + 10, T_Top - 16, 8, 'F2', '1 1 1')
+  txt('CARTOUCHE & COORDONNÉES', T_X0 + 10, T_Top - 14, 9, 'F2', DARK)
+  out.push(`${LINE} RG 0.5 w ${T_X0.toFixed(2)} ${(T_Top - 20).toFixed(2)} m ${(T_X0 + T_W).toFixed(2)} ${(T_Top - 20).toFixed(2)} l S\n`)
 
-  let cy = T_Top - 36
+  let cy = T_Top - 34
   txt('Terrain :', T_X0 + 10, cy, 7.5, 'F2', GRAY)
   txt(fitText(subj(d), 7.5, T_W - 60, true), T_X0 + 55, cy, 7.5, 'F2', DARK)
   cy -= 14
@@ -693,10 +694,36 @@ function buildPage2(d: PlanData, dateStr: string, opts: Page2Opts = {}): string 
 }
 
 // ---------------------------------------------------------------------------
-// PAGE RÉCAPITULATIF DES AFFECTATIONS (paysage A4)
+// PAGE RÉCAPITULATIF DES AFFECTATIONS (portrait A4, comme le plan géométrique)
 // ---------------------------------------------------------------------------
 
-const AFF_SUMMARY_MAX_ROWS = 10
+const AFF_TABLE_ROW_H = 18
+/** Marge basse au-dessus du pied de page pour la dernière ligne du tableau. */
+const AFF_TABLE_FLOOR_Y = 52
+
+/** Nombre max de lignes d'affectations selon l'espace réel (plus de plafond arbitraire à 10). */
+function affSummaryMaxRows(continuation: boolean): number {
+  let y = continuation ? 768 : 688
+  y -= 22 // titre de section + interligne
+  y -= AFF_TABLE_ROW_H // en-tête du tableau
+  const yMin = AFF_TABLE_FLOOR_Y + AFF_TABLE_ROW_H
+  return Math.max(1, Math.floor((y - yMin) / AFF_TABLE_ROW_H))
+}
+
+function sliceAffSummaryPages(all: AffectationPiece[]): AffectationPiece[][] {
+  if (all.length === 0) return [[]]
+  const pages: AffectationPiece[][] = []
+  let i = 0
+  const firstMax = affSummaryMaxRows(false)
+  pages.push(all.slice(0, firstMax))
+  i = firstMax
+  while (i < all.length) {
+    const n = affSummaryMaxRows(true)
+    pages.push(all.slice(i, i + n))
+    i += n
+  }
+  return pages
+}
 
 function buildAffSummaryPage(d: PlanData, pieces: AffectationPiece[], totalCount: number, dateStr: string, continuation: boolean): string {
   const out: string[] = []
@@ -706,15 +733,14 @@ function buildAffSummaryPage(d: PlanData, pieces: AffectationPiece[], totalCount
   const txtR = (s: string, right: number, y: number, size: number, font = 'F1', color = DARK): void =>
     txt(s, right - textW(s, size, font === 'F2'), y, size, font, color)
 
-  out.push(drawHeaderBanner(
+  out.push(drawReportHeader(
     'PLAN DES AFFECTATIONS DU SOL & DÉCOUPAGE',
-    continuation ? `${subj(d)} (Suite)` : subj(d),
-    'AFFECTATIONS',
-    AL,
-    ALH
+    continuation ? `${subj(d)} (suite)` : subj(d),
+    AP,
+    APH
   ))
 
-  let y = 505
+  let y = continuation ? 768 : 688
 
   if (!continuation) {
     // 4 KPI Cards
@@ -724,38 +750,50 @@ function buildAffSummaryPage(d: PlanData, pieces: AffectationPiece[], totalCount
       { label: 'SUPERFICIE DU TERRAIN', val: `${frNum(d.area, 0)} m²`, sub: d.area >= 10000 ? `${frNum(d.area / 10000, 2)} ha` : 'Superficie cadastrale', color: BG_BLUE, textColor: BLUE_TEXT },
       { label: 'PÉRIMÈTRE TOTAL', val: formatM(d.perimeter), sub: 'Périmètre extérieur', color: BG_CARD, textColor: NAVY },
       { label: "ZONES D'AFFECTATION", val: `${totalCount} affectation(s)`, sub: `${pieces.length} affichée(s) sur cette page`, color: BG_GREEN, textColor: GREEN_TEXT },
-      { label: 'AFFECTATION DOMINANTE', val: domPiece ? fitText(domPiece.label, 9, 140, true) : 'Aucune', sub: domPiece ? `${domPiece.percent.toFixed(1)} % (${frNum(domPiece.areaM2, 0)} m²)` : 'Aucune zone', color: BG_AMBER, textColor: AMBER_TEXT },
+      { label: 'AFFECTATION DOMINANTE', val: domPiece ? domPiece.label : 'Aucune', sub: domPiece ? `${domPiece.percent.toFixed(1)} % (${frNum(domPiece.areaM2, 0)} m²)` : 'Aucune zone', color: BG_AMBER, textColor: AMBER_TEXT },
     ]
 
-    const kpiW = (AL - 72 - 3 * 10) / 4
+    const kpiW = (AP - 72 - 3 * 8) / 4
+    const kpiY = 708
     kpis.forEach((kpi, idx) => {
-      const kx = 36 + idx * (kpiW + 10)
-      out.push(drawRoundedRect(kx, y - 46, kpiW, 46, 6, kpi.color, LINE, 0.8))
-      txt(kpi.label, kx + 8, y - 14, 6.2, 'F2', GRAY)
-      txt(kpi.val, kx + 8, y - 28, 9.5, 'F2', kpi.textColor)
-      txt(kpi.sub, kx + 8, y - 40, 5.8, 'F1', GRAY)
+      const kx = 36 + idx * (kpiW + 8)
+      const valW = kpiW - 16
+      const val =
+        kpi.label === 'AFFECTATION DOMINANTE' && domPiece
+          ? fitText(domPiece.label, 9, valW, true)
+          : kpi.val
+      out.push(drawRoundedRect(kx, kpiY, kpiW, 48, 6, kpi.color, LINE, 0.8))
+      txt(kpi.label, kx + 8, kpiY + 34, 6.2, 'F2', GRAY)
+      txt(fitText(val, 10, valW, true), kx + 8, kpiY + 18, 10, 'F2', kpi.textColor)
+      txt(kpi.sub, kx + 8, kpiY + 7, 5.8, 'F1', GRAY)
     })
-
-    y -= 64
   }
 
   // Tableau des affectations
-  out.push(`${BLUE_ACCENT} rg 36 ${y - 12} 3 14 re f\n`)
-  txt('DÉTAIL DES AFFECTATIONS DU PLAN D\'AMÉNAGEMENT', 44, y - 10, 9.5, 'F2', DARK)
+  txt('DÉTAIL DES AFFECTATIONS DU PLAN D\'AMÉNAGEMENT', 36, y - 10, 11, 'F2', DARK)
   y -= 22
 
   const tableX = 36
-  const tableW = AL - 72
-  const colW = { color: 30, label: 220, desig: 200, m2: 120, ha: 100, pct: tableW - 670 }
+  const tableW = AP - 72
+  const colScale = tableW / (AL - 72)
+  const colW = {
+    color: Math.round(30 * colScale),
+    label: Math.round(220 * colScale),
+    desig: Math.round(200 * colScale),
+    m2: Math.round(120 * colScale),
+    ha: Math.round(100 * colScale),
+    pct: 0,
+  }
+  colW.pct = tableW - (colW.color + colW.label + colW.desig + colW.m2 + colW.ha)
 
   // En-tête
-  out.push(drawRoundedRect(tableX, y - 18, tableW, 18, 4, NAVY))
-  txt('Zonage', tableX + 10, y - 12, 7.5, 'F2', '1 1 1')
-  txt('Libellé / Affectation', tableX + colW.color + 10, y - 12, 7.5, 'F2', '1 1 1')
-  txt('Désignation PA', tableX + colW.color + colW.label + 10, y - 12, 7.5, 'F2', '1 1 1')
-  txtR('Superficie (m²)', tableX + colW.color + colW.label + colW.desig + colW.m2 - 10, y - 12, 7.5, 'F2', '1 1 1')
-  txtR('Superficie (ha)', tableX + colW.color + colW.label + colW.desig + colW.m2 + colW.ha - 10, y - 12, 7.5, 'F2', '1 1 1')
-  txtR('Part (%)', tableX + tableW - 12, y - 12, 7.5, 'F2', '1 1 1')
+  out.push(drawTableHeadBand(tableX, y, tableW, 18))
+  txt('Zonage', tableX + 10, y - 12, 7.5, 'F2', DARK)
+  txt('Libellé / Affectation', tableX + colW.color + 10, y - 12, 7.5, 'F2', DARK)
+  txt('Désignation PA', tableX + colW.color + colW.label + 10, y - 12, 7.5, 'F2', DARK)
+  txtR('Superficie (m²)', tableX + colW.color + colW.label + colW.desig + colW.m2 - 10, y - 12, 7.5, 'F2', DARK)
+  txtR('Superficie (ha)', tableX + colW.color + colW.label + colW.desig + colW.m2 + colW.ha - 10, y - 12, 7.5, 'F2', DARK)
+  txtR('Part (%)', tableX + tableW - 12, y - 12, 7.5, 'F2', DARK)
   y -= 18
 
   pieces.forEach((pc, i) => {
@@ -784,13 +822,13 @@ function buildAffSummaryPage(d: PlanData, pieces: AffectationPiece[], totalCount
   }
 
   // Pied de page
-  out.push(drawFooter(1, 1 + pieces.length, dateStr, AL))
+  out.push(drawFooter(1, 1 + pieces.length, dateStr, AP))
 
   return out.join('')
 }
 
 // ---------------------------------------------------------------------------
-// Assemblage générique du PDF (N pages A4, polices F1/F2 partagées)
+// Assemblage générique du PDF (N pages A4, F1 = Times-Roman, F2 = Times-Bold)
 // ---------------------------------------------------------------------------
 
 interface PdfPage {
@@ -834,8 +872,8 @@ function assemblePdf(pages: PdfPage[]): Uint8Array {
     )
   }
   objects.push(
-    ascii(`${firstFont} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\nendobj\n`),
-    ascii(`${firstFont + 1} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>\nendobj\n`)
+    ascii(`${firstFont} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman /Encoding /WinAnsiEncoding >>\nendobj\n`),
+    ascii(`${firstFont + 1} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold /Encoding /WinAnsiEncoding >>\nendobj\n`)
   )
   for (let i = 0; i < n; i++) {
     const content = ascii(pages[i].content)
@@ -913,7 +951,7 @@ export function buildAffectationsPdf(title: string, terrainRing: number[][], raw
   const dateStr = formatDateFr(new Date())
   const pieces = rawPieces.filter((pc) => isAffectationValide(pc.designation, pc.properties))
 
-  const terrainPts = terrainRing.map(([lng, lat]) => projectSahara(lat, lng))
+  const terrainPts = terrainRing.map(([lng, lat]) => projectEpsg26191(lat, lng))
   const terrainSides = terrainPts.map((p, i) => {
     const q = terrainPts[(i + 1) % terrainPts.length]
     return Math.hypot(q.x - p.x, q.y - p.y)
@@ -928,25 +966,22 @@ export function buildAffectationsPdf(title: string, terrainRing: number[][], raw
 
   const pages: PdfPage[] = []
 
-  // Page 1 récapitulative
-  if (pieces.length === 0) {
-    pages.push({ width: AL, height: ALH, content: buildAffSummaryPage(terrain, [], 0, dateStr, false) })
-  } else {
-    for (let i = 0; i < pieces.length; i += AFF_SUMMARY_MAX_ROWS) {
-      pages.push({
-        width: AL,
-        height: ALH,
-        content: buildAffSummaryPage(terrain, pieces.slice(i, i + AFF_SUMMARY_MAX_ROWS), pieces.length, dateStr, i > 0),
-      })
-    }
-  }
+  // Page(s) récapitulative(s) — portrait A4 ; pagination selon la hauteur utile (~32 lignes page 1)
+  const summarySlices = sliceAffSummaryPages(pieces)
+  summarySlices.forEach((slice, pageIdx) => {
+    pages.push({
+      width: AP,
+      height: APH,
+      content: buildAffSummaryPage(terrain, slice, pieces.length, dateStr, pageIdx > 0),
+    })
+  })
 
   // Pages suivantes pour chaque zone d'affectation
   for (let idx = 0; idx < pieces.length; idx++) {
     const pc = pieces[idx]
     const ring = ringOf(pc.feature.geometry)
     if (!ring || ring.length < 3) continue
-    const pts = ring.map(([lng, lat]) => projectSahara(lat, lng))
+    const pts = ring.map(([lng, lat]) => projectEpsg26191(lat, lng))
     const sides = pts.map((p, i) => {
       const q = pts[(i + 1) % pts.length]
       return Math.hypot(q.x - p.x, q.y - p.y)
@@ -959,8 +994,8 @@ export function buildAffectationsPdf(title: string, terrainRing: number[][], raw
       area: polygonArea(pts),
     }
     const subtitle = pc.designation
-      ? `Affectation « ${pc.designation} » • ${formatA(d.area)} • ${pc.percent.toFixed(1)} % du terrain • EPSG:26191 (Lambert Sahara)`
-      : `${formatA(d.area)} • ${pc.percent.toFixed(1)} % du terrain • EPSG:26191 (Lambert Sahara)`
+      ? `Affectation « ${pc.designation} » • ${formatA(d.area)} • ${pc.percent.toFixed(1)} % du terrain • EPSG:26191 (Merchich / Nord Maroc)`
+      : `${formatA(d.area)} • ${pc.percent.toFixed(1)} % du terrain • EPSG:26191 (Merchich / Nord Maroc)`
     pages.push({
       width: AL,
       height: ALH,
@@ -996,14 +1031,14 @@ function downloadBytes(bytes: Uint8Array, name: string): void {
 }
 
 export function downloadTerrainPdf(ring: number[][], title: string): void {
-  const pts = ring.map(([lng, lat]) => projectSahara(lat, lng))
+  const pts = ring.map(([lng, lat]) => projectEpsg26191(lat, lng))
   const sides = pts.map((p, i) => {
     const q = pts[(i + 1) % pts.length]
     return Math.hypot(q.x - p.x, q.y - p.y)
   })
   const perimeter = sides.reduce((s, x) => s + x, 0)
   const area = polygonArea(pts)
-  downloadBytes(buildPdf({ title, pts, sides, perimeter, area }), `${sanitizeFileName(title)}-topographie.pdf`)
+  downloadBytes(buildPdf({ title, pts, sides, perimeter, area }), `${sanitizeFileName(title)}-geometrie.pdf`)
 }
 
 export function downloadAffectationsPdf(title: string, terrainRing: number[][], pieces: AffectationPiece[]): void {

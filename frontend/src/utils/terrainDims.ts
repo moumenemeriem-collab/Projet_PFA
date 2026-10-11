@@ -1,4 +1,4 @@
-// Dimensions d'une parcelle cadastrale (plan topographique) + ouverture Google Maps.
+// Dimensions d'une parcelle cadastrale (plan géométrique) + ouverture Google Maps.
 
 import { downloadTerrainPdf } from './pdfPlan'
 
@@ -146,7 +146,7 @@ const DIMS_SVG_W = 380
 const DIMS_SVG_H = 250
 
 export function buildDimsSvg(ring: number[][]): string {
-  return `<svg viewBox="0 0 ${DIMS_SVG_W} ${DIMS_SVG_H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Plan topographique">${buildDimsSvgInner(ring)}</svg>`
+  return `<svg viewBox="0 0 ${DIMS_SVG_W} ${DIMS_SVG_H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Plan géométrique">${buildDimsSvgInner(ring)}</svg>`
 }
 
 function buildDimsSvgInner(ring: number[][]): string {
@@ -200,7 +200,7 @@ export function buildDimsModalHtml(ring: number[][], title: string): string {
     `<div class="geo-dims-header">` +
     `<h3>Dimensions du terrain</h3>` +
     `<div class="geo-dims-header-actions">` +
-    `<button type="button" class="geo-dims-download" data-dims-pdf title="Télécharger le plan topographique (PDF)" aria-label="Télécharger le plan topographique (PDF)">` +
+    `<button type="button" class="geo-dims-download" data-dims-pdf title="Télécharger le plan géométrique (PDF)" aria-label="Télécharger le plan géométrique (PDF)">` +
     `<svg class="geo-dims-pdf-icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M2 1.5A1.5 1.5 0 0 1 3.5 0H10l4 4v10.5A1.5 1.5 0 0 1 12.5 16h-9A1.5 1.5 0 0 1 2 14.5v-13zM10 0.5V4a1 1 0 0 0 1 1h3.5L10 0.5zM9 7v5.3L7.1 10.4a.6.6 0 1 0-.85.85l2.6 2.6a.6.6 0 0 0 .85 0l2.6-2.6a.6.6 0 1 0-.85-.85L10 12.3V7a.6.6 0 1 0-1 0z"/></svg>` +
     `</button>` +
     `<button type="button" class="geo-dims-close" data-dims-close aria-label="Fermer">&times;</button>` +
@@ -209,7 +209,7 @@ export function buildDimsModalHtml(ring: number[][], title: string): string {
     `<div class="geo-dims-body">` +
     `<div class="geo-dims-title">${escapeHtml(title)}</div>` +
     `<div class="geo-dims-plot" data-dims-plot>` +
-    `<svg class="geo-dims-svg" data-dims-svg viewBox="0 0 ${DIMS_SVG_W} ${DIMS_SVG_H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Plan topographique">${buildDimsSvgInner(ring)}</svg>` +
+    `<svg class="geo-dims-svg" data-dims-svg viewBox="0 0 ${DIMS_SVG_W} ${DIMS_SVG_H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Plan géométrique">${buildDimsSvgInner(ring)}</svg>` +
     `<div class="geo-dims-zoom">` +
     `<button type="button" class="geo-dims-zoom-btn" data-dims-zoom="out" aria-label="Dézoomer">&#8722;</button>` +
     `<span class="geo-dims-zoom-value" data-dims-hint>100%</span>` +

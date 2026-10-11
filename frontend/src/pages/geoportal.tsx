@@ -6,7 +6,7 @@ import { DashboardLayout } from '../components/DashboardLayout'
 import { TerrainGeometryEditor, emptyGeom, type TerrainGeom, type TerrainImportFields } from '../components/TerrainGeometryEditor'
 import { formatApiErrors } from '../api/auth'
 import { fetchProjet, previewRentabilite, type Projet, type ProjetPayload, type Rentabilite } from '../api/projets'
-import { createTerrain, computeSurfaceConstructible, computeSurfaceEquipement, deleteTerrain, fetchSurfaceConstructible, fetchSurfaceEquipement, fetchTerrains, saveTerrainRentabilite, type AffectationSurface, type AnalyseFiltres, type AnalyseResultat, type SurfaceConstructibleResponse, type SurfaceEquipementResponse, type Terrain } from '../api/terrains'
+import { createTerrain, computeSurfaceConstructible, computeSurfaceEquipement, deleteTerrain, fetchSurfaceConstructible, fetchSurfaceEquipement, fetchTerrains, saveTerrainRentabilite, type AffectationSurface, type AnalyseFiltres, type AnalyseResultat, type CritereConformite, type SurfaceConstructibleResponse, type SurfaceEquipementResponse, type Terrain } from '../api/terrains'
 import { fetchAnalyseDetail, type AnalyseDetail, type ResultatAnalyse } from '../api/analyses'
 import { createAnalysePondere, type PonderationResponse, type TerrainPondere } from '../api/analyses'
 import { clearCachedPonderation, getCachedPonderation, setCachedPonderation } from '../utils/ponderationCache'
@@ -777,7 +777,58 @@ function ordinalSuffix(n: number): string {
   return 'ᵉ'
 }
 
+const CRITERE_LABELS: Record<string, string> = {
+  enseignement: 'Enseignement',
+  sante: 'Santé',
+  administration: 'Administration',
+  routes: 'Routes',
+  localisation: 'Localisation',
+  altitude: 'Altitude',
+}
+
+function normalizeCritereConformite(c: any): CritereConformite {
+  if (!c || typeof c !== 'object') {
+    return { cle: '', label: 'Critère', pct: 0, poids: 0, valeur: 0, cible: 1, unite: '%' }
+  }
+  const key = String(c.critere || c.cle || '')
+  const keyLower = key.toLowerCase()
+  const label = c.label || CRITERE_LABELS[keyLower] || CRITERE_LABELS[key] || (key ? key.charAt(0).toUpperCase() + key.slice(1) : 'Critère')
+
+  let pct = 0
+  if (c.score != null) {
+    const s = Number(c.score)
+    if (Number.isFinite(s)) {
+      pct = s <= 1 ? Math.round(s * 100) : Math.round(s)
+    }
+  } else if (c.pct != null) {
+    const p = Number(c.pct)
+    if (Number.isFinite(p)) {
+      pct = p <= 1 && p > 0 ? Math.round(p * 100) : Math.round(p)
+    }
+  } else if (c.valeur != null) {
+    const v = Number(c.valeur)
+    if (Number.isFinite(v)) {
+      pct = v <= 1 ? Math.round(v * 100) : Math.round(v)
+    }
+  }
+
+  return {
+    ...c,
+    cle: key,
+    label,
+    pct,
+    poids: typeof c.poids === 'number' ? c.poids : (Number(c.poids) || 0),
+    valeur: typeof c.valeur === 'number' ? c.valeur : (c.score != null ? Number(c.score) : 0),
+    cible: c.cible != null ? c.cible : 1,
+    unite: c.unite || '%',
+  }
+}
+
 function toAnalyseResultat(r: ResultatAnalyse): AnalyseResultat {
+  const rawConformite = (r as any).criteres_conformite ?? []
+  const criteres_conformite = Array.isArray(rawConformite)
+    ? rawConformite.map(normalizeCritereConformite)
+    : []
   return {
     id: r.id_parcelle != null ? Number(r.id_parcelle) : 0,
     nom: formatParcelleTitle({ nom: r.nom, id_parcelle: r.id_parcelle, indice: r.indice }),
@@ -812,7 +863,7 @@ function toAnalyseResultat(r: ResultatAnalyse): AnalyseResultat {
     criteres: r.criteres ?? [],
     criteres_satisfaits: r.nombre_criteres_satisfaits,
     criteres_total: r.total_criteres,
-    criteres_conformite: (r as any).criteres_conformite ?? [],
+    criteres_conformite,
     classement: r.rang ?? 0,
     points_forts: r.points_forts ?? [],
     points_faibles: r.points_faibles ?? [],
@@ -963,14 +1014,7 @@ export function GeoportalPage(): React.JSX.Element {
     topographie: 'Topographie',
   }
 
-  const CRITERE_LABELS: Record<string, string> = {
-    enseignement: 'Enseignement',
-    sante: 'Santé',
-    administration: 'Administration',
-    routes: 'Routes',
-    localisation: 'Localisation',
-    altitude: 'Altitude',
-  }
+
 
   const handleWizardSelectionComplete = useCallback((sel: typeof wizardSelections & {}): void => {
     setWizardSelections(sel)
@@ -1242,7 +1286,10 @@ export function GeoportalPage(): React.JSX.Element {
     lng: tr.lng,
     rang: tr.classement,
     scorePct: toPct100(tr.score_final),
-    criteres: (tr.criteres_conformite ?? []).map((c) => ({ label: c.label, pct: Math.round(c.pct) })),
+    criteres: (tr.criteres_conformite ?? []).map((c: any) => {
+      const norm = normalizeCritereConformite(c)
+      return { label: norm.label, pct: norm.pct }
+    }),
   })
 
   const renderAnalyseDeTerrainCard = (

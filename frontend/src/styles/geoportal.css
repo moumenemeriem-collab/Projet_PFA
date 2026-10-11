@@ -2717,7 +2717,7 @@
   padding: 10px;
 }
 
-/* ── Modal « Dimensions du terrain » (plan topographique) ── */
+/* ── Modal « Dimensions du terrain » (plan géométrique) ── */
 
 .geo-dims-overlay {
   position: fixed;

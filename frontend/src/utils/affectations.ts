@@ -319,7 +319,7 @@ export function resolveParentChildAffectations(pieces: AffectationPiece[], total
   return finalPieces
 }
 
-// ── Plan SVG (parcelle + affectations colorées), inspiré du plan topographique ──
+// ── Plan SVG (parcelle + affectations colorées), inspiré du plan géométrique ──
 
 const AFF_SVG_W = 380
 const AFF_SVG_H = 250

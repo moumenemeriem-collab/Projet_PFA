@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { icons } from './icons'
 import { ConfirmDeleteDialog } from './ConfirmDeleteDialog'
 import { LigneFormModal } from './LigneFormModal'
@@ -25,11 +25,20 @@ interface GererLignesModalProps {
   coucheId: number
   coucheName: string
   attributs: AttributDefinition[]
+  typeGeometrie?: string
   onClose: () => void
   onUpdated: () => void
 }
 
-export function GererLignesModal({ coucheId, coucheName, attributs, onClose, onUpdated }: GererLignesModalProps): React.JSX.Element {
+const TABLE_ATTR_SKIP = new Set(['fid', 'geometry'])
+
+export function GererLignesModal({ coucheId, coucheName, attributs, typeGeometrie, onClose, onUpdated }: GererLignesModalProps): React.JSX.Element {
+  const tableAttributs = useMemo(
+    () => attributs.filter(
+      (a) => !TABLE_ATTR_SKIP.has(a.nom.toLowerCase()) && a.type.toLowerCase() !== 'geometry',
+    ),
+    [attributs],
+  )
   const [rows, setRows] = useState<CoucheFeatureRow[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -41,6 +50,7 @@ export function GererLignesModal({ coucheId, coucheName, attributs, onClose, onU
   const [formOpen, setFormOpen] = useState(false)
   const [editRow, setEditRow] = useState<CoucheFeatureRow | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<CoucheFeatureRow | null>(null)
+  const [dataVersion, setDataVersion] = useState(0)
   const pageSize = 100
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -88,13 +98,15 @@ export function GererLignesModal({ coucheId, coucheName, attributs, onClose, onU
   }
 
   const handleSave = async (properties: Record<string, unknown>, geometry?: { type: string; coordinates: any } | null): Promise<void> => {
+    const geom = geometry ?? (editRow?.geometry as { type: string; coordinates: unknown } | undefined)
     if (editRow) {
-      await updateCoucheFeature(coucheId, editRow.id, properties, geometry ?? undefined)
+      await updateCoucheFeature(coucheId, editRow.id, properties, geom)
     } else {
-      await createCoucheFeature(coucheId, properties, geometry ?? undefined)
+      await createCoucheFeature(coucheId, properties, geom)
     }
     setFormOpen(false)
     setEditRow(null)
+    setDataVersion((v) => v + 1)
     onUpdated()
     await load(page, search)
   }
@@ -103,19 +115,21 @@ export function GererLignesModal({ coucheId, coucheName, attributs, onClose, onU
     if (!deleteTarget) return
     await deleteCoucheFeature(coucheId, deleteTarget.id)
     setDeleteTarget(null)
+    setDataVersion((v) => v + 1)
     onUpdated()
     await load(page, search)
   }
 
   const handleDuplicate = async (row: CoucheFeatureRow): Promise<void> => {
     await duplicateCoucheFeature(coucheId, row.id)
+    setDataVersion((v) => v + 1)
     onUpdated()
     await load(page, search)
   }
 
   const handleExport = (): Promise<void> => {
     const exportRows = selected.size > 0 ? rows.filter((r) => selected.has(r.id)) : rows
-    const headers = attributs.map((a) => a.nom)
+    const headers = tableAttributs.map((a) => a.nom)
     const csvLines = [headers.join(',')]
     exportRows.forEach((r) => {
       csvLines.push(headers.map((h) => {
@@ -173,7 +187,7 @@ export function GererLignesModal({ coucheId, coucheName, attributs, onClose, onU
             <thead>
               <tr>
                 <th className="gerer-th-check"><input type="checkbox" checked={selected.size === rows.length && rows.length > 0} onChange={toggleAll} /></th>
-                {attributs.map((a) => (
+                {tableAttributs.map((a) => (
                   <th key={a.nom}>
                     <span className="gerer-th-inner">{a.nom} <span className={`couche-attr-type ${ATTR_BADGE_CLASS[a.type.toLowerCase()] || ''}`}>{a.type}</span></span>
                   </th>
@@ -183,14 +197,14 @@ export function GererLignesModal({ coucheId, coucheName, attributs, onClose, onU
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={attributs.length + 2} className="gerer-empty"><div className="admin-loading-spinner"></div></td></tr>
+                <tr><td colSpan={tableAttributs.length + 2} className="gerer-empty"><div className="admin-loading-spinner"></div></td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={attributs.length + 2} className="gerer-empty">Aucune donnée disponible.</td></tr>
+                <tr><td colSpan={tableAttributs.length + 2} className="gerer-empty">Aucune donnée disponible.</td></tr>
               ) : (
                 rows.map((r) => (
                   <tr key={r.id} className={selected.has(r.id) ? 'gerer-tr--selected' : ''}>
                     <td className="gerer-td-check"><input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)} /></td>
-                    {attributs.map((a) => (
+                    {tableAttributs.map((a) => (
                       <td key={a.nom} className="gerer-td-value">{r.properties[a.nom] != null ? String(r.properties[a.nom]) : <span className="gerer-null">—</span>}</td>
                     ))}
                     <td className="gerer-td-actions">
@@ -217,8 +231,13 @@ export function GererLignesModal({ coucheId, coucheName, attributs, onClose, onU
 
       {formOpen ? (
         <LigneFormModal
+          key={editRow ? `edit-${editRow.id}` : 'new'}
           attributs={attributs}
+          coucheId={coucheId}
+          dataVersion={dataVersion}
+          typeGeometrie={typeGeometrie}
           initial={editRow?.properties}
+          initialGeometry={editRow?.geometry}
           title={editRow ? `Modifier la ligne #${editRow.id}` : 'Ajouter une ligne'}
           onSave={async (props, geom) => { await handleSave(props, geom) }}
           onClose={() => { setFormOpen(false); setEditRow(null) }}

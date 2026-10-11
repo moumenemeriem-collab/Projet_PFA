@@ -1,6 +1,7 @@
 ﻿import { useCallback, useEffect, useRef, useState } from 'react'
 import { icons } from './icons'
 import { fetchCouches, fetchCoucheGeoJSON, type Couche, type CoucheFeatureCollection } from '../api/couches'
+import { geometryToFeature, isGeoJsonGeometry } from '../utils/geoJsonGeometry'
 
 const BASEMAPS = [
   { id: 'osm', name: 'OpenStreetMap', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: 'Â© OpenStreetMap' },
@@ -12,9 +13,20 @@ type DrawMode = 'none' | 'point' | 'polyline' | 'polygon'
 
 interface FormMapPanelProps {
   onGeometry?: (geometry: { type: string; coordinates: any } | null) => void
+  initialGeometry?: unknown
+  coucheId?: number
+  dataVersion?: number
+  typeGeometrie?: string
 }
 
-export function FormMapPanel({ onGeometry }: FormMapPanelProps): React.JSX.Element {
+function defaultDrawMode(typeGeometrie?: string): DrawMode {
+  const t = (typeGeometrie || '').toLowerCase()
+  if (t.includes('point')) return 'point'
+  if (t.includes('line')) return 'polyline'
+  return 'polygon'
+}
+
+export function FormMapPanel({ onGeometry, initialGeometry, coucheId, dataVersion = 0, typeGeometrie }: FormMapPanelProps): React.JSX.Element {
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<any>(null)
   const basemapLayerRef = useRef<any>(null)
@@ -60,12 +72,19 @@ export function FormMapPanel({ onGeometry }: FormMapPanelProps): React.JSX.Eleme
     basemapLayerRef.current = L.tileLayer(bm.url, { attribution: bm.attribution, maxZoom: 19 }).addTo(map)
   }, [basemapId])
 
-  useEffect(() => {
+  const loadCouchesData = useCallback((): void => {
     fetchCouches()
       .then((list) => {
-        const MAP_EXCLUDED = new Set(['mnt', 'reglement_pa', ])
+        const MAP_EXCLUDED = new Set(['mnt', 'reglement_pa'])
         const filtered = list.filter((c) => c.table_liee && !MAP_EXCLUDED.has(c.nom))
         setCouches(filtered)
+        if (coucheId) {
+          setActiveCouches((prev) => {
+            const next = new Set(prev)
+            next.add(coucheId)
+            return next
+          })
+        }
         Promise.allSettled(filtered.map((c) => fetchCoucheGeoJSON(c.id)))
           .then((results) => {
             const data: Record<number, CoucheFeatureCollection> = {}
@@ -77,7 +96,11 @@ export function FormMapPanel({ onGeometry }: FormMapPanelProps): React.JSX.Eleme
           .catch(() => {})
       })
       .catch(() => {})
-  }, [])
+  }, [coucheId])
+
+  useEffect(() => {
+    loadCouchesData()
+  }, [loadCouchesData, dataVersion])
 
   useEffect(() => {
     const map = mapRef.current
@@ -122,17 +145,49 @@ export function FormMapPanel({ onGeometry }: FormMapPanelProps): React.JSX.Eleme
     return () => document.removeEventListener('click', onDocClick)
   }, [basemapMenuOpen])
 
-  const clearDraw = useCallback((): void => {
+  const clearDraw = useCallback((notify = true): void => {
     const map = mapRef.current
     if (!map) return
     if (clickHandlerRef.current) { map.off('click', clickHandlerRef.current); clickHandlerRef.current = null }
     if (dblClickHandlerRef.current) { map.off('dblclick', dblClickHandlerRef.current); dblClickHandlerRef.current = null }
-    drawLayerRef.current.clearLayers()
+    drawLayerRef.current?.clearLayers()
     drawMarkersRef.current = []
     drawVerticesRef.current = []
     if (drawTempLineRef.current) { drawTempLineRef.current = null }
-    onGeometry?.(null)
+    if (notify) onGeometry?.(null)
   }, [onGeometry])
+
+  const showGeometryOnMap = useCallback((geom: unknown, notify = false): void => {
+    const map = mapRef.current
+    const layer = drawLayerRef.current
+    if (!map || !layer) return
+    clearDraw(false)
+    const feature = geometryToFeature(geom)
+    if (!feature) return
+    const gj = L.geoJSON(feature, {
+      style: { color: '#dc2626', weight: 3, fillColor: '#dc2626', fillOpacity: 0.2, dashArray: '6 4' },
+    })
+    gj.eachLayer((l: any) => layer.addLayer(l))
+    try {
+      map.fitBounds(gj.getBounds(), { padding: [40, 40], maxZoom: 17 })
+    } catch { /* ignore */ }
+    if (notify && isGeoJsonGeometry(geom)) onGeometry?.(geom)
+  }, [clearDraw, onGeometry])
+
+  useEffect(() => {
+    if (!initialGeometry || !isGeoJsonGeometry(initialGeometry)) return
+    let cancelled = false
+    const apply = (): void => {
+      if (cancelled) return
+      if (mapRef.current && drawLayerRef.current) {
+        showGeometryOnMap(initialGeometry, true)
+      } else {
+        window.setTimeout(apply, 80)
+      }
+    }
+    apply()
+    return () => { cancelled = true }
+  }, [initialGeometry, dataVersion, showGeometryOnMap])
 
   const finishDraw = useCallback((vertices: { lat: number; lng: number }[], mode: DrawMode): void => {
     const map = mapRef.current
@@ -217,7 +272,7 @@ export function FormMapPanel({ onGeometry }: FormMapPanelProps): React.JSX.Eleme
 
   useEffect(() => {
     return () => { clearDraw() }
-  }, [])
+  }, [clearDraw])
 
   const handleModeClick = (mode: DrawMode): void => {
     if (drawMode === mode) {
@@ -300,6 +355,10 @@ export function FormMapPanel({ onGeometry }: FormMapPanelProps): React.JSX.Eleme
           {drawMode === 'point' ? 'Cliquez sur la carte pour placer le point' :
            drawMode === 'polyline' ? 'Cliquez pour ajouter des points, double-cliquez pour terminer' :
            'Cliquez pour ajouter des sommets, double-cliquez pour fermer'}
+        </div>
+      ) : typeGeometrie ? (
+        <div className="form-map-draw-hint form-map-draw-hint--muted">
+          Type attendu : {typeGeometrie} — utilisez {defaultDrawMode(typeGeometrie) === 'point' ? 'Point' : defaultDrawMode(typeGeometrie) === 'polyline' ? 'Ligne' : 'Surface'}
         </div>
       ) : null}
       <div className="form-map-container" ref={mapContainerRef}></div>

@@ -6,6 +6,7 @@ import { formatApiErrors } from '../api/auth'
 import { fetchProjet, type Projet, type Rentabilite } from '../api/projets'
 import { deleteTerrain, fetchSurfaceConstructible, fetchTerrains, type SurfaceConstructibleResponse, type Terrain } from '../api/terrains'
 import {
+  deleteAnalyse,
   fetchAnalyseDetail,
   fetchAnalyses,
   type Analyse,
@@ -36,6 +37,21 @@ function formatSurface(s: number | null | undefined): string {
   return s != null ? `${Number(s).toLocaleString()} m²` : '—'
 }
 
+function prettifyKey(key: string): string {
+  return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function formatFiltreValue(v: unknown): string {
+  if (v == null || v === '') return '—'
+  if (Array.isArray(v)) return v.map((x) => formatFiltreValue(x)).join(', ')
+  if (typeof v === 'object') {
+    return Object.entries(v as Record<string, unknown>)
+      .map(([k, val]) => `${prettifyKey(k)} : ${formatFiltreValue(val)}`)
+      .join('  ·  ')
+  }
+  return String(v)
+}
+
 function statusLabel(status: string): string {
   const map: Record<string, string> = {
     complete: 'ranking.status_complete',
@@ -46,12 +62,8 @@ function statusLabel(status: string): string {
 }
 
 
-function confBadge(r: ResultatAnalyse): React.JSX.Element {
-  const ok = r.nombre_criteres_satisfaits
-  const total = r.total_criteres
-  const cls = total > 0 && ok >= total ? 'classement-conf--ok' : 'classement-conf--warn'
-  return <span className={`classement-conf ${cls}`}>{ok}/{total}</span>
-}
+// (confBadge removed)
+
 
 function renderTerrainRow(t_: Terrain, onDelete: (id: number) => void): React.JSX.Element {
   const hasCoords = t_.lat != null && t_.lng != null
@@ -82,6 +94,21 @@ function renderTerrainRow(t_: Terrain, onDelete: (id: number) => void): React.JS
 function DetailModal({ resultat, cadastre, onClose }: { resultat: ResultatAnalyse; cadastre?: Record<string, unknown> | null; onClose: () => void }): React.JSX.Element {
   const displayTitle = formatParcelleTitle({ nom: resultat.nom, id_parcelle: resultat.id_parcelle, reference_cadastrale: resultat.reference_cadastrale, indice: resultat.indice })
   const displayRef = formatParcelleRef(resultat.reference_cadastrale || resultat.id_parcelle, resultat.indice)
+  const confCm = resultat.criteres_conformite ?? []
+
+  // Détecte si c'est une analyse AMC pondérée (contributions en format 0-1)
+  const isAmcPondere = confCm.length > 0 && confCm.some((c: any) =>
+    c.score != null && c.poids != null && c.pct == null && c.cle == null
+  )
+
+  // Pour l'AMC pondérée, score_final/score_amc sont stockés en 0-1 → normaliser vers 0-100
+  const normalizeScore = (v: number | null | undefined): number | null => {
+    if (v == null) return null
+    const n = Number(v)
+    if (!Number.isFinite(n)) return null
+    return isAmcPondere && n <= 1 ? n * 100 : n
+  }
+
   const fmtScore = (v: number | null | undefined): string => (v == null ? '—' : Number(v).toFixed(1))
   const fmtPct = (v: unknown): string => (v == null || v === '' ? '—' : `${Number(v).toFixed(2)} %`)
   const fmtVal = (v: unknown): string => {
@@ -97,7 +124,6 @@ function DetailModal({ resultat, cadastre, onClose }: { resultat: ResultatAnalys
     if (Math.abs(n) <= 1) return `${(n * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %`
     return `${n.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %`
   }
-  const confCm = resultat.criteres_conformite ?? []
   const CRIT_LABELS_MAP: Record<string, string> = {
     enseignement: 'Enseignement',
     sante: 'Santé',
@@ -128,29 +154,104 @@ function DetailModal({ resultat, cadastre, onClose }: { resultat: ResultatAnalys
               <span className="classement-detail-value">{formatSurface(resultat.superficie)}</span>
             </div>
             <div className="classement-detail-item">
-              <span className="classement-detail-label">{t('ranking.col_conformite')}</span>
-              <span className="classement-detail-value">{confBadge(resultat)}</span>
-            </div>
-            <div className="classement-detail-item">
               <span className="classement-detail-label">{t('ranking.score_final')}</span>
-              <span className="classement-detail-value">{fmtScore(resultat.score_final)} / 100</span>
+              <span className="classement-detail-value">{fmtScore(normalizeScore(resultat.score_final))} / 100</span>
             </div>
             <div className="classement-detail-item">
               <span className="classement-detail-label">{t('ranking.score_amc')}</span>
-              <span className="classement-detail-value">{fmtScore(resultat.score_amc)} / 100</span>
+              <span className="classement-detail-value">{fmtScore(normalizeScore(resultat.score_amc))} / 100</span>
             </div>
           </div>
 
           <div className="classement-detail-section">
             <h4 className="classement-detail-section-title">{t('ranking.scores_title')}</h4>
-            <div className="classement-detail-grid">
-              <DetailItem label={t('ranking.score_accessibilite')} value={fmtScore(resultat.score_accessibilite)} />
-              <DetailItem label={t('ranking.score_positionnement')} value={fmtScore(resultat.score_positionnement)} />
-              <DetailItem label={t('ranking.score_topographie')} value={fmtScore(resultat.score_topographie)} />
-              <DetailItem label={t('ranking.score_superficie')} value={fmtScore(resultat.score_superficie)} />
-              <DetailItem label={t('ranking.score_rentabilite')} value={fmtScore(resultat.score_rentabilite)} />
-              <DetailItem label={t('ranking.score_final')} value={fmtScore(resultat.score_final)} />
-            </div>
+            {/* Si les scores directs sont tous null (ex: analyse AMC pondérée),
+                on les dérive depuis criteres_conformite */}
+            {(() => {
+              const hasDirectScores =
+                resultat.score_accessibilite != null ||
+                resultat.score_positionnement != null ||
+                resultat.score_topographie != null ||
+                resultat.score_superficie != null
+
+              if (hasDirectScores) {
+                return (
+                  <div className="classement-detail-grid">
+                    <DetailItem label={t('ranking.score_accessibilite')} value={fmtScore(resultat.score_accessibilite)} />
+                    <DetailItem label={t('ranking.score_positionnement')} value={fmtScore(resultat.score_positionnement)} />
+                    <DetailItem label={t('ranking.score_topographie')} value={fmtScore(resultat.score_topographie)} />
+                    <DetailItem label={t('ranking.score_superficie')} value={fmtScore(resultat.score_superficie)} />
+                    <DetailItem label={t('ranking.score_rentabilite')} value={fmtScore(resultat.score_rentabilite)} />
+                    <DetailItem label={t('ranking.score_final')} value={fmtScore(resultat.score_final)} />
+                  </div>
+                )
+              }
+
+              // Cas AMC pondérée : dériver les scores depuis criteres_conformite
+              // Les contributions ont la forme: {critere, poids, score, contribution}
+              // ou {cle, pct, label, valeur, cible, unite, poids}
+              if (confCm.length > 0) {
+                // Déterminer si c'est le format AMC pondérée (score <= 1) ou analyse standard (pct)
+                const isAmcPondere = confCm.some((c: any) =>
+                  c.score != null && c.poids != null && c.pct == null && c.cle == null
+                )
+
+                if (isAmcPondere) {
+                  // Format AMC pondérée : {critere, poids, score, contribution}
+                  // Grouper par catégorie
+                  const CRIT_TO_CAT: Record<string, string> = {
+                    routes: 'accessibilite',
+                    localisation: 'positionnement',
+                    altitude: 'topographie',
+                    sante: 'positionnement',
+                    enseignement: 'positionnement',
+                    administration: 'positionnement',
+                    commerce: 'positionnement',
+                    transport: 'positionnement',
+                  }
+                  const catScores: Record<string, number[]> = {}
+                  for (const c of confCm as any[]) {
+                    const critKey = (c.critere || c.cle || '').toLowerCase()
+                    const cat = CRIT_TO_CAT[critKey] || critKey
+                    const scoreVal = c.score != null ? Number(c.score) : null
+                    if (scoreVal == null) continue
+                    const scoreNorm = scoreVal <= 1 ? scoreVal * 100 : scoreVal
+                    if (!catScores[cat]) catScores[cat] = []
+                    catScores[cat].push(scoreNorm)
+                  }
+                  const avg = (arr: number[]): number => arr.reduce((s, v) => s + v, 0) / arr.length
+                  const scoreAccess = catScores['accessibilite'] ? avg(catScores['accessibilite']) : null
+                  const scorePos = catScores['positionnement'] ? avg(catScores['positionnement']) : null
+                  const scoreTopo = catScores['topographie'] ? avg(catScores['topographie']) : null
+
+                  const scoreFinalNorm = normalizeScore(resultat.score_final)
+                  const scoreAmcNorm = normalizeScore(resultat.score_amc)
+                  return (
+                    <div className="classement-detail-grid">
+                      {scoreAccess != null ? <DetailItem label={t('ranking.score_accessibilite')} value={fmtScore(scoreAccess)} /> : null}
+                      {scorePos != null ? <DetailItem label={t('ranking.score_positionnement')} value={fmtScore(scorePos)} /> : null}
+                      {scoreTopo != null ? <DetailItem label={t('ranking.score_topographie')} value={fmtScore(scoreTopo)} /> : null}
+                      {resultat.score_superficie != null ? <DetailItem label={t('ranking.score_superficie')} value={fmtScore(resultat.score_superficie)} /> : null}
+                      {resultat.score_rentabilite != null ? <DetailItem label={t('ranking.score_rentabilite')} value={fmtScore(resultat.score_rentabilite)} /> : null}
+                      {scoreAmcNorm != null ? <DetailItem label={t('ranking.score_amc')} value={fmtScore(scoreAmcNorm)} /> : null}
+                      <DetailItem label={t('ranking.score_final')} value={fmtScore(scoreFinalNorm)} />
+                    </div>
+                  )
+                }
+              }
+
+              // Fallback : afficher les scores directs même s'ils sont null
+              return (
+                <div className="classement-detail-grid">
+                  <DetailItem label={t('ranking.score_accessibilite')} value={fmtScore(resultat.score_accessibilite)} />
+                  <DetailItem label={t('ranking.score_positionnement')} value={fmtScore(resultat.score_positionnement)} />
+                  <DetailItem label={t('ranking.score_topographie')} value={fmtScore(resultat.score_topographie)} />
+                  <DetailItem label={t('ranking.score_superficie')} value={fmtScore(resultat.score_superficie)} />
+                  <DetailItem label={t('ranking.score_rentabilite')} value={fmtScore(resultat.score_rentabilite)} />
+                  <DetailItem label={t('ranking.score_final')} value={fmtScore(resultat.score_final)} />
+                </div>
+              )
+            })()}
           </div>
 
           {resultat.prix_terrain != null || resultat.benefice_net != null || resultat.roi != null || resultat.marge != null ? (
@@ -572,6 +673,56 @@ function TerrainDetailModal({ terrain, projetId, cadastre, onClose }: { terrain:
   )
 }
 
+function AnalyseFiltresModal({ analyse, onClose }: { analyse: Analyse; onClose: () => void }): React.JSX.Element {
+  const filtres = (analyse.filtres ?? {}) as Record<string, unknown>
+  const entrees = Object.entries(filtres).filter(([, v]) => v !== null && v !== undefined && v !== '')
+  return (
+    <div className="admin-modal-overlay classement-modal-overlay--detail" onClick={onClose}>
+      <div className="admin-modal admin-modal--wide classement-modal--detail" onClick={(e) => e.stopPropagation()}>
+        <div className="admin-modal-header">
+          <h3>{t('ranking.analyse_choices_title')} — {formatDate(analyse.date_creation)}</h3>
+          <button type="button" className="admin-modal-close" aria-label={t('common.close')} onClick={onClose}>{icons.close}</button>
+        </div>
+        <div className="classement-modal-body classement-modal-body--detail">
+          <div className="classement-detail-grid">
+            <div className="classement-detail-item">
+              <span className="classement-detail-label">{t('ranking.analyses_count')}</span>
+              <span className="classement-detail-value">{analyse.nombre_parcelles}</span>
+            </div>
+            <div className="classement-detail-item">
+              <span className="classement-detail-label">{t('ranking.history_status')}</span>
+              <span className="classement-detail-value">{statusLabel(analyse.statut)}</span>
+            </div>
+            <div className="classement-detail-item">
+              <span className="classement-detail-label">{t('ranking.poids_amc')}</span>
+              <span className="classement-detail-value">{analyse.poids_amc}</span>
+            </div>
+            <div className="classement-detail-item">
+              <span className="classement-detail-label">{t('ranking.poids_rentabilite')}</span>
+              <span className="classement-detail-value">{analyse.poids_rentabilite}</span>
+            </div>
+          </div>
+          {entrees.length > 0 ? (
+            <div className="classement-detail-section">
+              <h4 className="classement-detail-section-title">{t('ranking.analyse_criteria_title')}</h4>
+              <div className="classement-detail-grid">
+                {entrees.map(([k, v]) => (
+                  <div className="classement-detail-item" key={k}>
+                    <span className="classement-detail-label">{prettifyKey(k)}</span>
+                    <span className="classement-detail-value">{formatFiltreValue(v)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="classement-detail-note">{t('ranking.analyse_no_choices')}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function ClassementPage(): React.JSX.Element {
   const navigate = useNavigate()
   const { id } = useParams()
@@ -589,6 +740,7 @@ export function ClassementPage(): React.JSX.Element {
   const [selectedTerrainDetail, setSelectedTerrainDetail] = useState<Terrain | null>(null)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [analyseFiltres, setAnalyseFiltres] = useState<Analyse | null>(null)
 
   const [savedTerrains, setSavedTerrains] = useState<Terrain[]>([])
   const [savedLoading, setSavedLoading] = useState(true)
@@ -763,6 +915,22 @@ export function ClassementPage(): React.JSX.Element {
       setAmcSearchInput('')
       setHistoryOpen(false)
       setAlert({ type: 'success', message: 'Analyse chargée dans la liste Résultats AMC.' })
+      setTimeout(() => setAlert(null), 3000)
+    } catch (err) {
+      setAlert({ type: 'error', message: formatApiErrors(err) })
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
+  const handleDeleteAnalyse = async (analyseId: number): Promise<void> => {
+    if (!projetId || !window.confirm(t('ranking.confirm_delete_analyse'))) return
+    setHistoryLoading(true)
+    try {
+      await deleteAnalyse(projetId, analyseId)
+      setAnalyses((prev) => prev.filter((a) => a.id !== analyseId))
+      setAnalyse((prev) => (prev && prev.id === analyseId ? null : prev))
+      setAlert({ type: 'success', message: t('ranking.analyse_deleted') })
       setTimeout(() => setAlert(null), 3000)
     } catch (err) {
       setAlert({ type: 'error', message: formatApiErrors(err) })
@@ -1195,16 +1363,41 @@ export function ClassementPage(): React.JSX.Element {
                           {a.nombre_parcelles} {t('ranking.analyses_count')} · {statusLabel(a.statut)}
                         </span>
                       </div>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-action"
-                        style={{ fontSize: '0.78rem', padding: '6px 12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                        disabled={historyLoading}
-                        onClick={() => { void openHistoryAnalyse(a.id) }}
-                        title="Afficher les résultats dans la liste de classement"
-                      >
-                        {icons.eye} Voir
-                      </button>
+                      <div className="classement-history-actions">
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-action"
+                          style={{ fontSize: '0.78rem', padding: '6px 8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          disabled={historyLoading}
+                          onClick={() => { void openHistoryAnalyse(a.id) }}
+                          title={t('ranking.view_results')}
+                          aria-label={t('ranking.view_results')}
+                        >
+                          {icons.eye}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-action"
+                          style={{ fontSize: '0.78rem', padding: '6px 8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          disabled={historyLoading}
+                          onClick={() => setAnalyseFiltres(a)}
+                          title={t('ranking.view_choices')}
+                          aria-label={t('ranking.view_choices')}
+                        >
+                          {icons.document}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-danger btn-action"
+                          style={{ fontSize: '0.78rem', padding: '6px 8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          disabled={historyLoading}
+                          onClick={() => { void handleDeleteAnalyse(a.id) }}
+                          title={t('ranking.delete_analyse')}
+                          aria-label={t('ranking.delete_analyse')}
+                        >
+                          {icons.trash}
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1213,6 +1406,8 @@ export function ClassementPage(): React.JSX.Element {
           </div>
         </div>
       ) : null}
+
+      {analyseFiltres ? <AnalyseFiltresModal analyse={analyseFiltres} onClose={() => setAnalyseFiltres(null)} /> : null}
 
     </DashboardLayout>
   )
