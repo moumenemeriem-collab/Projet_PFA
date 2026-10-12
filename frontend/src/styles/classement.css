@@ -734,3 +734,73 @@
   gap: 8px;
   margin-top: 4px;
 }
+
+/* ── Boutons Téléchargement Rapports (Détails terrain) ── */
+
+.classement-modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.classement-report-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.94);
+  color: #1e3a8a;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  white-space: nowrap;
+}
+
+.classement-report-btn:hover:not(:disabled) {
+  background: #ffffff;
+  color: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.classement-report-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.classement-report-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+
+.classement-report-btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.classement-report-btn-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.classement-report-btn--renta {
+  color: #1e3a8a;
+}
+
+@media (max-width: 680px) {
+  .classement-report-btn-text {
+    display: none;
+  }
+  .classement-report-btn {
+    padding: 8px;
+    border-radius: 50%;
+  }
+}

@@ -28,6 +28,7 @@ export interface Terrain {
   geometry: string
   date_creation: string
   rentabilite_json?: Record<string, unknown> | null
+  origine?: 'ajout' | 'rentabilite'
 }
 
 export interface TerrainListResponse {
@@ -52,17 +53,15 @@ export interface TerrainPayload {
   lat: number | null
   lng: number | null
   geometry: string
+  origine?: 'ajout' | 'rentabilite'
 }
 
-export async function fetchTerrains(projetId: number, params: {
-  search?: string
-  page?: number
-  page_size?: number
-} = {}): Promise<TerrainListResponse> {
+export async function fetchTerrains(projetId: number, params: { search?: string; page?: number; page_size?: number; origine?: string } = {}): Promise<TerrainListResponse> {
   const qs = new URLSearchParams()
   if (params.search) qs.set('search', params.search)
   if (params.page) qs.set('page', String(params.page))
   if (params.page_size) qs.set('page_size', String(params.page_size))
+  if (params.origine) qs.set('origine', params.origine)
   const query = qs.toString()
   const res = await apiFetch(`/api/projets/${projetId}/terrains/${query ? '?' + query : ''}`)
   return parseResponse<TerrainListResponse>(res)

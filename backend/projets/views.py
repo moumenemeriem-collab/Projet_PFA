@@ -553,12 +553,16 @@ class TerrainListView(APIView):
         terrains = Terrain.objects.filter(projet=projet)
 
         search = request.query_params.get('search', '').strip()
+        origine = request.query_params.get('origine', '').strip()
         page = int(request.query_params.get('page', 1))
         page_size = int(request.query_params.get('page_size', 20))
 
         if search:
             from django.db.models import Q
             terrains = terrains.filter(Q(nom__icontains=search))
+
+        if origine:
+            terrains = terrains.filter(origine=origine)
 
         total = terrains.count()
         start = (page - 1) * page_size

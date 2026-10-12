@@ -125,6 +125,10 @@ export interface TerrainPondere {
   geometry?: Record<string, unknown> | null
   fid?: number | null
   num_parcelle?: string
+  // Terrain enregistré du projet (ajouté via « Ajouter un terrain ») : `id` est alors
+  // décalé ; `terrain_id` est l'id réel de la table des terrains.
+  source?: 'cadastre' | 'terrain'
+  terrain_id?: number | null
 }
 
 export interface PonderationResponse {

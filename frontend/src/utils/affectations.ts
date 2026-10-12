@@ -21,7 +21,7 @@ export interface PreparedPAZone {
   bbox: { minX: number; maxX: number; minY: number; maxY: number }
 }
 
-const AFFECTATION_PALETTE = [
+export const AFFECTATION_PALETTE = [
   '#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6',
   '#bcf60c', '#fabebe', '#008080', '#e6beff', '#9a6324', '#800000', '#aaffc3',
   '#808000', '#ffd8b1', '#000075', '#f0a3a3', '#1b3a6e', '#46f0a0',

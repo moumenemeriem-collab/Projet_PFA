@@ -15,7 +15,7 @@
     "slide_nav_label": "Navigation des images",
     "slide1_alt": "Carte géospatiale du potentiel foncier",
     "slide2_alt": "Analyse multicritère des parcelles",
-    "slide3_alt": "Estimation du prix du mètre carré"
+    "slide3_alt": "Analyse de la rentabilité du projet"
   },
   "features": {
     "title": "Des outils précis pour l'investisseur moderne",
@@ -29,8 +29,8 @@
       "description": "Croisez accessibilité, équipements et zonage pour évaluer objectivement le potentiel de chaque terrain."
     },
     "estimation": {
-      "title": "Estimation de prix",
-      "description": "Obtenez des estimations fondées sur les données du marché local et les caractéristiques géospatiales des parcelles."
+      "title": "Analyse de rentabilité",
+      "description": "Évaluez la rentabilité potentielle de vos projets (VAN, TRI, ROI) à partir de vos paramètres et des caractéristiques des parcelles."
     },
     "classement": {
       "title": "Classement des terrains",
@@ -150,7 +150,7 @@
     "classified_subtext": "Sur 15k dispos",
     "potential_zones": "Zones à potentiel",
     "potential_subtext": "Identifiées",
-    "list_title": "Liste des Projets Actifs",
+    "list_title": "Liste des Projets",
     "showing": "Affichage de",
     "on": "projets sur",
     "details": "Détails du projet",
@@ -862,11 +862,14 @@
     "geo_cadastre_notfound": "Aucune parcelle ne correspond à {q}. Essayez l'import GeoJSON (Mode 2) ou le dessin manuel (Mode 3).",
     "geo_manual_warning": "Positionnement approximatif : pour une précision garantie, utilisez la sélection cadastrale ou importez un plan GeoJSON.",
     "geo_limite_legende": "Limite administrative : le polygone est automatiquement ajusté à cette limite.",
+    "geo_limite_etude_legende": "Zone d'étude (périmètre du projet)",
+    "geo_limite_admin_legende": "Limite administrative {nom} — le polygone est ajusté à ce contour.",
     "geo_limite_generique": "limite administrative",
     "geo_limite_ajuste": "Polygone ajusté sur la limite administrative « {nom} » : {surface} m² ont été retirés.",
     "geo_limite_hors": "Ce polygone se trouve entièrement en dehors de la limite administrative « {nom} ». Reprenez le tracé à l'intérieur du contour.",
-    "geo_manual_zoom_required": "Approchez-vous (zoom ≥ 17) avant de placer les points.",
-    "geo_manual_draw_hint": "Cliquez sur la carte pour ajouter un sommet numéroté (1, 2, 3…). La ligne se construit au fur et à mesure.",
+    "geo_manual_zoom_required": "Zoomez davantage (niveau ≥ 17) pour activer le tracé sur la carte.",
+    "geo_manual_zoom_ok": "Zoom suffisant — vous pouvez tracer le polygone.",
+    "geo_manual_draw_hint": "Cliquez pour ajouter des sommets numérotés. Double-cliquez pour fermer le polygone (ou utilisez le bouton « Terminer »).",
     "geo_manual_undo": "Annuler le dernier point",
     "geo_manual_finish": "Terminer le polygone",
     "geo_manual_restart": "Recommencer",
@@ -881,6 +884,16 @@
     "geo_geojson_invalid": "GeoJSON invalide : un Polygon ou MultiPolygon (3 sommets minimum) est attendu.",
     "geo_geojson_ok": "Polygone importé : superficie :",
     "geo_area": "Superficie (polygone)",
+    "geo_coords_btn": "Saisie par coordonnées",
+    "geo_coords_title": "Points du polygone",
+    "geo_coords_hint": "Saisissez les coordonnées (latitude, longitude) de chaque point du polygone, puis créez le polygone.",
+    "geo_coords_add": "Ajouter un point",
+    "geo_coords_build": "Créer le polygone",
+    "geo_coords_lat": "Latitude",
+    "geo_coords_lng": "Longitude",
+    "geo_coords_back": "Retour à la carte",
+    "geo_coords_remove": "Supprimer",
+    "geo_coords_invalid": "Saisissez au moins 3 points valides (latitude entre -90 et 90, longitude entre -180 et 180).",
     "price_per_m2": "Prix au m²",
     "surface_constructible": "Surface constructible potentielle",
     "launch_ponderation": "Analyse multicritère pondérée"

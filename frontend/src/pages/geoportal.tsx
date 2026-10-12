@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { icons, Icon } from '../components/icons'
 import { DashboardLayout } from '../components/DashboardLayout'
-import { TerrainGeometryEditor, emptyGeom, type TerrainGeom, type TerrainImportFields } from '../components/TerrainGeometryEditor'
+import { TerrainGeometryEditor, emptyGeom, type TerrainGeom, type TerrainImportFields, type TerrainImportItem } from '../components/TerrainGeometryEditor'
 import { formatApiErrors } from '../api/auth'
 import { fetchProjet, previewRentabilite, type Projet, type ProjetPayload, type Rentabilite } from '../api/projets'
 import { createTerrain, computeSurfaceConstructible, computeSurfaceEquipement, deleteTerrain, fetchSurfaceConstructible, fetchSurfaceEquipement, fetchTerrains, saveTerrainRentabilite, type AffectationSurface, type AnalyseFiltres, type AnalyseResultat, type CritereConformite, type SurfaceConstructibleResponse, type SurfaceEquipementResponse, type Terrain } from '../api/terrains'
@@ -469,10 +469,10 @@ const rentaFormDests = (f: RentaForm): Array<{ key: string; label: string; activ
   { key: 'eqp', label: t('projects.dest_equipement_prive'), active: f.hasEquipementPrive },
 ]
 
-const RentaViewRow = ({ label, value, unit }: { label: string; value: string; unit?: string }): ReactElement => (
+const RentaViewRow = ({ label, value, unit, tone }: { label: string; value: string; unit?: string; tone?: 'success' | 'error' }): ReactElement => (
   <div className="renta-view-row">
     <span className="renta-view-row-label">{label}</span>
-    <span className="renta-view-row-value">
+    <span className={`renta-view-row-value${tone ? ` text-${tone}` : ''}`}>
       {value || '—'}{unit ? <small>{unit}</small> : null}
     </span>
   </div>
@@ -872,7 +872,7 @@ function toAnalyseResultat(r: ResultatAnalyse): AnalyseResultat {
   }
 }
 
-function CalcRow({ label, value, unit, note }: { label: string; value: number | undefined; unit?: string; note?: string }): React.JSX.Element {
+function CalcRow({ label, value, unit, note, tone }: { label: string; value: number | undefined; unit?: string; note?: string; tone?: 'success' | 'error' }): React.JSX.Element {
   const fmt = (v: number | undefined): string => {
     if (v == null) return '—'
     return Number(v).toLocaleString('fr-FR')
@@ -881,7 +881,7 @@ function CalcRow({ label, value, unit, note }: { label: string; value: number | 
     <div className="renta-detail-row">
       <span className="renta-detail-row-label">{label}</span>
       {value != null ? (
-        <strong className="renta-detail-row-value">{fmt(value)}{unit ? ` ${unit}` : ''}</strong>
+        <strong className={`renta-detail-row-value${tone ? ` text-${tone}` : ''}`}>{fmt(value)}{unit ? ` ${unit}` : ''}</strong>
       ) : note ? (
         <span className="renta-detail-row-note">{note}</span>
       ) : (
@@ -985,6 +985,8 @@ export function GeoportalPage(): React.JSX.Element {
     consistance: '',
     geom: emptyGeom(),
   })
+  // Terrains cochés dans l'import GeoJSON multi-sélection (vide = saisie d'un seul terrain).
+  const [terrainBatch, setTerrainBatch] = useState<TerrainImportItem[]>([])
   const [savingTerrain, setSavingTerrain] = useState(false)
   const [terrainError, setTerrainError] = useState<string | null>(null)
   const [terrainNote, setTerrainNote] = useState<string | null>(null)
@@ -1254,7 +1256,8 @@ export function GeoportalPage(): React.JSX.Element {
 
   const handleWizardOpenRentabilite = (terrain: TerrainPondere): void => {
     openRentaModal({
-      terrainId: terrain.id,
+      // Terrain enregistré : on passe son vrai id pour mettre à jour (et non dupliquer) le terrain.
+      terrainId: terrain.terrain_id ?? terrain.id,
       nom: terrain.nom,
       superficie: terrain.superficie,
       lat: terrain.lat,
@@ -1376,6 +1379,11 @@ export function GeoportalPage(): React.JSX.Element {
   const [rentaNote, setRentaNote] = useState<string | null>(null)
   const [rentaModalOpen, setRentaModalOpen] = useState(false)
   const [rentaTerrains, setRentaTerrains] = useState<Terrain[]>([])
+  // Liste affichée dans la sidebar comparative : uniquement les terrains issus
+  // d'un calcul de rentabilité (origine='rentabilite'). Les terrains créés via
+  // « Ajouter un terrain » (origine='ajout') en sont exclus, même s'ils ont une
+  // rentabilité calculée automatiquement.
+  const rentaTerrainsAffiches = rentaTerrains.filter((tr) => tr.origine === 'rentabilite')
   const [rentaSurfaceConstructible, setRentaSurfaceConstructible] = useState<SurfaceConstructibleResponse | null>(null)
   const [rentaSurfaceEquipement, setRentaSurfaceEquipement] = useState<SurfaceEquipementResponse | null>(null)
   const [rentaUsingCachedSurface, setRentaUsingCachedSurface] = useState(false)
@@ -1720,6 +1728,57 @@ export function GeoportalPage(): React.JSX.Element {
   const handleAddTerrain = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
     if (!projetId) return
+
+    // ── Import GeoJSON : plusieurs terrains sélectionnés ──
+    if (terrainBatch.length > 1) {
+      const missing = terrainBatch.filter((it) => !it.fields.num_parcelle?.trim()).map((it) => it.label)
+      if (missing.length > 0) {
+        setTerrainError(`${t('ranking.field_num_parcelle_required')} : ${missing.join(', ')}`)
+        return
+      }
+      setSavingTerrain(true)
+      setTerrainError(null)
+      let done = 0
+      let rentaDone = 0
+      try {
+        for (const it of terrainBatch) {
+          const sup = it.geom.areaM2 != null ? Math.round(it.geom.areaM2) : 0
+          if (!it.geom.geometry || sup <= 0) throw new Error(`${it.label} : ${t('ranking.geo_required_polygon')}`)
+          try {
+            const created = await createTerrain(projetId, {
+              num_parcelle: (it.fields.num_parcelle ?? '').trim(),
+              indice: (it.fields.indice ?? '').trim(),
+              complement: (it.fields.complement ?? '').trim(),
+              consistance: (it.fields.consistance ?? '').trim(),
+              superficie: sup,
+              lat: it.geom.centroid?.lat ?? null,
+              lng: it.geom.centroid?.lng ?? null,
+              geometry: it.geom.geometry,
+              origine: 'ajout',
+            })
+            const r = await enrichTerrainLikeCadastre(created.id, it.label, it.geom.geometry, sup)
+            if (r.renta) rentaDone += 1
+          } catch (err) {
+            throw new Error(`${it.label} : ${formatApiErrors(err)}`)
+          }
+          done += 1
+        }
+        localStorage.setItem(`terrain_created_${projetId}`, String(Date.now()))
+        setTerrainBatch([])
+        setTerrainForm({ num_parcelle: '', indice: '', complement: '', consistance: '', geom: emptyGeom() })
+        setTerrainNote(`${done} ${t('ranking.terrain_added')} — affectations extraites, rentabilité calculée pour ${rentaDone}/${done} (les autres : prix à compléter dans « Rentabilité »).`)
+        setTerrainError(null)
+        setTimeout(() => { setCardMode('search'); setCardHidden(true); setTerrainNote(null) }, 1500)
+      } catch (err) {
+        // Les terrains déjà enregistrés sont retirés de la liste pour éviter les doublons.
+        setTerrainBatch((b) => b.slice(done))
+        const msg = err instanceof Error ? err.message : String(err)
+        setTerrainError(done > 0 ? `${done} / ${terrainBatch.length} enregistré(s). ${msg}` : msg)
+      } finally {
+        setSavingTerrain(false)
+      }
+      return
+    }
     const numParcelle = terrainForm.num_parcelle.trim()
     const superficie = terrainForm.geom.areaM2 != null ? Math.round(terrainForm.geom.areaM2) : null
 
@@ -1735,7 +1794,7 @@ export function GeoportalPage(): React.JSX.Element {
     setSavingTerrain(true)
     setTerrainError(null)
     try {
-      await createTerrain(projetId, {
+      const created = await createTerrain(projetId, {
         num_parcelle: numParcelle,
         indice: terrainForm.indice.trim(),
         complement: terrainForm.complement.trim(),
@@ -1744,12 +1803,40 @@ export function GeoportalPage(): React.JSX.Element {
         lat: terrainForm.geom.centroid?.lat ?? null,
         lng: terrainForm.geom.centroid?.lng ?? null,
         geometry: terrainForm.geom.geometry,
+        origine: 'ajout',
       })
       localStorage.setItem(`terrain_created_${projetId}`, String(Date.now()))
+      // Même traitement qu'une parcelle cadastrale : affectations + rentabilité.
+      const nomTerrain = [numParcelle, terrainForm.indice.trim()].filter(Boolean).join('/')
+      const enrich = await enrichTerrainLikeCadastre(created.id, nomTerrain, terrainForm.geom.geometry, superficie)
+      const savedGeom = terrainForm.geom
+      const savedLat = terrainForm.geom.centroid?.lat ?? null
+      const savedLng = terrainForm.geom.centroid?.lng ?? null
       setTerrainForm({ num_parcelle: '', indice: '', complement: '', consistance: '', geom: emptyGeom() })
-      setTerrainNote(t('ranking.terrain_added'))
+      setTerrainNote(
+        enrich.renta
+          ? `${t('ranking.terrain_added')} — affectations extraites et rentabilité calculée.`
+          : enrich.affectations
+            ? `${t('ranking.terrain_added')} — affectations extraites ; complétez les prix pour calculer la rentabilité.`
+            : t('ranking.terrain_added')
+      )
       setTerrainError(null)
-      setTimeout(() => { setCardMode('search'); setCardHidden(true); setTerrainNote(null) }, 1500)
+      setTimeout(() => {
+        setCardMode('search'); setCardHidden(true); setTerrainNote(null)
+        // Prix de vente / coûts non renseignés : on ouvre le calcul de rentabilité
+        // du terrain, comme pour une parcelle cadastrale.
+        if (!enrich.renta) {
+          openRentaModal({
+            terrainId: created.id,
+            nom: nomTerrain,
+            superficie,
+            lat: savedLat,
+            lng: savedLng,
+            ref: numParcelle,
+            ring: savedGeom.vertices.map((v) => [v.lng, v.lat]),
+          })
+        }
+      }, 1500)
     } catch (err) {
       setTerrainError(formatApiErrors(err))
     } finally {
@@ -1759,52 +1846,121 @@ export function GeoportalPage(): React.JSX.Element {
 
   const numRenta = (v: string): number | undefined => v ? Number(v) : undefined
 
-  const buildRentaPayload = (): ProjetPayload | null => {
+  // Construit le payload de rentabilité à partir d'un formulaire, des surfaces
+  // (affectations / équipements) et de la superficie d'un terrain donné.
+  const buildRentaPayloadFrom = (ctx: {
+    rf: RentaForm
+    sc: SurfaceConstructibleResponse | null
+    se: SurfaceEquipementResponse | null
+    superficie?: number | null
+    nom: string
+  }): ProjetPayload | null => {
     if (!projet) return null
-    const baseSurf = rentaParcelInfo?.superficie && rentaParcelInfo.superficie > 0
-      ? rentaParcelInfo.superficie
+    const { rf, sc, se } = ctx
+    const baseSurf = ctx.superficie && ctx.superficie > 0
+      ? ctx.superficie
       : Number(projet.surface_souhaitee)
     return {
-      nom: rentaTerrainNom,
+      nom: ctx.nom,
       description: '',
       id_type: 1,
       surface_souhaitee: Number(projet.surface_souhaitee),
       surface_totale: baseSurf,
       budget_total: 0,
-      prix_foncier_m2: numRenta(rentaForm.prixFoncierM2),
-      frais_acquisition: numRenta(rentaForm.fraisAcquisition),
-      taux_chute: numRenta(rentaForm.tauxChute),
-      cos: numRenta(rentaForm.cos),
-      cus: numRenta(rentaForm.cus),
-      surface_constructible: rentaSurfaceConstructible?.surface_constructible ?? 0,
-      surface_voie: rentaSurfaceEquipement?.surface_voie ?? 0,
-      surface_espace_vert: rentaSurfaceEquipement?.surface_espace_vert ?? 0,
-      has_appartement: rentaForm.hasAppartement,
-      has_commerce: rentaForm.hasCommerce,
-      has_bureau: rentaForm.hasBureau,
-      has_equipement: rentaForm.hasEquipement,
-      has_equipement_prive: rentaForm.hasEquipementPrive,
-      quote_part_appartement: numRenta(rentaForm.quotePartApp),
-      quote_part_commerce: numRenta(rentaForm.quotePartCommerce),
-      quote_part_bureau: numRenta(rentaForm.quotePartBureau),
+      prix_foncier_m2: numRenta(rf.prixFoncierM2),
+      frais_acquisition: numRenta(rf.fraisAcquisition),
+      taux_chute: numRenta(rf.tauxChute),
+      cos: numRenta(rf.cos),
+      cus: numRenta(rf.cus),
+      surface_constructible: sc?.surface_constructible ?? 0,
+      surface_voie: se?.surface_voie ?? 0,
+      surface_espace_vert: se?.surface_espace_vert ?? 0,
+      has_appartement: rf.hasAppartement,
+      has_commerce: rf.hasCommerce,
+      has_bureau: rf.hasBureau,
+      has_equipement: rf.hasEquipement,
+      has_equipement_prive: rf.hasEquipementPrive,
+      quote_part_appartement: numRenta(rf.quotePartApp),
+      quote_part_commerce: numRenta(rf.quotePartCommerce),
+      quote_part_bureau: numRenta(rf.quotePartBureau),
       quote_part_equipement: 0,
       quote_part_equipement_prive: 0,
-      prix_vente_appartement: numRenta(rentaForm.prixVenteApp),
-      prix_vente_commerce: numRenta(rentaForm.prixVenteCommerce),
-      prix_vente_bureau: numRenta(rentaForm.prixVenteBureau),
-      prix_vente_equipement: numRenta(rentaForm.prixVenteEquipement),
-      surface_equipement: rentaForm.hasEquipement ? (rentaSurfaceEquipement?.surface_equipement ?? 0) : 0,
-      surface_equipement_prive: rentaForm.hasEquipementPrive ? (rentaSurfaceEquipement?.surface_equipement_prive ?? 0) : 0,
-      prix_vente_equipement_prive: numRenta(rentaForm.prixVenteEquipementPrive),
-      cout_construction_appartement: numRenta(rentaForm.coutConstrApp),
-      cout_construction_commerce: numRenta(rentaForm.coutConstrCommerce),
-      cout_construction_bureau: numRenta(rentaForm.coutConstrBureau),
-      taux_etudes_honoraires: numRenta(rentaForm.tauxEtudes),
-      taux_imprevus: numRenta(rentaForm.tauxImprevus),
-      taux_commercialisation: numRenta(rentaForm.tauxCommercialisation),
-      duree_construction: numRenta(rentaForm.dureeConstruction),
-      duree_commercialisation: numRenta(rentaForm.dureeCommercialisation),
-      taux_actualisation: numRenta(rentaForm.tauxActualisation),
+      prix_vente_appartement: numRenta(rf.prixVenteApp),
+      prix_vente_commerce: numRenta(rf.prixVenteCommerce),
+      prix_vente_bureau: numRenta(rf.prixVenteBureau),
+      prix_vente_equipement: numRenta(rf.prixVenteEquipement),
+      surface_equipement: rf.hasEquipement ? (se?.surface_equipement ?? 0) : 0,
+      surface_equipement_prive: rf.hasEquipementPrive ? (se?.surface_equipement_prive ?? 0) : 0,
+      prix_vente_equipement_prive: numRenta(rf.prixVenteEquipementPrive),
+      cout_construction_appartement: numRenta(rf.coutConstrApp),
+      cout_construction_commerce: numRenta(rf.coutConstrCommerce),
+      cout_construction_bureau: numRenta(rf.coutConstrBureau),
+      taux_etudes_honoraires: numRenta(rf.tauxEtudes),
+      taux_imprevus: numRenta(rf.tauxImprevus),
+      taux_commercialisation: numRenta(rf.tauxCommercialisation),
+      duree_construction: numRenta(rf.dureeConstruction),
+      duree_commercialisation: numRenta(rf.dureeCommercialisation),
+      taux_actualisation: numRenta(rf.tauxActualisation),
+    }
+  }
+
+  const buildRentaPayload = (): ProjetPayload | null =>
+    buildRentaPayloadFrom({
+      rf: rentaForm,
+      sc: rentaSurfaceConstructible,
+      se: rentaSurfaceEquipement,
+      superficie: rentaParcelInfo?.superficie,
+      nom: rentaTerrainNom,
+    })
+
+  // ── Intégration d'un terrain ajouté manuellement au même circuit que les
+  // parcelles cadastrales : affectations (intersection avec le plan
+  // d'aménagement), surfaces d'équipement, rentabilité enregistrée sur le terrain
+  // (donc visible dans la liste comparative et exploitable par l'AMC). ──
+  const enrichTerrainLikeCadastre = async (
+    terrainId: number,
+    nom: string,
+    geometry: string,
+    superficie: number
+  ): Promise<{ affectations: boolean; renta: boolean }> => {
+    let geom: unknown
+    try { geom = JSON.parse(geometry) } catch { return { affectations: false, renta: false } }
+    const [sc, se] = await Promise.all([
+      computeSurfaceConstructible(projetId, geom as any, superficie).catch(() => null),
+      computeSurfaceEquipement(projetId, geom as any, superficie).catch(() => null),
+    ])
+    if (!sc) return { affectations: false, renta: false }
+    const form: RentaForm = {
+      prixFoncierM2: '', fraisAcquisition: '7', tauxChute: '30',
+      cos: sc.cos != null ? String(sc.cos) : '', cus: sc.cus != null ? String(sc.cus) : '',
+      hasAppartement: true, hasCommerce: false, hasBureau: false, hasEquipement: false, hasEquipementPrive: false,
+      quotePartApp: '100', quotePartCommerce: '0', quotePartBureau: '0',
+      prixVenteApp: '', prixVenteCommerce: '', prixVenteBureau: '',
+      prixVenteEquipement: '', prixVenteEquipementPrive: '',
+      coutConstrApp: '', coutConstrCommerce: '', coutConstrBureau: '',
+      tauxEtudes: '10', tauxImprevus: '5', tauxCommercialisation: '3',
+      dureeConstruction: '2', dureeCommercialisation: '3', tauxActualisation: '8',
+    }
+    const payload = buildRentaPayloadFrom({ rf: form, sc, se, superficie, nom })
+    if (!payload) return { affectations: true, renta: false }
+    try {
+      const res = await previewRentabilite(payload)
+      if (!res.ok) return { affectations: true, renta: false }
+      const inputs: RentaSavedInputs = {
+        form,
+        surface_constructible: sc.surface_constructible ?? 0,
+        surface_voie: se?.surface_voie ?? 0,
+        surface_espace_vert: se?.surface_espace_vert ?? 0,
+        surface_equipement: se?.surface_equipement ?? 0,
+        surface_equipement_prive: se?.surface_equipement_prive ?? 0,
+        surface_constructible_data: sc,
+        surface_equipement_data: se,
+        unit_configs: {},
+      }
+      await saveTerrainRentabilite(projetId, terrainId, { ...(res as unknown as Record<string, unknown>), inputs })
+      return { affectations: true, renta: true }
+    } catch {
+      return { affectations: true, renta: false }
     }
   }
 
@@ -1887,6 +2043,7 @@ export function GeoportalPage(): React.JSX.Element {
           lat: round6(rentaParcelInfo.lat),
           lng: round6(rentaParcelInfo.lng),
           geometry,
+          origine: 'rentabilite',
         })
         terrainId = terrain.id
       }
@@ -1907,35 +2064,6 @@ export function GeoportalPage(): React.JSX.Element {
     } finally {
       setRentaSaving(false)
     }
-  }
-
-  const handleRentaEdit = (): void => {
-    setRentaNote(null)
-    setRentaError(null)
-    setRentaViewMode(false)
-  }
-
-  const handleRentaReset = (): void => {
-    if (rentaInputsSaved) {
-      setRentaForm({ ...rentaInputsSaved.form })
-      if (rentaInputsSaved.unit_configs) {
-        setRentaUnitConfigs(rentaInputsSaved.unit_configs)
-      }
-    }
-    setRentaNote(null)
-    setRentaError(null)
-  }
-
-  const handleRentaCancel = (): void => {
-    if (rentaInputsSaved) {
-      setRentaForm({ ...rentaInputsSaved.form })
-      if (rentaInputsSaved.unit_configs) {
-        setRentaUnitConfigs(rentaInputsSaved.unit_configs)
-      }
-    }
-    setRentaNote(null)
-    setRentaError(null)
-    setRentaViewMode(true)
   }
 
   const handleSelectRentaTerrain = (tr: Terrain): void => {
@@ -2065,16 +2193,23 @@ export function GeoportalPage(): React.JSX.Element {
     const cadFeat = cadastreId != null
       ? coucheDataRef.current[cadastreId]?.features.find((f) => String(f.properties?.num) === idParcelle)
       : undefined
+    // Un terrain ajouté manuellement (« Ajouter un terrain ») n'est pas dans la
+    // couche cadastre : on le retrouve dans la couche « terrains ajoutés » pour lui
+    // appliquer exactement le même calcul d'affectations que les parcelles cadastrales.
+    const terrainFeat = cadFeat
+      ? undefined
+      : terrainsFc?.features.find((f) => String(f.properties?.num) === idParcelle)
+    const feat = cadFeat ?? terrainFeat
     const paPrepared = paPreparedRef.current
 
-    if (!map || !cadFeat || paId == null || !paPrepared) {
+    if (!map || !feat || paId == null || !paPrepared) {
       return
     }
 
-    const ring = extractRing(cadFeat.geometry)
-    const title = formatParcelleTitle(cadFeat.properties as Record<string, unknown> | undefined || { num: idParcelle })
-    const fullRef = formatParcelleRef(cadFeat.properties?.num ?? idParcelle, cadFeat.properties?.indice)
-    const pieces = computeParcelAffectations(cadFeat, paPrepared)
+    const ring = extractRing(feat.geometry)
+    const title = formatParcelleTitle(feat.properties as Record<string, unknown> | undefined || { num: idParcelle })
+    const fullRef = formatParcelleRef(feat.properties?.num ?? idParcelle, feat.properties?.indice)
+    const pieces = computeParcelAffectations(feat, paPrepared)
 
     if (affectationsLayerRef.current) {
       map.removeLayer(affectationsLayerRef.current)
@@ -2139,17 +2274,17 @@ export function GeoportalPage(): React.JSX.Element {
       overlayFlyToBounds(map, group.getBounds().pad(0.15), { duration: 0.7, maxZoom: 19 })
     }
 
+    const surfVal = Number(feat.properties?.surface) || (ring && ring.length >= 3 ? Math.round(ringAreaM2(ring)) : 0)
     affectationsResultRef.current = { terrainNum: idParcelle, pieces, title }
     if (popup?.getElement && ring) {
       const center = ringCenter(ring)
-      const surfVal = Number(cadFeat.properties?.surface) || (ring && ring.length >= 3 ? Math.round(ringAreaM2(ring)) : 0)
       const info = pieces.length === 0
         ? '<div class="geoportal-popup-warn">Aucune affectation trouvée pour cette parcelle dans le plan d\'aménagement.</div>'
         : `<div class="geoportal-popup-affcount">${pieces.length} affectation${pieces.length > 1 ? 's' : ''} détectée${pieces.length > 1 ? 's' : ''}</div>`
       popup.setContent(
         `<div class="geoportal-popup"><div class="geoportal-popup-title">${escapeHtml(title)}</div>` +
         `${info}` +
-        `<div class="geoportal-popup-coords">${propsToHtml(cadFeat.properties, CADASTRE_ATTRIBUTE_LABELS, ['fid', 'num'])}</div>` +
+        `<div class="geoportal-popup-coords">${propsToHtml(feat.properties, CADASTRE_ATTRIBUTE_LABELS, ['fid', 'num'])}</div>` +
         `${buildPopupActions(center.lat, center.lng, ring, title, { idParcelle, computed: pieces.length > 0 }, { nom: title, superficie: surfVal, lat: center.lat, lng: center.lng, ref: fullRef, ring })}</div>`
       )
       bindPopupActionButtons(popup)
@@ -2163,7 +2298,11 @@ export function GeoportalPage(): React.JSX.Element {
     const cadFeat = cadastreId != null
       ? coucheDataRef.current[cadastreId]?.features.find((f) => String(f.properties?.num) === result.terrainNum)
       : undefined
-    const ring = cadFeat ? extractRing(cadFeat.geometry) : null
+    const terrainFeat = cadFeat
+      ? undefined
+      : terrainsFc?.features.find((f) => String(f.properties?.num) === result.terrainNum)
+    const feat = cadFeat ?? terrainFeat
+    const ring = feat ? extractRing(feat.geometry) : null
     if (!ring || ring.length < 3) return
     showAffectationsModal(result.title, ring, result.pieces)
   }
@@ -3667,8 +3806,10 @@ export function GeoportalPage(): React.JSX.Element {
     activeEquipTypes.length > 0 ||
     activeOverlays.length > 0
 
-  const terrainAreaM2 = terrainForm.geom.areaM2
-  const superficieCalculee = terrainAreaM2 != null ? Math.round(terrainAreaM2) : null
+  const terrainAreaM2 = terrainBatch.length > 1
+    ? terrainBatch.reduce((sum, it) => sum + (it.geom.areaM2 ?? 0), 0)
+    : terrainForm.geom.areaM2
+  const superficieCalculee = terrainAreaM2 != null && terrainAreaM2 > 0 ? Math.round(terrainAreaM2) : null
 
   return (
     <>
@@ -4370,7 +4511,7 @@ export function GeoportalPage(): React.JSX.Element {
                 >
                   {icons.building}
                   <span>Terrains du projet</span>
-                  <span className="renta-sidebar-toggle-count">{rentaTerrains.length}</span>
+                  <span className="renta-sidebar-toggle-count">{rentaTerrainsAffiches.length}</span>
                 </button>
                 <button type="button" className="geo-dims-close" data-dims-close aria-label="Fermer" onClick={() => setRentaModalOpen(false)}>&times;</button>
               </div>
@@ -4526,17 +4667,8 @@ export function GeoportalPage(): React.JSX.Element {
                   </div>
                 )}
 
-                {rentaViewMode ? (
+                {rentaViewMode && (rentaNote || rentaError) ? (
                   <div className="renta-view-actions">
-                    <button type="button" className="geo-dims-btn geo-dims-btn--primary" onClick={() => handleRentaEdit()}>
-                      Modifier
-                    </button>
-                    <button type="button" className="geo-dims-btn geo-dims-btn--ghost" onClick={() => handleRentaReset()}>
-                      Réinitialisation
-                    </button>
-                    <button type="button" className="geo-dims-btn geo-dims-btn--ghost" onClick={() => handleRentaCancel()}>
-                      Annuler
-                    </button>
                     {rentaNote ? <span className="renta-view-note">{rentaNote}</span> : null}
                     {rentaError ? <span className="renta-view-note renta-view-note--error">{rentaError}</span> : null}
                   </div>
@@ -4556,7 +4688,7 @@ export function GeoportalPage(): React.JSX.Element {
                           <RentaViewRow label={t('projects.res_surface')} value={rentaResult.surfaces?.surface_vendable != null ? rentaResult.surfaces.surface_vendable.toLocaleString('fr-FR') : '—'} unit="m²" />
                           <RentaViewRow label={t('projects.res_ca')} value={rentaResult.ca?.ca_total != null ? rentaResult.ca.ca_total.toLocaleString('fr-FR') : '—'} unit="DH" />
                           <RentaViewRow label={t('projects.res_cout_total')} value={rentaResult.cout_total_projet != null ? rentaResult.cout_total_projet.toLocaleString('fr-FR') : '—'} unit="DH" />
-                          <RentaViewRow label={t('projects.res_tri')} value={rentaResult.tri != null ? `${String(rentaResult.tri).replace('.', ',')}%` : '—'} unit="" />
+                          <RentaViewRow label={t('projects.res_tri')} value={rentaResult.tri != null ? `${String(rentaResult.tri).replace('.', ',')}%` : '—'} unit="" tone={rentaResult.tri != null ? (rentaResult.tri < 10 ? 'error' : 'success') : undefined} />
                           <RentaViewRow label={t('projects.res_benefice')} value={rentaResult.benefice_net != null ? rentaResult.benefice_net.toLocaleString('fr-FR') : '—'} unit="DH" />
                         </div>
                       </div>
@@ -5019,7 +5151,7 @@ export function GeoportalPage(): React.JSX.Element {
                       </div>
                       <div className="geo-terrain-calc-row">
                         <span>{t('projects.res_tri')}</span>
-                        <strong>{rentaResult.tri != null ? `${rentaResult.tri}%` : '—'}</strong>
+                        <strong className={rentaResult.tri != null ? (rentaResult.tri < 10 ? 'text-error' : 'text-success') : undefined}>{rentaResult.tri != null ? `${rentaResult.tri}%` : '—'}</strong>
                       </div>
                       <div className="renta-results-highlight">
                         <span>{t('projects.res_benefice')}</span>
@@ -5120,7 +5252,7 @@ export function GeoportalPage(): React.JSX.Element {
                           <h5>{t('projects.detail_resultats')}</h5>
                           <CalcRow label="Coût total projet (DH)" value={rentaResult.cout_total_projet} unit="DH" />
                           <CalcRow label="Bénéfice net (DH)" value={rentaResult.benefice_net} unit="DH" />
-                          <CalcRow label="TRI (%)" value={rentaResult.tri} unit="%" />
+                          <CalcRow label="TRI (%)" value={rentaResult.tri} unit="%" tone={rentaResult.tri != null ? (rentaResult.tri < 10 ? 'error' : 'success') : undefined} />
                         </section>
 
                         {rentaResult.flux && rentaResult.flux.length > 0 ? (
@@ -5352,13 +5484,13 @@ export function GeoportalPage(): React.JSX.Element {
                     <div>
                       <h4 className="renta-sidebar-header-title">Terrains du projet</h4>
                       <span className="renta-sidebar-header-sub">
-                        {rentaTerrains.length} terrain{rentaTerrains.length > 1 ? 's' : ''} enregistré{rentaTerrains.length > 1 ? 's' : ''}
+                        {rentaTerrainsAffiches.length} terrain{rentaTerrainsAffiches.length > 1 ? 's' : ''} enregistré{rentaTerrainsAffiches.length > 1 ? 's' : ''}
                       </span>
                     </div>
                   </div>
                   <button type="button" className="renta-sidebar-close" title="Fermer la liste" aria-label="Fermer la liste" onClick={() => setRentaSidebarOpen(false)}>&times;</button>
                 </div>
-                {rentaTerrains.length === 0 ? (
+                {rentaTerrainsAffiches.length === 0 ? (
                   <div className="renta-sidebar-empty">
                     <div className="renta-sidebar-empty-icon">{icons.building}</div>
                     <h5>Aucun terrain enregistré</h5>
@@ -5366,7 +5498,7 @@ export function GeoportalPage(): React.JSX.Element {
                   </div>
                 ) : (
                   <div className="renta-sidebar-list">
-                    {[...rentaTerrains]
+                    {[...rentaTerrainsAffiches]
                       .sort((a, b) => {
                         const triA = a.rentabilite_json ? ((a.rentabilite_json as Record<string, unknown>).tri as number) ?? -Infinity : -Infinity
                         const triB = b.rentabilite_json ? ((b.rentabilite_json as Record<string, unknown>).tri as number) ?? -Infinity : -Infinity
@@ -5416,7 +5548,7 @@ export function GeoportalPage(): React.JSX.Element {
                             </div>
 
                             <div className="renta-terrain-card-data">
-                              <div className={`renta-terrain-card-kpi${hasRenta ? (tri! >= 0 ? ' renta-terrain-card-kpi--pos' : ' renta-terrain-card-kpi--neg') : ''}`}>
+                              <div className={`renta-terrain-card-kpi${hasRenta ? (tri! >= 10 ? ' renta-terrain-card-kpi--pos' : ' renta-terrain-card-kpi--neg') : ''}`}>
                                 <span className="renta-terrain-card-kpi-label">TRI</span>
                                 <strong className="renta-terrain-card-kpi-val">
                                   {hasRenta ? `${tri!.toFixed(2)}%` : '—'}
@@ -5453,63 +5585,81 @@ export function GeoportalPage(): React.JSX.Element {
               </div>
             </div>
 
-            <div className="geo-dims-body renta-modal-content" style={{ flex: 1, overflowY: 'auto', padding: '24px 32px' }}>
-              <form id="terrain-form" className="admin-modal-form geo-card-add-form" style={{ width: '100%' }} noValidate onSubmit={(e) => { void handleAddTerrain(e) }}>
-                <div className="form-alert form-alert--error" hidden={!terrainError}>{terrainError}</div>
-                {terrainNote ? (
-                  <div className="form-alert form-alert--success terrain-draft-note">
-                    {terrainNote}
-                    {terrainForm.geom.geometry ? (
-                      <button type="button" className="terrain-draft-clear" onClick={clearFormDraw}>{t('ranking.loc_clear_draw')}</button>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                <div className="geo-card-form-section">
-                  <div className="form-field">
-                    <label htmlFor="g-t-num" className="form-label">{t('ranking.field_num_parcelle')}</label>
-                    <input id="g-t-num" name="num_parcelle" className="modal-input" placeholder="T26553" value={terrainForm.num_parcelle} onChange={(e) => setTerrainForm((f) => ({ ...f, num_parcelle: e.target.value }))} />
-                  </div>
-
-                  <div className="form-row">
-                    <div className="form-field form-field--half">
-                      <label htmlFor="g-t-indice" className="form-label">{t('ranking.field_indice')}</label>
-                      <input id="g-t-indice" name="indice" className="modal-input" placeholder="R" value={terrainForm.indice} onChange={(e) => setTerrainForm((f) => ({ ...f, indice: e.target.value }))} />
+            <div className="geo-dims-body renta-modal-content geo-add-terrain-body">
+              <form id="terrain-form" className="admin-modal-form geo-card-add-form geo-card-add-form--split" noValidate onSubmit={(e) => { void handleAddTerrain(e) }}>
+                <aside className="geo-card-add-sidebar">
+                  <div className="form-alert form-alert--error" hidden={!terrainError}>{terrainError}</div>
+                  {terrainNote ? (
+                    <div className="form-alert form-alert--success terrain-draft-note">
+                      {terrainNote}
+                      {terrainForm.geom.geometry ? (
+                        <button type="button" className="terrain-draft-clear" onClick={clearFormDraw}>{t('ranking.loc_clear_draw')}</button>
+                      ) : null}
                     </div>
-                    <div className="form-field form-field--half">
-                      <label htmlFor="g-t-complement" className="form-label">{t('ranking.field_complement')}</label>
-                      <input id="g-t-complement" name="complement" className="modal-input" placeholder="P2" value={terrainForm.complement} onChange={(e) => setTerrainForm((f) => ({ ...f, complement: e.target.value }))} />
+                  ) : null}
+
+                  <div className="geo-card-form-section">
+                    <div className="form-field">
+                      <label htmlFor="g-t-num" className="form-label">{t('ranking.field_num_parcelle')}</label>
+                      <input id="g-t-num" name="num_parcelle" className="modal-input" disabled={terrainBatch.length > 1} placeholder="T26553" value={terrainForm.num_parcelle} onChange={(e) => setTerrainForm((f) => ({ ...f, num_parcelle: e.target.value }))} />
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-field form-field--half">
+                        <label htmlFor="g-t-indice" className="form-label">{t('ranking.field_indice')}</label>
+                        <input id="g-t-indice" name="indice" className="modal-input" disabled={terrainBatch.length > 1} placeholder="R" value={terrainForm.indice} onChange={(e) => setTerrainForm((f) => ({ ...f, indice: e.target.value }))} />
+                      </div>
+                      <div className="form-field form-field--half">
+                        <label htmlFor="g-t-complement" className="form-label">{t('ranking.field_complement')}</label>
+                        <input id="g-t-complement" name="complement" className="modal-input" disabled={terrainBatch.length > 1} placeholder="P2" value={terrainForm.complement} onChange={(e) => setTerrainForm((f) => ({ ...f, complement: e.target.value }))} />
+                      </div>
+                    </div>
+
+                    <div className="form-field">
+                      <label htmlFor="g-t-consistance" className="form-label">{t('ranking.field_consistance')}</label>
+                      <input id="g-t-consistance" name="consistance" className="modal-input" disabled={terrainBatch.length > 1} placeholder="TN" value={terrainForm.consistance} onChange={(e) => setTerrainForm((f) => ({ ...f, consistance: e.target.value }))} />
                     </div>
                   </div>
 
-                  <div className="form-field">
-                    <label htmlFor="g-t-consistance" className="form-label">{t('ranking.field_consistance')}</label>
-                    <input id="g-t-consistance" name="consistance" className="modal-input" placeholder="TN" value={terrainForm.consistance} onChange={(e) => setTerrainForm((f) => ({ ...f, consistance: e.target.value }))} />
+                  <div className="geo-terrain-calc">
+                    <div className="geo-terrain-calc-row">
+                      <span>{terrainBatch.length > 1 ? `${t('ranking.geo_area')} (${terrainBatch.length})` : t('ranking.geo_area')}</span>
+                      <strong>{superficieCalculee != null ? `${superficieCalculee.toLocaleString('fr-FR')} m²` : '—'}</strong>
+                    </div>
                   </div>
-                </div>
 
-                <div className="geo-card-form-section">
+                  {terrainBatch.length > 1 ? (
+                    <div className="geo-batch-summary">
+                      <div className="geo-batch-summary-title">{terrainBatch.length} terrains à enregistrer</div>
+                      <ul className="geo-batch-summary-list">
+                        {terrainBatch.map((it, i) => (
+                          <li key={`${it.label}-${i}`}>
+                            <span>{it.label}</span>
+                            <em>{it.geom.areaM2 != null ? `${Math.round(it.geom.areaM2).toLocaleString('fr-FR')} m²` : '—'}</em>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </aside>
+
+                <section className="geo-card-add-map-panel">
                   <TerrainGeometryEditor
+                    layout="expanded"
                     value={terrainForm.geom}
                     onChange={(geom: TerrainGeom) => setTerrainForm((f) => ({ ...f, geom }))}
                     onImportFields={handleTerrainImportFields}
+                    onImportItems={setTerrainBatch}
                     cadastre={cadastreFc}
                     limites={limitesFc}
                   />
-                </div>
-
-                <div className="geo-terrain-calc">
-                  <div className="geo-terrain-calc-row">
-                    <span>{t('ranking.geo_area')}</span>
-                    <strong>{superficieCalculee != null ? `${superficieCalculee.toLocaleString('fr-FR')} m²` : '—'}</strong>
-                  </div>
-                </div>
-
-                <div className="admin-modal-actions geo-card-form-actions">
-                  <button type="button" className="btn btn-outline" onClick={() => { setCardMode('search'); setCardHidden(true) }}>{t('common.cancel')}</button>
-                  <button type="submit" className="btn btn-primary" disabled={savingTerrain}>{savingTerrain ? '…' : icons.save} {t('ranking.save_terrain')}</button>
-                </div>
+                </section>
               </form>
+            </div>
+
+            <div className="geo-add-terrain-footer">
+              <button type="button" className="btn btn-outline" onClick={() => { setCardMode('search'); setCardHidden(true) }}>{t('common.cancel')}</button>
+              <button type="submit" form="terrain-form" className="btn btn-primary" disabled={savingTerrain}>{savingTerrain ? '…' : icons.save} {terrainBatch.length > 1 ? `${t('ranking.save_terrain')} (${terrainBatch.length})` : t('ranking.save_terrain')}</button>
             </div>
           </div>
         </div>,

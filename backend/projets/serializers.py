@@ -291,7 +291,7 @@ class TerrainListSerializer(serializers.ModelSerializer):
             'consistance', 'num_parcelle',
             'num_titre_foncier', 'statut_juridique', 'prix_demande',
             'zonage', 'cos', 'cus', 'hauteur_maximale', 'equipements',
-            'geometry', 'rentabilite_json', 'date_creation',
+            'geometry', 'rentabilite_json', 'date_creation', 'origine',
         ]
         read_only_fields = ['id', 'score', 'date_creation']
 
@@ -331,6 +331,11 @@ class TerrainCreateSerializer(serializers.Serializer):
     accessibilite = serializers.IntegerField(min_value=1, max_value=10, default=5)
     positionnement = serializers.IntegerField(min_value=1, max_value=10, default=5)
     topographie = serializers.IntegerField(min_value=1, max_value=10, default=5)
+    origine = serializers.ChoiceField(
+        choices=[c for c, _ in Terrain.ORIGINE_CHOICES],
+        required=False,
+        default='ajout',
+    )
 
     def create(self, validated_data: dict) -> Terrain:
         geometry_raw = validated_data.pop('geometry', '') or ''

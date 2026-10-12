@@ -15,7 +15,7 @@
     "slide_nav_label": "Image navigation",
     "slide1_alt": "Geospatial land potential map",
     "slide2_alt": "Multi-criteria parcel analysis",
-    "slide3_alt": "Price per square meter estimation"
+    "slide3_alt": "Project profitability analysis"
   },
   "features": {
     "title": "Precise tools for the modern investor",
@@ -29,8 +29,8 @@
       "description": "Cross-reference accessibility, facilities and zoning to objectively evaluate the potential of each plot."
     },
     "estimation": {
-      "title": "Price Estimation",
-      "description": "Get estimates based on local market data and geospatial characteristics of parcels."
+      "title": "Profitability analysis",
+      "description": "Assess the potential profitability of your projects (NPV, IRR, ROI) from your parameters and the characteristics of the parcels."
     },
     "classement": {
       "title": "Land Ranking",
@@ -150,7 +150,7 @@
     "classified_subtext": "Out of 15k available",
     "potential_zones": "Potential zones",
     "potential_subtext": "Identified",
-    "list_title": "Active Projects List",
+    "list_title": "Projects List",
     "showing": "Showing",
     "on": "projects of",
     "details": "Project details",
@@ -862,11 +862,14 @@
     "geo_cadastre_notfound": "No parcel matches {q}. Try the GeoJSON import (Mode 2) or manual drawing (Mode 3).",
     "geo_manual_warning": "Approximate positioning : for guaranteed accuracy, use cadastre selection or import a GeoJSON plan.",
     "geo_limite_legende": "Administrative boundary: the polygon is automatically adjusted to this boundary.",
+    "geo_limite_etude_legende": "Study area (project perimeter)",
+    "geo_limite_admin_legende": "Administrative boundary {nom} — the polygon is clipped to this outline.",
     "geo_limite_generique": "administrative boundary",
     "geo_limite_ajuste": "Polygon adjusted to the administrative boundary “{nom}”: {surface} m² were removed.",
     "geo_limite_hors": "This polygon lies entirely outside the administrative boundary “{nom}”. Redraw it inside the outline.",
-    "geo_manual_zoom_required": "Zoom in (zoom ≥ 17) before placing points.",
-    "geo_manual_draw_hint": "Click on the map to add a numbered vertex (1, 2, 3…). The line is built as you go.",
+    "geo_manual_zoom_required": "Zoom in further (level ≥ 17) to enable drawing on the map.",
+    "geo_manual_zoom_ok": "Zoom level OK — you can draw the polygon.",
+    "geo_manual_draw_hint": "Click to add numbered vertices. Double-click to close the polygon (or use “Finish”).",
     "geo_manual_undo": "Undo last point",
     "geo_manual_finish": "Finish polygon",
     "geo_manual_restart": "Restart",
@@ -881,6 +884,16 @@
     "geo_geojson_invalid": "Invalid GeoJSON: a Polygon or MultiPolygon (at least 3 vertices) is expected.",
     "geo_geojson_ok": "Polygon imported : area :",
     "geo_area": "Area (polygon)",
+    "geo_coords_btn": "Enter coordinates",
+    "geo_coords_title": "Polygon points",
+    "geo_coords_hint": "Enter the coordinates (latitude, longitude) of each polygon point, then create the polygon.",
+    "geo_coords_add": "Add a point",
+    "geo_coords_build": "Create polygon",
+    "geo_coords_lat": "Latitude",
+    "geo_coords_lng": "Longitude",
+    "geo_coords_back": "Back to map",
+    "geo_coords_remove": "Remove",
+    "geo_coords_invalid": "Enter at least 3 valid points (latitude between -90 and 90, longitude between -180 and 180).",
     "price_per_m2": "Price per m²",
     "surface_constructible": "Potential buildable area",
     "launch_ponderation": "Weighted multi-criteria analysis"

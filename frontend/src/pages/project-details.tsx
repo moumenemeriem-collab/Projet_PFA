@@ -201,7 +201,7 @@ export function ProjectDetailsPage(): React.JSX.Element | null {
                   <Item
                     label={t('projects.res_tri')}
                     value={`${rentabilite.tri} %`}
-                    className={rentabilite.tri >= 0 ? 'text-success' : 'text-error'}
+                    className={rentabilite.tri >= 10 ? 'text-success' : 'text-error'}
                   />
                 ) : null}
                 {rentabilite.roi != null ? (

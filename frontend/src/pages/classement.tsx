@@ -16,6 +16,8 @@ import {
 import { fetchCouches, fetchCoucheGeoJSON } from '../api/couches'
 import { attributeLabel, CADASTRE_ATTRIBUTE_LABELS, formatParcelleRef, formatParcelleTitle } from '../utils/attributeLabels'
 import { t } from '../i18n/index'
+import { generateAndDownloadRentaPdfReport } from '../utils/rentaPdfReport'
+import { extractRing } from '../utils/terrainDims'
 
 const PAGE_SIZE = 10
 
@@ -396,11 +398,13 @@ function DetailItem({ label, value, tone }: { label: string; value: string; tone
   )
 }
 
-function TerrainDetailModal({ terrain, projetId, cadastre, onClose }: { terrain: Terrain; projetId: number; cadastre?: Record<string, unknown> | null; onClose: () => void }): React.JSX.Element {
+function TerrainDetailModal({ terrain, projetId, projectName, cadastre, onClose }: { terrain: Terrain; projetId: number; projectName?: string; cadastre?: Record<string, unknown> | null; onClose: () => void }): React.JSX.Element {
   const r = (terrain.rentabilite_json ?? null) as unknown as Rentabilite | null
   const [constr, setConstr] = useState<SurfaceConstructibleResponse | null>(null)
   const [constrLoading, setConstrLoading] = useState(true)
   const [constrError, setConstrError] = useState(false)
+  const [downloadingRenta, setDownloadingRenta] = useState(false)
+  const [downloadMsg, setDownloadMsg] = useState<{ type: 'error' | 'success'; text: string } | null>(null)
 
   useEffect(() => {
     let active = true
@@ -412,6 +416,70 @@ function TerrainDetailModal({ terrain, projetId, cadastre, onClose }: { terrain:
       .finally(() => { if (active) setConstrLoading(false) })
     return () => { active = false }
   }, [projetId, terrain.id])
+
+  const handleDownloadRenta = async (): Promise<void> => {
+    if (!r) return
+    setDownloadingRenta(true)
+    setDownloadMsg(null)
+    try {
+      let polygonCoords: number[][] | undefined
+      if (terrain.geometry) {
+        try {
+          const geomObj = typeof terrain.geometry === 'string' ? JSON.parse(terrain.geometry) : terrain.geometry
+          const ring = extractRing(geomObj)
+          if (ring && ring.length >= 3) polygonCoords = ring
+        } catch {
+          /* ignore */
+        }
+      }
+
+      const savedInputs = (((terrain.rentabilite_json as Record<string, unknown> | null)?.inputs as Record<string, unknown> | undefined)?.form ?? {}) as Record<string, unknown>
+      const rentaForm = {
+        prixFoncierM2: String(savedInputs.prixFoncierM2 ?? r.parametres?.prix_foncier_m2 ?? ''),
+        fraisAcquisition: String(savedInputs.fraisAcquisition ?? r.parametres?.frais_acquisition_pct ?? ''),
+        tauxChute: String(savedInputs.tauxChute ?? r.parametres?.taux_chute_pct ?? ''),
+        cos: String(savedInputs.cos ?? r.parametres?.cos ?? ''),
+        cus: String(savedInputs.cus ?? r.parametres?.cus ?? ''),
+        tauxEtudes: String(savedInputs.tauxEtudes ?? r.parametres?.taux_etudes_pct ?? ''),
+        tauxImprevus: String(savedInputs.tauxImprevus ?? r.parametres?.taux_imprevus_pct ?? ''),
+        tauxCommercialisation: String(savedInputs.tauxCommercialisation ?? r.parametres?.taux_commercialisation_pct ?? ''),
+        tauxActualisation: String(savedInputs.tauxActualisation ?? r.parametres?.taux_actualisation_pct ?? ''),
+        dureeConstruction: String(savedInputs.dureeConstruction ?? r.parametres?.duree_construction ?? ''),
+        dureeCommercialisation: String(savedInputs.dureeCommercialisation ?? r.parametres?.duree_commercialisation ?? ''),
+        hasAppartement: Boolean(savedInputs.hasAppartement),
+        hasCommerce: Boolean(savedInputs.hasCommerce),
+        hasBureau: Boolean(savedInputs.hasBureau),
+        hasEquipement: Boolean(savedInputs.hasEquipement),
+        hasEquipementPrive: Boolean(savedInputs.hasEquipementPrive),
+        prixVenteApp: String(savedInputs.prixVenteApp ?? ''),
+        prixVenteCommerce: String(savedInputs.prixVenteCommerce ?? ''),
+        prixVenteBureau: String(savedInputs.prixVenteBureau ?? ''),
+        prixVenteEquipement: String(savedInputs.prixVenteEquipement ?? ''),
+        prixVenteEquipementPrive: String(savedInputs.prixVenteEquipementPrive ?? ''),
+        coutConstrApp: String(savedInputs.coutConstrApp ?? ''),
+        coutConstrCommerce: String(savedInputs.coutConstrCommerce ?? ''),
+        coutConstrBureau: String(savedInputs.coutConstrBureau ?? ''),
+      }
+
+      await generateAndDownloadRentaPdfReport({
+        projectName,
+        terrainNom: terrain.nom,
+        reference: terrain.num_titre_foncier || terrain.num_parcelle || terrain.nom,
+        superficie: Number(terrain.superficie) || undefined,
+        lat: terrain.lat ? Number(terrain.lat) : undefined,
+        lng: terrain.lng ? Number(terrain.lng) : undefined,
+        polygonCoords,
+        rentaResult: r,
+        rentaForm,
+      })
+    } catch (err) {
+      console.error('[renta-pdf] error:', err)
+      setDownloadMsg({ type: 'error', text: 'Erreur lors du téléchargement du rapport de rentabilité.' })
+    } finally {
+      setDownloadingRenta(false)
+    }
+  }
+
 
   const fmtPct = (v: unknown): string => {
     if (v == null || v === '') return '—'
@@ -442,8 +510,29 @@ function TerrainDetailModal({ terrain, projetId, cadastre, onClose }: { terrain:
       <div className="admin-modal admin-modal--wide classement-modal--detail" onClick={(e) => e.stopPropagation()}>
         <div className="admin-modal-header">
           <h3>{t('ranking.details_title')} — {terrain.nom}</h3>
-          <button type="button" className="admin-modal-close" aria-label={t('common.close')} onClick={onClose}>{icons.close}</button>
+          <div className="classement-modal-header-actions">
+            <button
+              type="button"
+              className="classement-report-btn classement-report-btn--renta"
+              onClick={() => { void handleDownloadRenta() }}
+              disabled={downloadingRenta || !r}
+              title="Télécharger le rapport de rentabilité (PDF)"
+              aria-label="Télécharger le rapport de rentabilité (PDF)"
+            >
+              <span className="classement-report-btn-icon">{icons.download}</span>
+              <span className="classement-report-btn-text">
+                {downloadingRenta ? 'Téléchargement...' : 'Rapport rentabilité'}
+              </span>
+            </button>
+
+            <button type="button" className="admin-modal-close" aria-label={t('common.close')} onClick={onClose}>{icons.close}</button>
+          </div>
         </div>
+        {downloadMsg && (
+          <div className={`form-alert form-alert--${downloadMsg.type}`} style={{ margin: '12px 22px 0' }}>
+            {downloadMsg.text}
+          </div>
+        )}
         <div className="classement-modal-body classement-modal-body--detail">
           <div className="classement-detail-grid">
             <div className="classement-detail-item">
@@ -465,7 +554,7 @@ function TerrainDetailModal({ terrain, projetId, cadastre, onClose }: { terrain:
             {r?.tri != null && (
               <div className="classement-detail-item">
                 <span className="classement-detail-label">{t('ranking.res_tri')}</span>
-                <span className="classement-detail-value" style={{ color: Number(r.tri) >= 0 ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+                <span className="classement-detail-value" style={{ color: Number(r.tri) >= 10 ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
                   {fmtPct(r.tri)}
                 </span>
               </div>
@@ -607,14 +696,9 @@ function TerrainDetailModal({ terrain, projetId, cadastre, onClose }: { terrain:
                   />
                   <DetailItem label={t('ranking.renta_roi')} value={fmtPct(r.roi)} />
                   <DetailItem
-                    label={t('ranking.renta_van')}
-                    value={fmtMAD(r.van)}
-                    tone={r.van != null ? (r.van >= 0 ? 'success' : 'error') : undefined}
-                  />
-                  <DetailItem
                     label={t('ranking.renta_tri')}
                     value={fmtPct(r.tri)}
-                    tone={r.tri != null ? (r.tri >= 0 ? 'success' : 'error') : undefined}
+                    tone={r.tri != null ? (r.tri >= 10 ? 'success' : 'error') : undefined}
                   />
                 </div>
               </div>
@@ -820,7 +904,7 @@ export function ClassementPage(): React.JSX.Element {
     if (!projetId || tab !== 'terrains') return
     let cancelled = false
     setTerrainsLoading(true)
-    fetchTerrains(projetId, { search, page })
+    fetchTerrains(projetId, { search, page, origine: 'ajout' })
       .then((data) => {
         if (cancelled) return
         setTerrains(data.results)
@@ -851,7 +935,7 @@ export function ClassementPage(): React.JSX.Element {
       localStorage.removeItem(key)
       loadSavedTerrains()
       if (tab === 'terrains') {
-        void fetchTerrains(projetId, { search, page })
+        void fetchTerrains(projetId, { search, page, origine: 'ajout' })
           .then((data) => {
             setTerrains(data.results)
             setTotalCount(data.count)
@@ -965,7 +1049,12 @@ export function ClassementPage(): React.JSX.Element {
   const start = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
   const end = Math.min(page * PAGE_SIZE, totalCount)
 
+  // « Parcelles analysées » ne liste que les parcelles cadastrales dont la
+  // rentabilité a été calculée (origine='rentabilite'). Les terrains créés via
+  // « Ajouter un terrain » (origine='ajout') sont réservés à l'onglet « Mes terrains ».
   const filteredSavedTerrains = savedTerrains.filter((t_) => {
+    if (t_.origine !== 'rentabilite') return false
+    if (!t_.rentabilite_json) return false
     if (!savedSearchInput.trim()) return true
     const q = savedSearchInput.toLowerCase().trim()
     const title = formatParcelleTitle({ nom: t_.nom, num: t_.num_titre_foncier || t_.num_parcelle, indice: t_.indice }).toLowerCase()
@@ -1056,7 +1145,7 @@ export function ClassementPage(): React.JSX.Element {
                 <tbody>
                   {savedLoading ? (
                     <tr><td colSpan={8} className="classement-table-empty">{t('ranking.loading')}</td></tr>
-                  ) : savedTerrains.length > 0 ? (
+                  ) : savedTotal > 0 ? (
                     savedPagines.map((t_, idx) => {
                       const r = t_.rentabilite_json as Record<string, unknown> | null
                       const ca = ((r?.ca as Record<string, unknown> | undefined)?.ca_total as number) ?? (r?.ca_total as number) ?? null
@@ -1085,7 +1174,15 @@ export function ClassementPage(): React.JSX.Element {
                               <span style={{ color: '#94a3b8' }}>—</span>
                             )}
                           </td>
-                          <td>{tri != null ? `${tri.toFixed(1)}%` : '—'}</td>
+                          <td>
+                            {tri != null ? (
+                              <span className={tri < 10 ? 'text-error' : 'text-success'} style={{ fontWeight: 600 }}>
+                                {`${tri.toFixed(1)}%`}
+                              </span>
+                            ) : (
+                              <span style={{ color: '#94a3b8' }}>—</span>
+                            )}
+                          </td>
                           <td>
                             <div className="classement-table-actions">
                               <button
@@ -1339,7 +1436,7 @@ export function ClassementPage(): React.JSX.Element {
 
       {detail ? <DetailModal resultat={detail} cadastre={cadastreAttrs[String(detail.reference_cadastrale || detail.id_parcelle)] || null} onClose={() => setDetail(null)} /> : null}
 
-      {selectedTerrainDetail ? <TerrainDetailModal terrain={selectedTerrainDetail} projetId={projetId} cadastre={cadastreAttrs[String(selectedTerrainDetail.num_titre_foncier || selectedTerrainDetail.num_parcelle || '')] || null} onClose={() => setSelectedTerrainDetail(null)} /> : null}
+      {selectedTerrainDetail ? <TerrainDetailModal terrain={selectedTerrainDetail} projetId={projetId} projectName={projet?.nom} cadastre={cadastreAttrs[String(selectedTerrainDetail.num_titre_foncier || selectedTerrainDetail.num_parcelle || '')] || null} onClose={() => setSelectedTerrainDetail(null)} /> : null}
 
       {historyOpen ? (
         <div className="admin-modal-overlay" onClick={() => setHistoryOpen(false)}>

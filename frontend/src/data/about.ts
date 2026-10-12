@@ -1,7 +1,5 @@
 import residentielImg from '../assets/features/residentiel.jpg'
 import commercialImg from '../assets/features/commercial.jpg'
-import industrielImg from '../assets/features/industriel.jpg'
-import touristiqueImg from '../assets/features/touristique.jpg'
 import equipementsImg from '../assets/features/equipements_publics.jpg'
 import bureauxImg from '../assets/features/bureaux_services.jpg'
 
@@ -96,9 +94,9 @@ export const criteria: Criterion[] = [
     description: 'Consultez le modèle numérique de terrain pour les pentes et l\'altitude.',
   },
   {
-    icon: 'euro',
-    title: 'Prix du terrain',
-    description: 'Consultez les prix fonciers de référence pour la zone géographique sélectionnée.',
+    icon: 'map',
+    title: 'Superficie du terrain',
+    description: 'Comparez la surface des parcelles pour dimensionner au mieux votre projet.',
   },
   {
     icon: 'ranking',
@@ -131,22 +129,6 @@ export const projectTypes: ProjectType[] = [
   },
   {
     icon: 'building',
-    title: 'Industriel',
-    description: 'Zones d\'activités, entrepôts, unités de production et logistique.',
-    details: 'Accès routier, raccordement réseaux, règles environnementales.',
-    gradient: 'linear-gradient(135deg, #4338ca 0%, #818cf8 100%)',
-    image: industrielImg,
-  },
-  {
-    icon: 'mapPin',
-    title: 'Touristique',
-    description: 'Hôtels, résidences de tourisme, infrastructures d\'accueil et loisirs.',
-    details: 'Potentiel touristique, cadre paysager, saisonnalité et accessibilité.',
-    gradient: 'linear-gradient(135deg, #0f766e 0%, #2dd4bf 100%)',
-    image: touristiqueImg,
-  },
-  {
-    icon: 'building',
     title: 'Équipements publics',
     description: 'Écoles, centres de santé, équipements sportifs et culturels.',
     details: 'Planification publique, besoins démographiques et conformité réglementaire.',
@@ -166,7 +148,6 @@ export const projectTypes: ProjectType[] = [
 export const dataSources: DataSource[] = [
   { icon: 'document', label: 'Cadastre' },
   { icon: 'layers', label: 'Plan d\'aménagement' },
-  { icon: 'euro', label: 'Référentiel des prix fonciers' },
   { icon: 'map', label: 'Réseau routier' },
   { icon: 'layers', label: 'Modèle Numérique de Terrain' },
   { icon: 'mapPin', label: 'Limites administratives' },

@@ -144,6 +144,14 @@ class Terrain(models.Model):
         ('periurbaine', 'Périphérie'),
     ]
 
+    # Distingue les terrains réellement créés via « Ajouter un terrain » de ceux
+    # créés automatiquement lors de l'enregistrement d'une rentabilité (parcelle
+    # cadastrale). Ces derniers ne doivent pas apparaître dans « Mes terrains ».
+    ORIGINE_CHOICES = [
+        ('ajout', "Ajouté par l'utilisateur"),
+        ('rentabilite', 'Créé lors du calcul de rentabilité'),
+    ]
+
     projet = models.ForeignKey(
         Projet,
         on_delete=models.CASCADE,
@@ -198,6 +206,9 @@ class Terrain(models.Model):
 
     # Champs rentabilité (remplis quand l'utilisateur calcule/édite la rentabilité)
     rentabilite_json = models.JSONField(null=True, blank=True)
+
+    # Origine du terrain : ajout manuel vs création lors d'un calcul de rentabilité.
+    origine = models.CharField(max_length=20, choices=ORIGINE_CHOICES, default='ajout')
 
     date_creation = models.DateTimeField(auto_now_add=True)
 
