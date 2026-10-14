@@ -67,6 +67,17 @@ export async function fetchAnalyseDetail(projetId: number, analyseId: number): P
   return parseResponse<AnalyseDetail>(res)
 }
 
+export async function deleteAnalyse(projetId: number, analyseId: number): Promise<void> {
+  const res = await apiFetch(`/api/projets/${projetId}/analyses/${analyseId}/`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    const msg = data.detail || Object.values(data).flat().join(' ') || 'Une erreur est survenue.'
+    throw new Error(msg)
+  }
+}
+
 export async function fetchAnalyseResultats(
   projetId: number,
   analyseId: number,
@@ -114,6 +125,10 @@ export interface TerrainPondere {
   geometry?: Record<string, unknown> | null
   fid?: number | null
   num_parcelle?: string
+  // Terrain enregistré du projet (ajouté via « Ajouter un terrain ») : `id` est alors
+  // décalé ; `terrain_id` est l'id réel de la table des terrains.
+  source?: 'cadastre' | 'terrain'
+  terrain_id?: number | null
 }
 
 export interface PonderationResponse {

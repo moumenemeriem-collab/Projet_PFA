@@ -5,6 +5,25 @@ from .models import Analyse, Couche, PonderationPreference, Projet, ResultatAnal
 from .profitability import calculer_rentabilite_projet
 
 
+class RoundedDecimalField(serializers.DecimalField):
+    """DecimalField qui arrondit l'entrée à `decimal_places` avant validation.
+
+    Les coordonnées envoyées par le front (turf) sont des flottants IEEE-754 :
+    « 33.93755735251871 » fait 17 chiffres et fait échouer le contrôle
+    `max_digits` alors que la valeur est parfaitement valide. On arrondit donc
+    d'abord, puis on valide la précision.
+    """
+
+    def to_internal_value(self, data):
+        try:
+            data = float(data)
+        except (TypeError, ValueError):
+            return super().to_internal_value(data)
+        if self.decimal_places is not None:
+            return super().to_internal_value(round(data, self.decimal_places))
+        return super().to_internal_value(data)
+
+
 class TypeProjetSerializer(serializers.ModelSerializer):
     class Meta:
         model = TypeProjet
@@ -12,10 +31,26 @@ class TypeProjetSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-class ProjetListSerializer(serializers.ModelSerializer):
+class ProjetCompteursMixin:
+    """Compteurs agrégés affichés dans la fiche projet (terrains, AMC)."""
+
+    def get_nb_terrains(self, obj: Projet) -> int:
+        return obj.terrains.count()
+
+    def get_nb_terrains_rentabilite(self, obj: Projet) -> int:
+        return obj.terrains.filter(rentabilite_json__isnull=False).count()
+
+    def get_nb_amc(self, obj: Projet) -> int:
+        return obj.analyses.count()
+
+
+class ProjetListSerializer(ProjetCompteursMixin, serializers.ModelSerializer):
     type_nom = serializers.CharField(source='id_type.nom', read_only=True)
     type_image_defaut = serializers.CharField(source='id_type.image_defaut', read_only=True)
     rentabilite = serializers.SerializerMethodField()
+    nb_terrains = serializers.SerializerMethodField()
+    nb_terrains_rentabilite = serializers.SerializerMethodField()
+    nb_amc = serializers.SerializerMethodField()
 
     class Meta:
         model = Projet
@@ -25,6 +60,7 @@ class ProjetListSerializer(serializers.ModelSerializer):
             'nombre_unites', 'surface_construite', 'cout_construction',
             'autres_charges', 'prix_vente_unitaire', 'revenu_estime',
             'image', 'date_creation', 'investisseur', 'rentabilite',
+            'nb_terrains', 'nb_terrains_rentabilite', 'nb_amc',
             'prix_foncier_m2', 'frais_acquisition', 'taux_chute', 'cos', 'cus',
             'surface_constructible', 'surface_voie', 'surface_espace_vert',
             'has_appartement', 'has_commerce', 'has_bureau', 'has_equipement',
@@ -45,10 +81,13 @@ class ProjetListSerializer(serializers.ModelSerializer):
             return None
 
 
-class ProjetDetailSerializer(serializers.ModelSerializer):
+class ProjetDetailSerializer(ProjetCompteursMixin, serializers.ModelSerializer):
     type_nom = serializers.CharField(source='id_type.nom', read_only=True)
     type_image_defaut = serializers.CharField(source='id_type.image_defaut', read_only=True)
     rentabilite = serializers.SerializerMethodField()
+    nb_terrains = serializers.SerializerMethodField()
+    nb_terrains_rentabilite = serializers.SerializerMethodField()
+    nb_amc = serializers.SerializerMethodField()
 
     class Meta:
         model = Projet
@@ -58,6 +97,7 @@ class ProjetDetailSerializer(serializers.ModelSerializer):
             'nombre_unites', 'surface_construite', 'cout_construction',
             'autres_charges', 'prix_vente_unitaire', 'revenu_estime',
             'image', 'date_creation', 'investisseur', 'rentabilite',
+            'nb_terrains', 'nb_terrains_rentabilite', 'nb_amc',
             'prix_foncier_m2', 'frais_acquisition', 'taux_chute', 'cos', 'cus',
             'surface_constructible', 'surface_voie', 'surface_espace_vert',
             'has_appartement', 'has_commerce', 'has_bureau', 'has_equipement',
@@ -251,7 +291,7 @@ class TerrainListSerializer(serializers.ModelSerializer):
             'consistance', 'num_parcelle',
             'num_titre_foncier', 'statut_juridique', 'prix_demande',
             'zonage', 'cos', 'cus', 'hauteur_maximale', 'equipements',
-            'geometry', 'rentabilite_json', 'date_creation',
+            'geometry', 'rentabilite_json', 'date_creation', 'origine',
         ]
         read_only_fields = ['id', 'score', 'date_creation']
 
@@ -262,7 +302,11 @@ class TerrainListSerializer(serializers.ModelSerializer):
 
 
 class TerrainCreateSerializer(serializers.Serializer):
+    num_parcelle = serializers.CharField(max_length=255, allow_blank=True, default='')
     num_titre_foncier = serializers.CharField(max_length=255, allow_blank=True, default='')
+    indice = serializers.CharField(max_length=255, allow_blank=True, default='')
+    complement = serializers.CharField(max_length=255, allow_blank=True, default='')
+    consistance = serializers.CharField(max_length=255, allow_blank=True, default='')
     statut_juridique = serializers.ChoiceField(
         choices=[c for c, _ in Terrain.STATUT_JURIDIQUE_CHOICES],
         required=False,
@@ -281,12 +325,17 @@ class TerrainCreateSerializer(serializers.Serializer):
     hauteur_maximale = serializers.DecimalField(max_digits=6, decimal_places=2, required=False, allow_null=True, default=None)
     equipements = serializers.ListField(child=serializers.CharField(), required=False, allow_empty=True, default=list)
     superficie = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True, default=None)
-    lat = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True, default=None)
-    lng = serializers.DecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True, default=None)
+    lat = RoundedDecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True, default=None)
+    lng = RoundedDecimalField(max_digits=9, decimal_places=6, required=False, allow_null=True, default=None)
     geometry = serializers.CharField(required=False, allow_null=True, allow_blank=True, default='')
     accessibilite = serializers.IntegerField(min_value=1, max_value=10, default=5)
     positionnement = serializers.IntegerField(min_value=1, max_value=10, default=5)
     topographie = serializers.IntegerField(min_value=1, max_value=10, default=5)
+    origine = serializers.ChoiceField(
+        choices=[c for c, _ in Terrain.ORIGINE_CHOICES],
+        required=False,
+        default='ajout',
+    )
 
     def create(self, validated_data: dict) -> Terrain:
         geometry_raw = validated_data.pop('geometry', '') or ''
@@ -299,12 +348,14 @@ class TerrainCreateSerializer(serializers.Serializer):
             if geom is None or geom.geom_type != 'Polygon' or not geom.valid:
                 raise serializers.ValidationError({'geometry': 'Seul un polygone valide est accepté.'})
             geom.srid = 4326
+        num_parcelle = validated_data.pop('num_parcelle', '')
         num_titre = validated_data.pop('num_titre_foncier', '')
+        identifiant = num_parcelle or num_titre
         superficie = validated_data.pop('superficie', None)
         terrain = Terrain(
-            nom=num_titre,
-            num_parcelle=num_titre,
-            num_titre_foncier=num_titre,
+            nom=identifiant,
+            num_parcelle=identifiant,
+            num_titre_foncier=identifiant,
             superficie=superficie if superficie is not None else 0,
             geometry=geom,
             **validated_data,

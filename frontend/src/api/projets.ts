@@ -119,6 +119,9 @@ export interface Projet {
   date_creation: string
   investisseur: number
   rentabilite?: Rentabilite | null
+  nb_terrains?: number
+  nb_terrains_rentabilite?: number
+  nb_amc?: number
   prix_foncier_m2?: string | null
   frais_acquisition?: string
   taux_chute?: string

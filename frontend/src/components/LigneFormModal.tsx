@@ -1,24 +1,67 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { icons } from './icons'
 import { FormMapPanel } from './FormMapPanel'
 import type { AttributDefinition } from '../api/couches'
+import {
+  findSurfaceAttributeName,
+  formatAreaM2ForInput,
+  geometryAreaM2,
+  isGeoJsonGeometry,
+} from '../utils/geoJsonGeometry'
 
 interface LigneFormModalProps {
   attributs: AttributDefinition[]
   initial?: Record<string, unknown>
+  initialGeometry?: unknown
+  typeGeometrie?: string
+  coucheId?: number
+  dataVersion?: number
   title: string
   onSave: (properties: Record<string, unknown>, geometry?: { type: string; coordinates: any } | null) => Promise<void>
   onClose: () => void
 }
 
-const EDITABLE_ATTRS_BLACKLIST = new Set(['fid'])
+const EDITABLE_ATTRS_BLACKLIST = new Set(['fid', 'geometry'])
 
-export function LigneFormModal({ attributs, initial, title, onSave, onClose }: LigneFormModalProps): React.JSX.Element {
-  const editableAttributs = attributs.filter((a) => !EDITABLE_ATTRS_BLACKLIST.has(a.nom.toLowerCase()))
+function isNumericAttr(type: string): boolean {
+  const t = type.toLowerCase()
+  return ['number', 'integer', 'int', 'int4', 'bigint', 'double', 'float', 'float8', 'numeric', 'decimal', 'smallint'].includes(t)
+}
+
+export function LigneFormModal({
+  attributs,
+  initial,
+  initialGeometry,
+  typeGeometrie,
+  coucheId,
+  dataVersion = 0,
+  title,
+  onSave,
+  onClose,
+}: LigneFormModalProps): React.JSX.Element {
+  const editableAttributs = useMemo(() => {
+    const fromMeta = attributs.filter(
+      (a) => !EDITABLE_ATTRS_BLACKLIST.has(a.nom.toLowerCase()) && a.type.toLowerCase() !== 'geometry',
+    )
+    if (fromMeta.length > 0) return fromMeta
+    if (initial && typeof initial === 'object') {
+      return Object.keys(initial)
+        .filter((k) => !EDITABLE_ATTRS_BLACKLIST.has(k.toLowerCase()))
+        .map((nom) => ({ nom, type: 'string' }))
+    }
+    return []
+  }, [attributs, initial])
+
   const [form, setForm] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [geometry, setGeometry] = useState<{ type: string; coordinates: any } | null>(null)
+
+  const surfaceAttr = useMemo(() => findSurfaceAttributeName(editableAttributs), [editableAttributs])
+
+  // Ne resynchroniser qu'à l'ouverture / changement de ligne (pas à chaque frappe).
+  const formSeed = `${JSON.stringify(initial ?? null)}|${JSON.stringify(initialGeometry ?? null)}|${editableAttributs.map((a) => a.nom).join(',')}`
 
   useEffect(() => {
     const f: Record<string, string> = {}
@@ -27,7 +70,20 @@ export function LigneFormModal({ attributs, initial, title, onSave, onClose }: L
       f[a.nom] = v != null ? String(v) : ''
     })
     setForm(f)
-  }, [editableAttributs, initial])
+    if (isGeoJsonGeometry(initialGeometry)) {
+      setGeometry(initialGeometry)
+    } else {
+      setGeometry(null)
+    }
+  }, [formSeed, editableAttributs, initial, initialGeometry])
+
+  // Superficie (m²) calculée à partir du polygone dessiné → champ surface / superficie.
+  useEffect(() => {
+    if (!surfaceAttr || !geometry) return
+    const m2 = geometryAreaM2(geometry)
+    if (m2 == null) return
+    setForm((f) => ({ ...f, [surfaceAttr]: formatAreaM2ForInput(m2) }))
+  }, [geometry, surfaceAttr])
 
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault()
@@ -35,7 +91,7 @@ export function LigneFormModal({ attributs, initial, title, onSave, onClose }: L
     for (const a of editableAttributs) {
       const v = form[a.nom]
       if (v === '' || v === undefined) continue
-      if (a.type.toLowerCase() === 'number' || a.type.toLowerCase() === 'integer') {
+      if (isNumericAttr(a.type)) {
         const n = Number(v)
         if (Number.isNaN(n)) {
           setError(`Le champ "${a.nom}" doit être un nombre.`)
@@ -43,12 +99,16 @@ export function LigneFormModal({ attributs, initial, title, onSave, onClose }: L
         }
       }
     }
+    if (!geometry) {
+      setError('Tracez ou conservez une géométrie sur la carte (point, ligne ou surface).')
+      return
+    }
     const properties: Record<string, unknown> = {}
     editableAttributs.forEach((a) => {
       const v = form[a.nom]
       if (v === '' || v === undefined) {
         properties[a.nom] = null
-      } else if (a.type.toLowerCase() === 'number' || a.type.toLowerCase() === 'integer') {
+      } else if (isNumericAttr(a.type)) {
         properties[a.nom] = Number(v)
       } else {
         properties[a.nom] = v
@@ -63,7 +123,7 @@ export function LigneFormModal({ attributs, initial, title, onSave, onClose }: L
     }
   }
 
-  return (
+  const modal = (
     <div className="admin-modal-overlay ligne-form-overlay" onClick={onClose}>
       <div className="ligne-form-split" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div className="ligne-form-left">
@@ -73,18 +133,29 @@ export function LigneFormModal({ attributs, initial, title, onSave, onClose }: L
           </div>
           <form className="ligne-form-body" onSubmit={(e) => { void handleSubmit(e) }}>
             {error ? <div className="form-alert form-alert--error">{error}</div> : null}
-            {editableAttributs.map((a) => (
+            {editableAttributs.length === 0 ? (
+              <p className="ligne-form-no-attrs">Aucun attribut texte pour cette couche — définissez la géométrie sur la carte puis enregistrez.</p>
+            ) : null}
+            {editableAttributs.map((a) => {
+              const isAutoSurface = surfaceAttr === a.nom && geometry && geometryAreaM2(geometry) != null
+              return (
               <div className="ligne-form-field" key={a.nom}>
-                <label className="form-label">{a.nom}</label>
+                <label className="form-label" htmlFor={`ligne-attr-${a.nom}`}>{a.nom}</label>
                 <input
+                  id={`ligne-attr-${a.nom}`}
                   className="modal-input"
-                  type={a.type.toLowerCase() === 'number' || a.type.toLowerCase() === 'integer' ? 'number' : 'text'}
-                  step={a.type.toLowerCase() === 'number' || a.type.toLowerCase() === 'integer' ? 'any' : undefined}
+                  type={isNumericAttr(a.type) ? 'number' : 'text'}
+                  step={isNumericAttr(a.type) ? 'any' : undefined}
                   value={form[a.nom] ?? ''}
                   onChange={(e) => setForm((f) => ({ ...f, [a.nom]: e.target.value }))}
+                  autoComplete="off"
+                  title={isAutoSurface ? 'Calculée automatiquement depuis le polygone (m²)' : undefined}
                 />
+                {isAutoSurface ? (
+                  <span className="ligne-form-field-hint">Calculée automatiquement depuis le polygone (m²)</span>
+                ) : null}
               </div>
-            ))}
+            )})}
             {geometry ? (
               <div className="ligne-form-geometry-badge">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} width="14" height="14"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
@@ -99,9 +170,17 @@ export function LigneFormModal({ attributs, initial, title, onSave, onClose }: L
           </form>
         </div>
         <div className="ligne-form-right">
-          <FormMapPanel onGeometry={setGeometry} />
+          <FormMapPanel
+            coucheId={coucheId}
+            dataVersion={dataVersion}
+            typeGeometrie={typeGeometrie}
+            initialGeometry={initialGeometry}
+            onGeometry={setGeometry}
+          />
         </div>
       </div>
     </div>
   )
+
+  return createPortal(modal, document.body)
 }

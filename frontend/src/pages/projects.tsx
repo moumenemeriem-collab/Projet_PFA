@@ -9,7 +9,6 @@ import {
   fetchTypesProjet,
   updateProjet,
   type Projet,
-  type ProjetPayload,
   type TypeProjet,
 } from '../api/projets'
 import { t } from '../i18n/index'
@@ -20,15 +19,6 @@ interface ProjectFormValues {
   nom: string
   description: string
   id_type: string
-  surface_souhaitee: string
-  budget_total: string
-  nombre_unites: string
-  surface_construite: string
-  prix_terrain: string
-  cout_construction: string
-  autres_charges: string
-  prix_vente_unitaire: string
-  revenu_estime: string
   image: string
 }
 
@@ -36,15 +26,6 @@ const EMPTY_FORM: ProjectFormValues = {
   nom: '',
   description: '',
   id_type: '',
-  surface_souhaitee: '',
-  budget_total: '',
-  nombre_unites: '',
-  surface_construite: '',
-  prix_terrain: '',
-  cout_construction: '',
-  autres_charges: '',
-  prix_vente_unitaire: '',
-  revenu_estime: '',
   image: '',
 }
 
@@ -63,13 +44,6 @@ function getTypeIcon(typeNom: string): React.JSX.Element {
   return icons.building
 }
 
-function formatBudget(value: string): string {
-  const num = parseFloat(value)
-  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M MAD`
-  if (num >= 1_000) return `${(num / 1_000).toFixed(0)}k MAD`
-  return `${num} MAD`
-}
-
 function projectImage(projet: Projet, w: number, h: number): string {
   return projet.image || projet.type_image_defaut || `https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=${w}&h=${h}&fit=crop`
 }
@@ -79,15 +53,6 @@ function formFromProjet(projet: Projet): ProjectFormValues {
     nom: projet.nom,
     description: projet.description,
     id_type: String(projet.id_type),
-    surface_souhaitee: projet.surface_souhaitee,
-    budget_total: projet.budget_total,
-    nombre_unites: projet.nombre_unites != null ? String(projet.nombre_unites) : '',
-    surface_construite: projet.surface_construite ?? '',
-    prix_terrain: projet.prix_terrain ?? '',
-    cout_construction: projet.cout_construction ?? '',
-    autres_charges: projet.autres_charges ?? '',
-    prix_vente_unitaire: projet.prix_vente_unitaire ?? '',
-    revenu_estime: projet.revenu_estime ?? '',
     image: projet.image ?? '',
   }
 }
@@ -158,7 +123,6 @@ export function ProjectsPage(): React.JSX.Element {
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
   const start = totalCount === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
   const end = Math.min(page * PAGE_SIZE, totalCount)
-  const rentabilite = detailProjet?.rentabilite ?? null
 
   const openMenu = (e: React.MouseEvent<HTMLButtonElement>, projet: Projet): void => {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -219,26 +183,15 @@ export function ProjectsPage(): React.JSX.Element {
     setModalError(null)
     setSubmitting(true)
     const fd = new FormData(e.currentTarget)
-    const payload: ProjetPayload = {
-      nom: String(fd.get('nom') ?? '').trim(),
-      description: String(fd.get('description') ?? '').trim(),
-      id_type: Number(fd.get('id_type')),
-      surface_souhaitee: Number(fd.get('surface_souhaitee')),
-      budget_total: Number(fd.get('budget_total')),
-      nombre_unites: fd.get('nombre_unites') ? Number(fd.get('nombre_unites')) : undefined,
-      surface_construite: fd.get('surface_construite') ? Number(fd.get('surface_construite')) : undefined,
-      prix_terrain: fd.get('prix_terrain') ? Number(fd.get('prix_terrain')) : undefined,
-      cout_construction: fd.get('cout_construction') ? Number(fd.get('cout_construction')) : undefined,
-      autres_charges: fd.get('autres_charges') ? Number(fd.get('autres_charges')) : undefined,
-      prix_vente_unitaire: fd.get('prix_vente_unitaire') ? Number(fd.get('prix_vente_unitaire')) : undefined,
-      revenu_estime: fd.get('revenu_estime') ? Number(fd.get('revenu_estime')) : undefined,
-      image: String(fd.get('image') ?? '').trim(),
-    }
+    const nom = String(fd.get('nom') ?? '').trim()
+    const description = String(fd.get('description') ?? '').trim()
+    const id_type = Number(fd.get('id_type'))
+    const image = String(fd.get('image') ?? '').trim()
     try {
       if (editProjet) {
-        await updateProjet(editProjet.id, payload)
+        await updateProjet(editProjet.id, { nom, description, id_type, image })
       } else {
-        await createProjet(payload)
+        await createProjet({ nom, description, id_type, image, surface_souhaitee: 0, budget_total: 0 })
       }
       setModalOpen(false)
       setReloadKey((k) => k + 1)
@@ -267,16 +220,6 @@ export function ProjectsPage(): React.JSX.Element {
             {getTypeIcon(projet.type_nom)}
             {projet.type_nom}
           </span>
-          <div className="project-metrics">
-            <div className="project-metric">
-              <span className="project-metric-label">{t('projects.budget')}</span>
-              <span className="project-metric-value">{icons.euro} {formatBudget(projet.budget_total)}</span>
-            </div>
-            <div className="project-metric">
-              <span className="project-metric-label">{t('projects.surface')}</span>
-              <span className="project-metric-value">{Number(projet.surface_souhaitee).toLocaleString()} m²</span>
-            </div>
-          </div>
           <div className="project-card-actions">
             <Link to={`/projets/${projet.id}/classement`} className="project-classement-link">
               {icons.ranking} {t('ranking.title')} {icons.chevron}
@@ -324,16 +267,6 @@ export function ProjectsPage(): React.JSX.Element {
               <option value="">{t('projects.all_types')}</option>
               {allTypes.map((tp) => <option key={tp.id} value={tp.id}>{tp.nom}</option>)}
             </select>
-          </div>
-        </div>
-
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-card-top">
-              <span className="stat-icon stat-icon--blue">{icons.folder}</span>
-              <span className="stat-label">{t('projects.total_projects')}</span>
-            </div>
-            <p className="stat-value">{totalCount}</p>
           </div>
         </div>
 
@@ -430,52 +363,6 @@ export function ProjectsPage(): React.JSX.Element {
                 <label htmlFor="p-description" className="form-label">{t('projects.field_description')}</label>
                 <textarea id="p-description" name="description" className="modal-input" rows={3} value={form.description} onChange={handleFormChange}></textarea>
               </div>
-              <div className="form-row">
-                <div className="form-field form-field--half">
-                  <label htmlFor="p-surface_souhaitee" className="form-label">{t('projects.field_surface')}</label>
-                  <input id="p-surface_souhaitee" name="surface_souhaitee" type="number" step="0.01" className="modal-input" value={form.surface_souhaitee} onChange={handleFormChange} required />
-                </div>
-                <div className="form-field form-field--half">
-                  <label htmlFor="p-budget_total" className="form-label">{t('projects.field_budget')}</label>
-                  <input id="p-budget_total" name="budget_total" type="number" step="0.01" className="modal-input" value={form.budget_total} onChange={handleFormChange} required />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-field form-field--half">
-                  <label htmlFor="p-nombre_unites" className="form-label">{t('projects.field_unites')}</label>
-                  <input id="p-nombre_unites" name="nombre_unites" type="number" className="modal-input" value={form.nombre_unites} onChange={handleFormChange} />
-                </div>
-                <div className="form-field form-field--half">
-                  <label htmlFor="p-surface_construite" className="form-label">{t('projects.field_surface_construite')}</label>
-                  <input id="p-surface_construite" name="surface_construite" type="number" step="0.01" className="modal-input" value={form.surface_construite} onChange={handleFormChange} />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-field form-field--half">
-                  <label htmlFor="p-prix_terrain" className="form-label">{t('projects.field_prix_terrain')}</label>
-                  <input id="p-prix_terrain" name="prix_terrain" type="number" step="0.01" className="modal-input" value={form.prix_terrain} onChange={handleFormChange} />
-                </div>
-                <div className="form-field form-field--half">
-                  <label htmlFor="p-cout_construction" className="form-label">{t('projects.field_cout_construction')}</label>
-                  <input id="p-cout_construction" name="cout_construction" type="number" step="0.01" className="modal-input" value={form.cout_construction} onChange={handleFormChange} />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-field form-field--half">
-                  <label htmlFor="p-autres_charges" className="form-label">{t('projects.field_autres_charges')}</label>
-                  <input id="p-autres_charges" name="autres_charges" type="number" step="0.01" className="modal-input" value={form.autres_charges} onChange={handleFormChange} />
-                </div>
-                <div className="form-field form-field--half">
-                  <label htmlFor="p-prix_vente_unitaire" className="form-label">{t('projects.field_prix_vente')}</label>
-                  <input id="p-prix_vente_unitaire" name="prix_vente_unitaire" type="number" step="0.01" className="modal-input" value={form.prix_vente_unitaire} onChange={handleFormChange} />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-field form-field--half">
-                  <label htmlFor="p-revenu_estime" className="form-label">{t('projects.field_revenu')}</label>
-                  <input id="p-revenu_estime" name="revenu_estime" type="number" step="0.01" className="modal-input" value={form.revenu_estime} onChange={handleFormChange} />
-                </div>
-              </div>
               <div className="form-field">
                 <label htmlFor="p-image" className="form-label">{t('projects.field_image')}</label>
                 <input id="p-image" name="image" type="url" className="modal-input" value={form.image} onChange={handleFormChange} placeholder="https://..." />
@@ -505,211 +392,24 @@ export function ProjectsPage(): React.JSX.Element {
                 <div className="project-detail-section">
                   <h4>{t('projects.detail_info')}</h4>
                   <p>{detailProjet.description || '—'}</p>
-                  <div className="project-detail-grid">
+                </div>
+
+                <div className="project-detail-section">
+                  <div className="project-detail-grid project-detail-grid--vertical">
                     <div className="project-detail-item">
-                      <span className="project-detail-label">{t('projects.field_surface')}</span>
-                      <span className="project-detail-value">{Number(detailProjet.surface_souhaitee).toLocaleString()} m²</span>
+                      <span className="project-detail-label">{t('projects.detail_nb_terrains')}</span>
+                      <span className="project-detail-value">{detailProjet.nb_terrains ?? 0}</span>
                     </div>
-                    {detailProjet.nombre_unites ? (
-                      <div className="project-detail-item">
-                        <span className="project-detail-label">{t('projects.field_unites')}</span>
-                        <span className="project-detail-value">{detailProjet.nombre_unites}</span>
-                      </div>
-                    ) : null}
-                    {detailProjet.surface_construite ? (
-                      <div className="project-detail-item">
-                        <span className="project-detail-label">{t('projects.field_surface_construite')}</span>
-                        <span className="project-detail-value">{Number(detailProjet.surface_construite).toLocaleString()} m²</span>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="project-detail-section">
-                  <h4>{t('projects.detail_section_land')}</h4>
-                  <div className="project-detail-grid">
-                    {detailProjet.prix_foncier_m2 ? (
-                      <div className="project-detail-item">
-                        <span className="project-detail-label">{t('projects.field_prix_foncier_m2')}</span>
-                        <span className="project-detail-value">{formatBudget(detailProjet.prix_foncier_m2)}</span>
-                      </div>
-                    ) : null}
-                    {detailProjet.frais_acquisition ? (
-                      <div className="project-detail-item">
-                        <span className="project-detail-label">{t('projects.field_frais_acquisition')}</span>
-                        <span className="project-detail-value">{detailProjet.frais_acquisition}%</span>
-                      </div>
-                    ) : null}
-                    {detailProjet.taux_chute ? (
-                      <div className="project-detail-item">
-                        <span className="project-detail-label">{t('projects.field_taux_chute')}</span>
-                        <span className="project-detail-value">{detailProjet.taux_chute}%</span>
-                      </div>
-                    ) : null}
-                    {detailProjet.cos ? (
-                      <div className="project-detail-item">
-                        <span className="project-detail-label">{t('projects.field_cos')}</span>
-                        <span className="project-detail-value">{detailProjet.cos}</span>
-                      </div>
-                    ) : null}
-                    {detailProjet.cus ? (
-                      <div className="project-detail-item">
-                        <span className="project-detail-label">{t('projects.field_cus')}</span>
-                        <span className="project-detail-value">{detailProjet.cus}</span>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="project-detail-section">
-                  <h4>{t('projects.detail_section_destinations')}</h4>
-                  <div className="project-detail-grid">
-                    {detailProjet.has_appartement ? (
-                      <>
-                        <div className="project-detail-item">
-                          <span className="project-detail-label">{t('projects.dest_appartement')}</span>
-                          <span className="project-detail-value">{detailProjet.quote_part_appartement ?? 0}%</span>
-                        </div>
-                        {detailProjet.prix_vente_appartement ? (
-                          <div className="project-detail-item">
-                            <span className="project-detail-label">{t('projects.field_prix_vente_app')}</span>
-                            <span className="project-detail-value">{formatBudget(detailProjet.prix_vente_appartement)}</span>
-                          </div>
-                        ) : null}
-                        {detailProjet.cout_construction_appartement ? (
-                          <div className="project-detail-item">
-                            <span className="project-detail-label">{t('projects.field_cout_constr_app')}</span>
-                            <span className="project-detail-value">{formatBudget(detailProjet.cout_construction_appartement)}</span>
-                          </div>
-                        ) : null}
-                      </>
-                    ) : null}
-                    {detailProjet.has_commerce ? (
-                      <>
-                        <div className="project-detail-item">
-                          <span className="project-detail-label">{t('projects.dest_commerce')}</span>
-                          <span className="project-detail-value">{detailProjet.quote_part_commerce ?? 0}%</span>
-                        </div>
-                        {detailProjet.prix_vente_commerce ? (
-                          <div className="project-detail-item">
-                            <span className="project-detail-label">{t('projects.field_prix_vente_commerce')}</span>
-                            <span className="project-detail-value">{formatBudget(detailProjet.prix_vente_commerce)}</span>
-                          </div>
-                        ) : null}
-                        {detailProjet.cout_construction_commerce ? (
-                          <div className="project-detail-item">
-                            <span className="project-detail-label">{t('projects.field_cout_constr_commerce')}</span>
-                            <span className="project-detail-value">{formatBudget(detailProjet.cout_construction_commerce)}</span>
-                          </div>
-                        ) : null}
-                      </>
-                    ) : null}
-                    {detailProjet.has_bureau ? (
-                      <>
-                        <div className="project-detail-item">
-                          <span className="project-detail-label">{t('projects.dest_bureau')}</span>
-                          <span className="project-detail-value">{detailProjet.quote_part_bureau ?? 0}%</span>
-                        </div>
-                        {detailProjet.prix_vente_bureau ? (
-                          <div className="project-detail-item">
-                            <span className="project-detail-label">{t('projects.field_prix_vente_bureau')}</span>
-                            <span className="project-detail-value">{formatBudget(detailProjet.prix_vente_bureau)}</span>
-                          </div>
-                        ) : null}
-                        {detailProjet.cout_construction_bureau ? (
-                          <div className="project-detail-item">
-                            <span className="project-detail-label">{t('projects.field_cout_constr_bureau')}</span>
-                            <span className="project-detail-value">{formatBudget(detailProjet.cout_construction_bureau)}</span>
-                          </div>
-                        ) : null}
-                      </>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="project-detail-section">
-                  <h4>{t('projects.detail_section_charges')}</h4>
-                  <div className="project-detail-grid">
-                    {detailProjet.taux_etudes_honoraires ? (
-                      <div className="project-detail-item">
-                        <span className="project-detail-label">{t('projects.field_taux_etudes')}</span>
-                        <span className="project-detail-value">{detailProjet.taux_etudes_honoraires}%</span>
-                      </div>
-                    ) : null}
-                    {detailProjet.taux_imprevus ? (
-                      <div className="project-detail-item">
-                        <span className="project-detail-label">{t('projects.field_taux_imprevus')}</span>
-                        <span className="project-detail-value">{detailProjet.taux_imprevus}%</span>
-                      </div>
-                    ) : null}
-                    {detailProjet.taux_commercialisation ? (
-                      <div className="project-detail-item">
-                        <span className="project-detail-label">{t('projects.field_taux_commercialisation')}</span>
-                        <span className="project-detail-value">{detailProjet.taux_commercialisation}%</span>
-                      </div>
-                    ) : null}
-                    {detailProjet.duree_construction ? (
-                      <div className="project-detail-item">
-                        <span className="project-detail-label">{t('projects.field_duree_construction')}</span>
-                        <span className="project-detail-value">{detailProjet.duree_construction} ans</span>
-                      </div>
-                    ) : null}
-                    {detailProjet.duree_commercialisation ? (
-                      <div className="project-detail-item">
-                        <span className="project-detail-label">{t('projects.field_duree_commercialisation')}</span>
-                        <span className="project-detail-value">{detailProjet.duree_commercialisation} ans</span>
-                      </div>
-                    ) : null}
-                    {detailProjet.taux_actualisation ? (
-                      <div className="project-detail-item">
-                        <span className="project-detail-label">{t('projects.field_taux_actualisation')}</span>
-                        <span className="project-detail-value">{detailProjet.taux_actualisation}%</span>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-
-                {rentabilite && rentabilite.ok ? (
-                  <div className="project-detail-section">
-                    <h4>{t('projects.detail_rentabilite')}</h4>
-                    <div className="project-detail-grid">
-                      {rentabilite.surfaces?.surface_vendable != null ? (
-                        <div className="project-detail-item">
-                          <span className="project-detail-label">{t('projects.res_surface')}</span>
-                          <span className="project-detail-value">{Number(rentabilite.surfaces.surface_vendable).toLocaleString()} m²</span>
-                        </div>
-                      ) : null}
-                      {rentabilite.ca?.ca_total != null ? (
-                        <div className="project-detail-item">
-                          <span className="project-detail-label">{t('projects.res_ca')}</span>
-                          <span className="project-detail-value">{formatBudget(String(rentabilite.ca.ca_total))}</span>
-                        </div>
-                      ) : null}
-                      {rentabilite.cout_total_projet != null ? (
-                        <div className="project-detail-item">
-                          <span className="project-detail-label">{t('projects.res_cout_total')}</span>
-                          <span className="project-detail-value">{formatBudget(String(rentabilite.cout_total_projet))}</span>
-                        </div>
-                      ) : null}
-                      {rentabilite.tri != null ? (
-                        <div className="project-detail-item">
-                          <span className="project-detail-label">{t('projects.res_tri')}</span>
-                          <span className={`project-detail-value ${rentabilite.tri >= 0 ? 'text-success' : 'text-error'}`}>
-                            {rentabilite.tri}%
-                          </span>
-                        </div>
-                      ) : null}
-                      {rentabilite.benefice_net != null ? (
-                        <div className="project-detail-item">
-                          <span className="project-detail-label">{t('projects.res_benefice')}</span>
-                          <span className={`project-detail-value ${rentabilite.benefice_net >= 0 ? 'text-success' : 'text-error'}`}>
-                            {formatBudget(String(rentabilite.benefice_net))}
-                          </span>
-                        </div>
-                      ) : null}
+                    <div className="project-detail-item">
+                      <span className="project-detail-label">{t('projects.detail_nb_terrains_rentabilite')}</span>
+                      <span className="project-detail-value">{detailProjet.nb_terrains_rentabilite ?? 0}</span>
+                    </div>
+                    <div className="project-detail-item">
+                      <span className="project-detail-label">{t('projects.detail_nb_amc')}</span>
+                      <span className="project-detail-value">{detailProjet.nb_amc ?? 0}</span>
                     </div>
                   </div>
-                ) : null}
+                </div>
               </div>
             </div>
           </div>

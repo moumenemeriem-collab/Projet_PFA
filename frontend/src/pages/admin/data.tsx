@@ -344,6 +344,7 @@ export function AdminDataPage(): React.JSX.Element {
       coucheId={gererCouche.id}
       coucheName={gererCouche.nom_affichage}
       attributs={gererCouche.attributs}
+      typeGeometrie={gererCouche.type_geometrie}
       onClose={() => setGererCouche(null)}
       onUpdated={() => { void loadCouches() }}
     />

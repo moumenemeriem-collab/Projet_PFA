@@ -1,6 +1,5 @@
 import heroBg from '../assets/features/businessma.jpg'
 import { Icon } from './icons'
-import { ChatbotWidget } from './ChatbotWidget'
 import { Link } from 'react-router-dom'
 
 export function AboutHero(): React.JSX.Element {
@@ -42,8 +41,6 @@ export function AboutHero(): React.JSX.Element {
           </svg>
         </div>
       </section>
-
-      <ChatbotWidget />
     </>
   )
 }

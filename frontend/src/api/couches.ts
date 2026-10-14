@@ -39,6 +39,14 @@ export interface ImportCouche {
   date_import: string
 }
 
+function apiErrorMessage(data: Record<string, unknown>, fallback: string): string {
+  if (typeof data.detail === 'string') return data.detail
+  if (typeof data.error === 'string') return data.error
+  const flat = Object.values(data).flat().filter((v) => typeof v === 'string') as string[]
+  if (flat.length) return flat.join(' ')
+  return fallback
+}
+
 async function apiJson<T>(url: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers)
   const token = localStorage.getItem('access_token')
@@ -47,8 +55,7 @@ async function apiJson<T>(url: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(url, { ...options, headers })
   const data = await response.json().catch(() => ({}))
   if (!response.ok) {
-    const msg = typeof data.detail === 'string' ? data.detail : 'Erreur serveur'
-    throw new Error(msg)
+    throw new Error(apiErrorMessage(data as Record<string, unknown>, 'Erreur serveur'))
   }
   return data as T
 }
@@ -78,6 +85,7 @@ export async function fetchCoucheGeoJSON(id: number): Promise<CoucheFeatureColle
   const token = localStorage.getItem('access_token')
   const response = await fetch(`${API_BASE}/${id}/download/`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
+    cache: 'no-store',
   })
   const data = await response.json().catch(() => null)
   if (!response.ok || !data || data.type !== 'FeatureCollection') {
@@ -155,7 +163,7 @@ export async function createCoucheFeature(id: number, properties: Record<string,
     body: JSON.stringify({ properties, geometry: geometry ?? null }),
   })
   const data = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Erreur lors de la création')
+  if (!response.ok) throw new Error(apiErrorMessage(data as Record<string, unknown>, 'Erreur lors de la création'))
   return data as { id: number }
 }
 
@@ -170,7 +178,7 @@ export async function updateCoucheFeature(coucheId: number, featureId: number, p
     body: JSON.stringify({ properties, geometry }),
   })
   const data = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Erreur lors de la mise à jour')
+  if (!response.ok) throw new Error(apiErrorMessage(data as Record<string, unknown>, 'Erreur lors de la mise à jour'))
 }
 
 export async function deleteCoucheFeature(coucheId: number, featureId: number): Promise<void> {
@@ -180,7 +188,7 @@ export async function deleteCoucheFeature(coucheId: number, featureId: number): 
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
   const data = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Erreur lors de la suppression')
+  if (!response.ok) throw new Error(apiErrorMessage(data as Record<string, unknown>, 'Erreur lors de la suppression'))
 }
 
 export async function duplicateCoucheFeature(coucheId: number, featureId: number): Promise<{ id: number }> {
@@ -190,6 +198,6 @@ export async function duplicateCoucheFeature(coucheId: number, featureId: number
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
   const data = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Erreur lors de la duplication')
+  if (!response.ok) throw new Error(apiErrorMessage(data as Record<string, unknown>, 'Erreur lors de la duplication'))
   return data as { id: number }
 }

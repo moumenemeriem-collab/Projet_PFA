@@ -194,7 +194,7 @@ La carte propose plusieurs fonds (OpenStreetMap, satellite, topographique), l'af
 
 Plusieurs utilitaires réalisent des calculs métier directement dans le navigateur :
 
-- `utils/pdfPlan.ts` : génération **manuelle** d'un document PDF (projection **EPSG:26191** — Lambert Maroc — implémentée en dur, sans bibliothèque tierce) pour l'édition d'un plan ;
+- `utils/pdfPlan.ts` : génération **manuelle** d'un document PDF (projection **EPSG:26191** — Merchich / Nord Maroc — implémentée en dur, sans bibliothèque tierce) pour l'édition d'un plan ;
 - `utils/terrainDims.ts` : dimensionnement de terrains ;
 - `utils/attributeLabels.ts` : libellés des attributs cadastraux ;
 - `pages/admin/dashboard.tsx` : tableaux de bord construits en **SVG pur** (donut charts) à partir des statistiques de l'API, avec rafraîchissement périodique ;

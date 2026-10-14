@@ -349,11 +349,30 @@
 /* ── Modales ── */
 
 .admin-modal.classement-modal--history {
-  max-width: 520px;
+  max-width: 440px;
 }
 
 .classement-modal-body {
   padding: 20px 22px;
+}
+
+/* Détail d'une parcelle : popup placé sous la barre supérieure, sur une seule colonne. */
+.admin-modal-overlay.classement-modal-overlay--detail {
+  align-items: flex-start;
+  /* Laisse la barre supérieure (70px) dégagée : le popup commence en dessous. */
+  padding: 86px 20px 24px;
+}
+
+.classement-modal-overlay--detail .admin-modal.classement-modal--detail {
+  max-height: calc(100svh - 110px);
+}
+
+.admin-modal.classement-modal--detail {
+  max-width: 760px;
+}
+
+.classement-modal-body--detail {
+  padding: 18px 22px;
 }
 
 /* ── Détails ── */
@@ -400,6 +419,55 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-muted);
+}
+
+.classement-detail-note {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.classement-detail-subtitle {
+  margin: 14px 0 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.classement-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.classement-detail-table th,
+.classement-detail-table td {
+  padding: 7px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.classement-detail-table th {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  background: var(--bg-page);
+}
+
+.classement-detail-table td {
+  color: var(--text-heading);
+}
+
+.classement-detail-value.text-success {
+  color: #16a34a;
+}
+
+.classement-detail-value.text-error {
+  color: #dc2626;
 }
 
 .classement-criteria-list {
@@ -522,6 +590,17 @@
 .classement-history-item .table-action-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.classement-history-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.classement-history-actions .btn-action {
+  white-space: nowrap;
 }
 
 /* ── Sélection de projet (Classement) ── */
@@ -654,4 +733,74 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 4px;
+}
+
+/* ── Boutons Téléchargement Rapports (Détails terrain) ── */
+
+.classement-modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.classement-report-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.94);
+  color: #1e3a8a;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  white-space: nowrap;
+}
+
+.classement-report-btn:hover:not(:disabled) {
+  background: #ffffff;
+  color: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.classement-report-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.classement-report-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+
+.classement-report-btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.classement-report-btn-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.classement-report-btn--renta {
+  color: #1e3a8a;
+}
+
+@media (max-width: 680px) {
+  .classement-report-btn-text {
+    display: none;
+  }
+  .classement-report-btn {
+    padding: 8px;
+    border-radius: 50%;
+  }
 }

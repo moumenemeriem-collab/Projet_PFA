@@ -595,12 +595,4 @@
   .idash-stats-grid {
     grid-template-columns: 1fr;
   }
-
-  .idash-terrain-scores {
-    display: none;
-  }
-
-  .idash-terrain-score-global {
-    width: 80px;
-  }
 }

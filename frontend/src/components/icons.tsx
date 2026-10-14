@@ -6,7 +6,7 @@ export const icons = {
   logo: (
     <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect width="32" height="32" rx="8" fill="#2563EB" />
-      <path d="M8 22V10l8 6 8-6v12h-3.5V14.5L16 19l-4.5-4.5V22H8z" fill="white" />
+      <text x="16" y="21" textAnchor="middle" fontSize="16" fontWeight="800" fill="#ffffff" fontFamily="Inter, Arial, sans-serif" letterSpacing="-0.5">GI</text>
     </svg>
   ),
   globe: (

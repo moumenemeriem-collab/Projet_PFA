@@ -1254,6 +1254,88 @@ def _construire_criteres(parcelle, filtres, dist_routes, nearest_name, class_nea
 # Extraction des distances pour le module de pondération AHP+ROC
 # ---------------------------------------------------------------------------
 
+# Les terrains enregistrés du projet reçoivent un id décalé pour ne jamais entrer en
+# collision avec l'id d'une parcelle cadastrale (le vrai id est dans `terrain_id`).
+TERRAIN_ID_OFFSET = 1_000_000_000
+
+
+def _geometry_to_dict(raw):
+    """Géométrie d'un Terrain (texte JSON, dict ou géométrie GEOS) -> dict GeoJSON."""
+    if raw is None or raw == '':
+        return None
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, (str, bytes)):
+        try:
+            return json.loads(raw)
+        except (ValueError, TypeError):
+            return None
+    geojson = getattr(raw, 'geojson', None)  # GEOSGeometry
+    if geojson:
+        try:
+            return json.loads(geojson)
+        except (ValueError, TypeError):
+            return None
+    return None
+
+
+def _candidats_terrains_projet(projet_pk: int, deja_presents: set) -> list:
+    """Terrains enregistrés du projet (« Ajouter un terrain ») utilisables comme candidats AMC.
+
+    Un terrain dont (num, indice) correspond déjà à une parcelle cadastrale est ignoré
+    pour éviter un doublon dans le classement.
+    """
+    from .models import Terrain as TerrainModel
+
+    try:
+        terrains = list(TerrainModel.objects.filter(projet_id=projet_pk))
+    except Exception:
+        return []
+
+    out = []
+    for t in terrains:
+        geom = _geometry_to_dict(getattr(t, 'geometry', None))
+        centroid = polygon_centroid(geom) if geom else None
+        if centroid is not None:
+            lat, lng = float(centroid[0]), float(centroid[1])
+        elif getattr(t, 'lat', None) is not None and getattr(t, 'lng', None) is not None:
+            # Terrain sans polygone (ajouté par coordonnées) : on le localise par
+            # son centroïde afin qu'il soit classé avec les parcelles cadastrales.
+            lat, lng = float(t.lat), float(t.lng)
+        else:
+            continue
+
+        num = (getattr(t, 'num_parcelle', '') or getattr(t, 'num_titre_foncier', '') or '').strip()
+        ind = (getattr(t, 'indice', '') or '').strip()
+        if num and (num.upper(), ind.upper()) in deja_presents:
+            continue
+
+        if num and ind and '/' not in num:
+            ref, nom = f'{num}/{ind}', f'Parcelle {num}/{ind}'
+        elif num:
+            ref, nom = num, f'Parcelle {num}'
+        else:
+            ref, nom = '', (getattr(t, 'nom', '') or f'Terrain {t.pk}')
+
+        out.append({
+            'id': TERRAIN_ID_OFFSET + t.pk,
+            'terrain_id': t.pk,
+            'source': 'terrain',
+            'nom': nom,
+            'lat': lat,
+            'lng': lng,
+            'superficie': float(getattr(t, 'superficie', None) or 0),
+            'reference_cadastrale': ref,
+            'indice': ind,
+            'consistance': getattr(t, 'consistance', '') or '',
+            'fid': None,
+            'num_parcelle': num,
+            'geometry': geom,
+            '_terrain': t,
+        })
+    return out
+
+
 def extraire_donnees_ponderation(projet_pk: int, selections: dict) -> dict:
     """Extrait les distances brutes et métadonnées pour tous les terrains candidats d'un projet.
 
@@ -1363,6 +1445,13 @@ def extraire_donnees_ponderation(projet_pk: int, selections: dict) -> dict:
             'geometry': p.get('geometry'),
         })
 
+    # + terrains enregistrés du projet (ajoutés manuellement), classés avec le cadastre.
+    deja = {
+        ((c.get('num_parcelle') or '').strip().upper(), (c.get('indice') or '').strip().upper())
+        for c in candidats
+    }
+    candidats.extend(_candidats_terrains_projet(projet_pk, deja))
+
     for cand in candidats:
         tid = cand['id']
         plat = cand['lat']
@@ -1446,6 +1535,8 @@ def extraire_donnees_ponderation(projet_pk: int, selections: dict) -> dict:
             'fid': cand.get('fid'),
             'num_parcelle': cand.get('num_parcelle') or '',
             'geometry': cand.get('geometry'),
+            'source': cand.get('source', 'cadastre'),
+            'terrain_id': cand.get('terrain_id'),
             'distances': {
                 'enseignement': dist_par_categorie_access.get('enseignement'),
                 'sante': dist_par_categorie_access.get('sante'),
